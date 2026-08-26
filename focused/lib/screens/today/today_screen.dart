@@ -5,11 +5,30 @@ import '../../theme/app_theme.dart';
 
 import 'package:go_router/go_router.dart';
 
+import 'package:provider/provider.dart';
+
+import '../../models/task.dart';
+import '../../providers/task_provider.dart';
+
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final taskProvider = context.watch<TaskProvider>();
+
+    final nextTask = taskProvider.nextTask();
+
+    final taskGroups = taskProvider.tasksByPriorityForDate(
+      DateTime.now(),
+      includeCompleted: false,
+    );
+
+    final criticalTasks = taskGroups[TaskPriority.critical] ?? [];
+
+    final importantTasks = taskGroups[TaskPriority.important] ?? [];
+
+    final growthTasks = taskGroups[TaskPriority.growth] ?? [];
     final currentDate = DateFormat('EEEE, MMMM d').format(DateTime.now());
 
     return ListView(
@@ -54,53 +73,63 @@ class TodayScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
+        const SizedBox(height: 24),
+
+        Text(
+          'Next task',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+
+        const SizedBox(height: 10),
+
+        if (nextTask != null)
+          _NextTaskCard(task: nextTask)
+        else
+          _NoTasksCard(
+            onCreateTask: () {
+              context.push('/task/new');
+            },
+          ),
+
+        const SizedBox(height: 26),
         _DigitalBalanceCard(onTap: () => context.push('/wellbeing/app-usage')),
 
         const SizedBox(height: 24),
-        const SizedBox(height: 24),
+        if (criticalTasks.isNotEmpty) ...[
+          const _SectionTitle(title: 'Critical', color: Color(0xFFFF6B5E)),
 
-        const _SectionTitle(title: 'Critical', color: Color(0xFFFF6B5E)),
+          const SizedBox(height: 10),
 
-        const SizedBox(height: 10),
+          ...criticalTasks.map(
+            (task) => _TaskTile(task: task, color: const Color(0xFFFF6B5E)),
+          ),
 
-        const _TaskTile(
-          title: 'Finish assignment',
-          subtitle: '90 min • Due today',
-          color: Color(0xFFFF6B5E),
-        ),
+          const SizedBox(height: 18),
+        ],
+        if (importantTasks.isNotEmpty) ...[
+          const _SectionTitle(title: 'Important', color: AppTheme.primaryBlue),
 
-        const _TaskTile(
-          title: 'Review project presentation',
-          subtitle: '45 min',
-          color: Color(0xFFFF6B5E),
-        ),
+          const SizedBox(height: 10),
 
-        const SizedBox(height: 18),
+          ...importantTasks.map(
+            (task) => _TaskTile(task: task, color: AppTheme.primaryBlue),
+          ),
 
-        const _SectionTitle(title: 'Important', color: AppTheme.primaryBlue),
+          const SizedBox(height: 18),
+        ],
+        if (growthTasks.isNotEmpty) ...[
+          const _SectionTitle(title: 'Growth', color: Color(0xFF34B27B)),
 
-        const SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-        const _TaskTile(
-          title: 'Study Flutter',
-          subtitle: '60 min',
-          color: AppTheme.primaryBlue,
-        ),
+          ...growthTasks.map(
+            (task) => _TaskTile(task: task, color: const Color(0xFF34B27B)),
+          ),
 
-        const SizedBox(height: 18),
-
-        const _SectionTitle(title: 'Growth', color: Color(0xFF34B27B)),
-
-        const SizedBox(height: 10),
-
-        const _TaskTile(
-          title: 'Read 20 pages',
-          subtitle: '30 min',
-          color: Color(0xFF34B27B),
-        ),
-
-        const SizedBox(height: 26),
-
+          const SizedBox(height: 18),
+        ],
         const _SectionTitle(
           title: 'Today\'s schedule',
           color: AppTheme.primaryBlue,
@@ -315,15 +344,10 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _TaskTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
+  final Task task;
   final Color color;
 
-  const _TaskTile({
-    required this.title,
-    required this.subtitle,
-    required this.color,
-  });
+  const _TaskTile({required this.task, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -344,27 +368,39 @@ class _TaskTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
+
           const SizedBox(width: 14),
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: color, width: 2),
+
+          InkWell(
+            onTap: () async {
+              await context.read<TaskProvider>().setCompleted(task.id, true);
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: color, width: 2),
+              ),
             ),
           ),
+
           const SizedBox(width: 14),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  task.title,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
-                  subtitle,
+                  _taskSubtitle(task),
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(
@@ -375,7 +411,133 @@ class _TaskTile extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.more_vert_rounded, size: 20),
+
+          const Icon(Icons.chevron_right_rounded, size: 20),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextTaskCard extends StatelessWidget {
+  final Task task;
+
+  const _NextTaskCard({required this.task});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _priorityColor(task.priority);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  task.priority.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              if (task.scheduledStart != null)
+                Text(
+                  DateFormat('h:mm a').format(task.scheduledStart!),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          Text(
+            task.title,
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+          ),
+
+          const SizedBox(height: 5),
+
+          Text(
+            _taskSubtitle(task),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: () {
+                context.push('/focus/setup');
+              },
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: const Text('Start Focus'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoTasksCard extends StatelessWidget {
+  final VoidCallback onCreateTask;
+
+  const _NoTasksCard({required this.onCreateTask});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.task_alt_rounded,
+            size: 38,
+            color: AppTheme.primaryBlue,
+          ),
+
+          const SizedBox(height: 10),
+
+          const Text(
+            'Nothing to work on yet',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+
+          const SizedBox(height: 12),
+
+          OutlinedButton.icon(
+            onPressed: onCreateTask,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Create Task'),
+          ),
         ],
       ),
     );
@@ -516,5 +678,53 @@ class _HabitTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+String _taskSubtitle(Task task) {
+  final parts = <String>[];
+
+  if (task.estimatedMinutes < 60) {
+    parts.add('${task.estimatedMinutes} min');
+  } else {
+    final hours = task.estimatedMinutes ~/ 60;
+    final minutes = task.estimatedMinutes % 60;
+
+    if (minutes == 0) {
+      parts.add(hours == 1 ? '1 hour' : '$hours hours');
+    } else {
+      parts.add('${hours}h ${minutes}m');
+    }
+  }
+
+  if (task.deadline != null) {
+    final today = DateTime.now();
+
+    if (_sameDate(task.deadline!, today)) {
+      parts.add('Due today');
+    } else {
+      parts.add('Due ${DateFormat('d MMM').format(task.deadline!)}');
+    }
+  }
+
+  return parts.join(' • ');
+}
+
+bool _sameDate(DateTime first, DateTime second) {
+  return first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
+}
+
+Color _priorityColor(TaskPriority priority) {
+  switch (priority) {
+    case TaskPriority.critical:
+      return const Color(0xFFFF6B5E);
+
+    case TaskPriority.important:
+      return AppTheme.primaryBlue;
+
+    case TaskPriority.growth:
+      return const Color(0xFF34B27B);
   }
 }

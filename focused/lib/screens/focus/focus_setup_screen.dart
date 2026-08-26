@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../theme/app_theme.dart';
-
+import '../../models/task.dart';
 import '../../providers/focus_provider.dart';
+import '../../providers/task_provider.dart';
+import '../../theme/app_theme.dart';
 
 class FocusSetupScreen extends StatefulWidget {
   const FocusSetupScreen({super.key});
@@ -14,7 +15,8 @@ class FocusSetupScreen extends StatefulWidget {
 }
 
 class _FocusSetupScreenState extends State<FocusSetupScreen> {
-  String _selectedTask = 'Study Flutter';
+  // We now store the task ID instead of a fake task name.
+  String? _selectedTaskId;
 
   int _totalMinutes = 120;
   int _focusMinutes = 50;
@@ -22,6 +24,26 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final taskProvider = context.watch<TaskProvider>();
+
+    Task? selectedTask;
+
+    // If the user manually selected a task,
+    // try to retrieve it from TaskProvider.
+    if (_selectedTaskId != null) {
+      final candidate = taskProvider.getTaskById(_selectedTaskId!);
+
+      // Completed tasks should not be used
+      // for new focus sessions.
+      if (candidate != null && !candidate.isCompleted) {
+        selectedTask = candidate;
+      }
+    }
+
+    // If no task was manually selected,
+    // automatically use the next useful task.
+    selectedTask ??= taskProvider.nextTask();
+
     final sessionPlan = _buildSessionPlan();
 
     return Scaffold(
@@ -40,7 +62,9 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
+
           const SizedBox(height: 6),
+
           Text(
             'Choose what you want to work on and how you want to focus.',
             style: TextStyle(
@@ -50,8 +74,10 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
           const SizedBox(height: 28),
 
-          // Task
-          _SectionTitle(title: 'Task'),
+          // =================================================
+          // TASK
+          // =================================================
+          const _SectionTitle(title: 'Task'),
 
           const SizedBox(height: 12),
 
@@ -66,24 +92,47 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   color: AppTheme.primaryBlue.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.code_rounded,
+                child: Icon(
+                  selectedTask == null
+                      ? Icons.add_task_rounded
+                      : Icons.task_alt_rounded,
                   color: AppTheme.primaryBlue,
                 ),
               ),
               title: Text(
-                _selectedTask,
+                selectedTask?.title ?? 'Choose a task',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              subtitle: const Text('Tap to choose another task'),
+              subtitle: Text(
+                selectedTask == null
+                    ? 'Create a task before starting focus'
+                    : '${_formatDuration(selectedTask.estimatedMinutes)} • ${selectedTask.priority.label}',
+              ),
               trailing: const Icon(Icons.chevron_right_rounded),
             ),
           ),
 
+          if (selectedTask == null) ...[
+            const SizedBox(height: 10),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  context.push('/task/new');
+                },
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Create a Task'),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 26),
 
-          // Session settings
-          _SectionTitle(title: 'Session'),
+          // =================================================
+          // SESSION SETTINGS
+          // =================================================
+          const _SectionTitle(title: 'Session'),
 
           const SizedBox(height: 12),
 
@@ -95,13 +144,17 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   value: _formatDuration(_totalMinutes),
                   onTap: _showTotalDurationPicker,
                 ),
+
                 const Divider(height: 1),
+
                 _SettingRow(
                   title: 'Focus block',
                   value: '$_focusMinutes min',
                   onTap: _showFocusDurationPicker,
                 ),
+
                 const Divider(height: 1),
+
                 _SettingRow(
                   title: 'Break',
                   value: '$_breakMinutes min',
@@ -113,11 +166,15 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
           const SizedBox(height: 26),
 
-          // Preview
+          // =================================================
+          // SESSION PLAN
+          // =================================================
           Row(
             children: [
-              _SectionTitle(title: 'Session plan'),
+              const _SectionTitle(title: 'Session plan'),
+
               const Spacer(),
+
               Text(
                 '${sessionPlan.where((item) => item.isWork).length} focus blocks',
                 style: TextStyle(
@@ -162,13 +219,16 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                           size: 20,
                         ),
                       ),
+
                       const SizedBox(width: 14),
+
                       Expanded(
                         child: Text(
                           item.isWork ? 'Focus' : 'Break',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
+
                       Text(
                         '${item.minutes} min',
                         style: TextStyle(
@@ -187,19 +247,25 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
           const SizedBox(height: 30),
 
+          // =================================================
+          // START SESSION
+          // =================================================
           SizedBox(
             height: 58,
             child: FilledButton.icon(
-              onPressed: () {
-                context.read<FocusProvider>().startSession(
-                  taskName: _selectedTask,
-                  totalFocusMinutes: _totalMinutes,
-                  focusBlockMinutes: _focusMinutes,
-                  breakMinutes: _breakMinutes,
-                );
+              // No task = cannot start focus.
+              onPressed: selectedTask == null
+                  ? null
+                  : () {
+                      context.read<FocusProvider>().startSession(
+                        taskName: selectedTask!.title,
+                        totalFocusMinutes: _totalMinutes,
+                        focusBlockMinutes: _focusMinutes,
+                        breakMinutes: _breakMinutes,
+                      );
 
-                context.push('/focus/session');
-              },
+                      context.push('/focus/session');
+                    },
               icon: const Icon(Icons.play_arrow_rounded),
               label: const Text(
                 'Start Focus Session',
@@ -211,6 +277,10 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       ),
     );
   }
+
+  // =========================================================
+  // SESSION PLAN
+  // =========================================================
 
   List<_FocusPlanItem> _buildSessionPlan() {
     final plan = <_FocusPlanItem>[];
@@ -226,7 +296,9 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
       remainingMinutes -= currentFocusMinutes;
 
-      if (remainingMinutes > 0) {
+      // Only insert a break if
+      // another focus block remains.
+      if (remainingMinutes > 0 && _breakMinutes > 0) {
         plan.add(_FocusPlanItem(isWork: false, minutes: _breakMinutes));
       }
     }
@@ -234,42 +306,101 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     return plan;
   }
 
-  String _formatDuration(int minutes) {
-    if (minutes < 60) {
-      return '$minutes min';
-    }
-
-    final hours = minutes ~/ 60;
-    final remainingMinutes = minutes % 60;
-
-    if (remainingMinutes == 0) {
-      return hours == 1 ? '1 hour' : '$hours hours';
-    }
-
-    return '${hours}h ${remainingMinutes}m';
-  }
+  // =========================================================
+  // TASK PICKER
+  // =========================================================
 
   void _showTaskPicker() {
-    _showOptions(
-      title: 'Choose task',
-      options: const [
-        'Study Flutter',
-        'Finish assignment',
-        'Review project presentation',
-        'Read 20 pages',
-      ],
-      onSelected: (value) {
-        setState(() {
-          _selectedTask = value;
-        });
+    final tasks = context.read<TaskProvider>().incompleteTasks;
+
+    if (tasks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('You do not have any unfinished tasks yet.'),
+          action: SnackBarAction(
+            label: 'Create',
+            onPressed: () {
+              context.push('/task/new');
+            },
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            children: [
+              Text(
+                'Choose task',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+
+              const SizedBox(height: 12),
+
+              ...tasks.map((task) {
+                final selected = task.id == _selectedTaskId;
+
+                return ListTile(
+                  leading: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _taskColor(task.priority).withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.task_alt_rounded,
+                      color: _taskColor(task.priority),
+                    ),
+                  ),
+                  title: Text(
+                    task.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    '${_formatDuration(task.estimatedMinutes)} • ${task.priority.label}',
+                  ),
+                  trailing: selected
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: AppTheme.primaryBlue,
+                        )
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedTaskId = task.id;
+                    });
+
+                    Navigator.pop(sheetContext);
+                  },
+                );
+              }),
+            ],
+          ),
+        );
       },
     );
   }
 
+  // =========================================================
+  // DURATION PICKERS
+  // =========================================================
+
   void _showTotalDurationPicker() {
     _showOptions(
       title: 'Total duration',
-      options: const ['1', '30', '60', '90', '120', '180'],
+      options: const ['30', '60', '90', '120', '180'],
       displayText: (value) {
         return _formatDuration(int.parse(value));
       },
@@ -284,7 +415,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   void _showFocusDurationPicker() {
     _showOptions(
       title: 'Focus block',
-      options: const ['1', '25', '30', '45', '50', '60', '90'],
+      options: const ['25', '30', '45', '50', '60', '90'],
       displayText: (value) => '$value min',
       onSelected: (value) {
         setState(() {
@@ -297,7 +428,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   void _showBreakDurationPicker() {
     _showOptions(
       title: 'Break',
-      options: const ['2', '5', '10', '15', '20'],
+      options: const ['5', '10', '15', '20'],
       displayText: (value) => '$value min',
       onSelected: (value) {
         setState(() {
@@ -316,7 +447,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -326,10 +457,12 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                 Text(
                   title,
                   style: Theme.of(
-                    context,
+                    sheetContext,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
+
                 const SizedBox(height: 12),
+
                 ...options.map((value) {
                   return ListTile(
                     title: Text(
@@ -338,7 +471,8 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                     ),
                     onTap: () {
                       onSelected(value);
-                      Navigator.pop(context);
+
+                      Navigator.pop(sheetContext);
                     },
                   );
                 }),
@@ -349,7 +483,44 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       },
     );
   }
+
+  // =========================================================
+  // HELPERS
+  // =========================================================
+
+  String _formatDuration(int minutes) {
+    if (minutes < 60) {
+      return '$minutes min';
+    }
+
+    final hours = minutes ~/ 60;
+
+    final remainingMinutes = minutes % 60;
+
+    if (remainingMinutes == 0) {
+      return hours == 1 ? '1 hour' : '$hours hours';
+    }
+
+    return '${hours}h ${remainingMinutes}m';
+  }
+
+  Color _taskColor(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.critical:
+        return const Color(0xFFFF6B5E);
+
+      case TaskPriority.important:
+        return AppTheme.primaryBlue;
+
+      case TaskPriority.growth:
+        return const Color(0xFF34B27B);
+    }
+  }
 }
+
+// ===========================================================
+// SESSION PLAN ITEM
+// ===========================================================
 
 class _FocusPlanItem {
   final bool isWork;
@@ -357,6 +528,10 @@ class _FocusPlanItem {
 
   const _FocusPlanItem({required this.isWork, required this.minutes});
 }
+
+// ===========================================================
+// CARD
+// ===========================================================
 
 class _AppCard extends StatelessWidget {
   final Widget child;
@@ -375,6 +550,10 @@ class _AppCard extends StatelessWidget {
     );
   }
 }
+
+// ===========================================================
+// SETTING ROW
+// ===========================================================
 
 class _SettingRow extends StatelessWidget {
   final String title;
@@ -403,13 +582,19 @@ class _SettingRow extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+
           const SizedBox(width: 4),
+
           const Icon(Icons.chevron_right_rounded, size: 20),
         ],
       ),
     );
   }
 }
+
+// ===========================================================
+// SECTION TITLE
+// ===========================================================
 
 class _SectionTitle extends StatelessWidget {
   final String title;

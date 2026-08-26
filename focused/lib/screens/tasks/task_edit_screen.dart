@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../models/task.dart';
+import '../../providers/task_provider.dart';
+import '../../theme/app_theme.dart';
+
 class TaskEditScreen extends StatefulWidget {
   const TaskEditScreen({super.key});
 
@@ -10,12 +18,50 @@ class TaskEditScreen extends StatefulWidget {
 }
 
 class _TaskEditScreenState extends State<TaskEditScreen> {
-  String _priority = 'Important';
+  final TextEditingController _titleController = TextEditingController();
 
-  bool _hasDeadline = true;
-  bool _scheduleOnCalendar = false;
+  final TextEditingController _descriptionController = TextEditingController();
+
+  TaskPriority _priority = TaskPriority.important;
 
   int _estimatedMinutes = 60;
+
+  late DateTime _plannedDate;
+
+  DateTime? _deadlineDate;
+
+  bool _scheduleOnCalendar = false;
+
+  late DateTime _scheduledDate;
+
+  TimeOfDay _startTime = const TimeOfDay(hour: 14, minute: 0);
+
+  TimeOfDay _endTime = const TimeOfDay(hour: 15, minute: 0);
+
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final today = _dateOnly(DateTime.now());
+
+    _plannedDate = today;
+
+    // Keep your previous UI behaviour:
+    // deadline defaults to today.
+    _deadlineDate = today;
+
+    _scheduledDate = today;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +73,10 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () {},
-            child: const Text(
-              'Save',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            onPressed: _isSaving ? null : _saveTask,
+            child: Text(
+              _isSaving ? 'Saving...' : 'Save',
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 8),
@@ -48,17 +94,21 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
 
           const SizedBox(height: 18),
 
-          const TextField(
-            decoration: InputDecoration(hintText: 'Task title'),
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          TextField(
+            controller: _titleController,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(hintText: 'Task title'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
           ),
 
           const SizedBox(height: 12),
 
-          const TextField(
+          TextField(
+            controller: _descriptionController,
             minLines: 3,
             maxLines: 5,
-            decoration: InputDecoration(
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
               hintText: 'Add a description...',
               alignLabelWithHint: true,
             ),
@@ -76,36 +126,40 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 child: _PriorityButton(
                   label: 'Critical',
                   color: const Color(0xFFFF6B5E),
-                  selected: _priority == 'Critical',
+                  selected: _priority == TaskPriority.critical,
                   onTap: () {
                     setState(() {
-                      _priority = 'Critical';
+                      _priority = TaskPriority.critical;
                     });
                   },
                 ),
               ),
+
               const SizedBox(width: 10),
+
               Expanded(
                 child: _PriorityButton(
                   label: 'Important',
                   color: AppTheme.primaryBlue,
-                  selected: _priority == 'Important',
+                  selected: _priority == TaskPriority.important,
                   onTap: () {
                     setState(() {
-                      _priority = 'Important';
+                      _priority = TaskPriority.important;
                     });
                   },
                 ),
               ),
+
               const SizedBox(width: 10),
+
               Expanded(
                 child: _PriorityButton(
                   label: 'Growth',
                   color: const Color(0xFF34B27B),
-                  selected: _priority == 'Growth',
+                  selected: _priority == TaskPriority.growth,
                   onTap: () {
                     setState(() {
-                      _priority = 'Growth';
+                      _priority = TaskPriority.growth;
                     });
                   },
                 ),
@@ -127,11 +181,24 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 value: _durationLabel(_estimatedMinutes),
                 onTap: _showDurationPicker,
               ),
+
               const Divider(height: 1),
+
+              _SettingRow(
+                icon: Icons.event_note_outlined,
+                title: 'Plan for',
+                value: _dateLabel(_plannedDate),
+                onTap: _pickPlannedDate,
+              ),
+
+              const Divider(height: 1),
+
               _SettingRow(
                 icon: Icons.flag_outlined,
                 title: 'Deadline',
-                value: _hasDeadline ? 'Today' : 'None',
+                value: _deadlineDate == null
+                    ? 'None'
+                    : _dateLabel(_deadlineDate!),
                 onTap: _showDeadlineSheet,
               ),
             ],
@@ -177,7 +244,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
               ),
               subtitle: const Padding(
                 padding: EdgeInsets.only(top: 3),
-                child: Text('Add this task to Google Calendar'),
+                child: Text(
+                  'Set a time block now. Google sync will be added later.',
+                ),
               ),
             ),
           ),
@@ -190,22 +259,26 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 _SettingRow(
                   icon: Icons.calendar_today_outlined,
                   title: 'Date',
-                  value: 'Today',
-                  onTap: () {},
+                  value: _dateLabel(_scheduledDate),
+                  onTap: _pickScheduledDate,
                 ),
+
                 const Divider(height: 1),
+
                 _SettingRow(
                   icon: Icons.schedule_outlined,
                   title: 'Start',
-                  value: '2:00 PM',
-                  onTap: () {},
+                  value: _startTime.format(context),
+                  onTap: _pickStartTime,
                 ),
+
                 const Divider(height: 1),
+
                 _SettingRow(
                   icon: Icons.timelapse_outlined,
                   title: 'End',
-                  value: '3:00 PM',
-                  onTap: () {},
+                  value: _endTime.format(context),
+                  onTap: _pickEndTime,
                 ),
               ],
             ),
@@ -216,19 +289,99 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           SizedBox(
             height: 58,
             child: FilledButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                'Create Task',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
+              onPressed: _isSaving ? null : _saveTask,
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : const Text(
+                      'Create Task',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
             ),
           ),
         ],
       ),
     );
   }
+
+  // =========================================================
+  // SAVE TASK
+  // =========================================================
+
+  Future<void> _saveTask() async {
+    final title = _titleController.text.trim();
+
+    if (title.isEmpty) {
+      _showMessage('Please enter a task title.');
+
+      return;
+    }
+
+    DateTime? scheduledStart;
+    DateTime? scheduledEnd;
+
+    if (_scheduleOnCalendar) {
+      scheduledStart = _combineDateAndTime(_scheduledDate, _startTime);
+
+      scheduledEnd = _combineDateAndTime(_scheduledDate, _endTime);
+
+      if (!scheduledEnd.isAfter(scheduledStart)) {
+        _showMessage('End time must be after start time.');
+
+        return;
+      }
+    }
+
+    // A deadline selected as "August 30"
+    // should mean the END of August 30,
+    // not 12:00 AM at the beginning of the day.
+    final deadline = _deadlineDate == null ? null : _endOfDay(_deadlineDate!);
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await context.read<TaskProvider>().createTask(
+        title: title,
+        description: _descriptionController.text.trim(),
+        priority: _priority,
+        estimatedMinutes: _estimatedMinutes,
+        plannedDate: _plannedDate,
+        deadline: deadline,
+        scheduledStart: scheduledStart,
+        scheduledEnd: scheduledEnd,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage('Could not save the task. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  // =========================================================
+  // DURATION
+  // =========================================================
 
   String _durationLabel(int minutes) {
     if (minutes < 60) {
@@ -249,7 +402,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -259,17 +412,23 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 Text(
                   'Estimated duration',
                   style: Theme.of(
-                    context,
+                    sheetContext,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
+
                 const SizedBox(height: 16),
+
                 _DurationChoice(label: '30 min', onTap: () => _setDuration(30)),
+
                 _DurationChoice(label: '45 min', onTap: () => _setDuration(45)),
+
                 _DurationChoice(label: '1 hour', onTap: () => _setDuration(60)),
+
                 _DurationChoice(
                   label: '1 hour 30 min',
                   onTap: () => _setDuration(90),
                 ),
+
                 _DurationChoice(
                   label: '2 hours',
                   onTap: () => _setDuration(120),
@@ -290,11 +449,36 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     Navigator.pop(context);
   }
 
+  // =========================================================
+  // PLANNED DATE
+  // =========================================================
+
+  Future<void> _pickPlannedDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _plannedDate,
+      firstDate: DateTime(DateTime.now().year - 1),
+      lastDate: DateTime(DateTime.now().year + 10),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      _plannedDate = _dateOnly(picked);
+    });
+  }
+
+  // =========================================================
+  // DEADLINE
+  // =========================================================
+
   void _showDeadlineSheet() {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -304,43 +488,57 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 Text(
                   'Deadline',
                   style: Theme.of(
-                    context,
+                    sheetContext,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
+
                 const SizedBox(height: 16),
+
                 ListTile(
                   leading: const Icon(Icons.today_outlined),
                   title: const Text('Today'),
                   onTap: () {
                     setState(() {
-                      _hasDeadline = true;
+                      _deadlineDate = _dateOnly(DateTime.now());
                     });
-                    Navigator.pop(context);
+
+                    Navigator.pop(sheetContext);
                   },
                 ),
+
                 ListTile(
                   leading: const Icon(Icons.calendar_today_outlined),
                   title: const Text('Tomorrow'),
                   onTap: () {
                     setState(() {
-                      _hasDeadline = true;
+                      _deadlineDate = _dateOnly(
+                        DateTime.now().add(const Duration(days: 1)),
+                      );
                     });
-                    Navigator.pop(context);
+
+                    Navigator.pop(sheetContext);
                   },
                 ),
+
                 ListTile(
                   leading: const Icon(Icons.event_outlined),
                   title: const Text('Choose date'),
-                  onTap: () {},
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+
+                    await _pickDeadlineDate();
+                  },
                 ),
+
                 ListTile(
                   leading: const Icon(Icons.close),
                   title: const Text('No deadline'),
                   onTap: () {
                     setState(() {
-                      _hasDeadline = false;
+                      _deadlineDate = null;
                     });
-                    Navigator.pop(context);
+
+                    Navigator.pop(sheetContext);
                   },
                 ),
               ],
@@ -349,6 +547,119 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         );
       },
     );
+  }
+
+  Future<void> _pickDeadlineDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _deadlineDate ?? _plannedDate,
+      firstDate: DateTime(DateTime.now().year - 1),
+      lastDate: DateTime(DateTime.now().year + 10),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      _deadlineDate = _dateOnly(picked);
+    });
+  }
+
+  // =========================================================
+  // SCHEDULE
+  // =========================================================
+
+  Future<void> _pickScheduledDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _scheduledDate,
+      firstDate: DateTime(DateTime.now().year - 1),
+      lastDate: DateTime(DateTime.now().year + 10),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      _scheduledDate = _dateOnly(picked);
+
+      // If the user schedules the task,
+      // it makes sense for that day to
+      // also become its planned day.
+      _plannedDate = _scheduledDate;
+    });
+  }
+
+  Future<void> _pickStartTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _startTime,
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      _startTime = picked;
+    });
+  }
+
+  Future<void> _pickEndTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _endTime,
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      _endTime = picked;
+    });
+  }
+
+  // =========================================================
+  // HELPERS
+  // =========================================================
+
+  String _dateLabel(DateTime date) {
+    final today = _dateOnly(DateTime.now());
+
+    final tomorrow = today.add(const Duration(days: 1));
+
+    final cleanDate = _dateOnly(date);
+
+    if (cleanDate == today) {
+      return 'Today';
+    }
+
+    if (cleanDate == tomorrow) {
+      return 'Tomorrow';
+    }
+
+    return DateFormat('EEE, d MMM').format(date);
+  }
+
+  DateTime _combineDateAndTime(DateTime date, TimeOfDay time) {
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _endOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day, 23, 59, 59, 999, 999);
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
