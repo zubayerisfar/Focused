@@ -52,7 +52,11 @@ class TodayScreen extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 12),
 
+        _DigitalBalanceCard(onTap: () => context.push('/wellbeing/app-usage')),
+
+        const SizedBox(height: 24),
         const SizedBox(height: 24),
 
         const _SectionTitle(title: 'Critical', color: Color(0xFFFF6B5E)),
@@ -148,6 +152,91 @@ class TodayScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DigitalBalanceCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _DigitalBalanceCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.phone_android_rounded,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Digital balance',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      '4h 18m screen time  •  36m distraction',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.55),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '↓ 8%',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF34B27B),
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text('distraction', style: TextStyle(fontSize: 10)),
+                ],
+              ),
+
+              const SizedBox(width: 6),
+
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -19,6 +19,10 @@ import '../screens/focus/focus_setup_screen.dart';
 import '../screens/focus/focus_session_screen.dart';
 import '../screens/focus/focus_complete_screen.dart';
 
+import '../screens/wellbeing/app_usage_details_screen.dart';
+import '../screens/wellbeing/focus_interruption_details_screen.dart';
+import '../screens/wellbeing/usage_permission_screen.dart';
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
 
@@ -74,9 +78,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/calendar/event/edit',
       builder: (context, state) {
-        return const EventEditScreen(
-          isEditing: true,
-        );
+        return const EventEditScreen(isEditing: true);
       },
     ),
 
@@ -98,9 +100,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/habit/edit',
       builder: (context, state) {
-        return const HabitEditScreen(
-          isEditing: true,
-        );
+        return const HabitEditScreen(isEditing: true);
       },
     ),
 
@@ -123,6 +123,28 @@ final GoRouter appRouter = GoRouter(
       path: '/focus/complete',
       builder: (context, state) {
         return const FocusCompleteScreen();
+      },
+    ),
+
+    // Digital wellbeing / usage insights
+    GoRoute(
+      path: '/wellbeing/app-usage',
+      builder: (context, state) {
+        return const AppUsageDetailsScreen();
+      },
+    ),
+
+    GoRoute(
+      path: '/wellbeing/focus-interruptions',
+      builder: (context, state) {
+        return const FocusInterruptionDetailsScreen();
+      },
+    ),
+
+    GoRoute(
+      path: '/wellbeing/permission',
+      builder: (context, state) {
+        return const UsagePermissionScreen();
       },
     ),
   ],

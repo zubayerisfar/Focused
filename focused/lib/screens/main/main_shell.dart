@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../calendar/calendar_screen.dart';
 import '../focus/focus_screen.dart';
 import '../habits/habits_screen.dart';
-import '../statistics/statistics_screen.dart';
+import '../wellbeing/wellbeing_screen.dart';
 import '../today/today_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -22,7 +22,7 @@ class _MainShellState extends State<MainShell> {
     CalendarScreen(),
     FocusScreen(),
     HabitsScreen(),
-    StatisticsScreen(),
+    WellbeingScreen(),
   ];
 
   final List<String> _titles = const [
@@ -30,7 +30,7 @@ class _MainShellState extends State<MainShell> {
     'Calendar',
     'Focus',
     'Habits',
-    'Statistics',
+    'Insights',
   ];
 
   @override
@@ -90,9 +90,9 @@ class _MainShellState extends State<MainShell> {
             label: 'Habits',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart_rounded),
-            label: 'Stats',
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights_rounded),
+            label: 'Insights',
           ),
         ],
       ),
