@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../models/daily_usage_summary.dart';
+import '../../models/hourly_usage_summary.dart';
+import '../../providers/usage_provider.dart';
+import '../../theme/app_theme.dart';
+
 import '../../theme/app_theme.dart';
 
 class AppUsageDetailsScreen extends StatefulWidget {
@@ -16,6 +24,15 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final usageProvider = context.watch<UsageProvider>();
+
+    final todaySummary = usageProvider.todaySummary;
+    final yesterdaySummary = usageProvider.yesterdaySummary;
+
+    if (todaySummary == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('App Usage')),
       body: ListView(
@@ -36,50 +53,74 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
               });
             },
           ),
-          const SizedBox(height: 22),
-          const _TotalUsageCard(),
-          const SizedBox(height: 24),
-          Text(
-            'Usage trend',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          const _UsageChart(),
-          const SizedBox(height: 26),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Most used apps',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
+          if (_selectedPeriod == 0) ...[
+            const SizedBox(height: 22),
+
+            _TotalUsageCard(
+              totalUsage: todaySummary.totalUsage,
+              previousUsage: yesterdaySummary?.totalUsage,
+            ),
+
+            const SizedBox(height: 24),
+
+            Text(
+              'Hourly usage',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+
+            const SizedBox(height: 6),
+
+            Text(
+              'See when you used your device most today.',
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.55),
               ),
-              Text(
-                'Today',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.55),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const _AppListCard(),
-          const SizedBox(height: 26),
-          Text(
-            'Comparison',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          const _ComparisonCard(),
+            ),
+
+            const SizedBox(height: 12),
+
+            _HourlyUsageChart(hourlyUsage: todaySummary.hourlyUsage),
+
+            const SizedBox(height: 26),
+
+            Text(
+              'Most used apps',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+
+            const SizedBox(height: 12),
+
+            _AppListCard(
+              today: todaySummary,
+              yesterday: yesterdaySummary,
+              usageProvider: usageProvider,
+            ),
+
+            const SizedBox(height: 26),
+
+            Text(
+              'Comparison',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+
+            const SizedBox(height: 12),
+
+            _ComparisonCard(
+              todayPercent: usageProvider.todayVsYesterdayPercent,
+            ),
+          ] else ...[
+            const SizedBox(height: 24),
+
+            _HistoryRequiredCard(period: _periods[_selectedPeriod]),
+          ],
         ],
       ),
     );
@@ -87,10 +128,42 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
 }
 
 class _TotalUsageCard extends StatelessWidget {
-  const _TotalUsageCard();
+  final Duration totalUsage;
+  final Duration? previousUsage;
+
+  const _TotalUsageCard({
+    required this.totalUsage,
+    required this.previousUsage,
+  });
 
   @override
   Widget build(BuildContext context) {
+    String comparisonText = 'No comparison available';
+    String badgeText = '—';
+
+    if (previousUsage != null) {
+      final differenceSeconds = totalUsage.inSeconds - previousUsage!.inSeconds;
+
+      if (previousUsage!.inSeconds > 0) {
+        final percentage = (differenceSeconds / previousUsage!.inSeconds) * 100;
+
+        if (differenceSeconds > 0) {
+          badgeText = '↑ ${percentage.abs().round()}%';
+
+          comparisonText =
+              '${_formatDuration(Duration(seconds: differenceSeconds))} more than yesterday';
+        } else if (differenceSeconds < 0) {
+          badgeText = '↓ ${percentage.abs().round()}%';
+
+          comparisonText =
+              '${_formatDuration(Duration(seconds: differenceSeconds.abs()))} less than yesterday';
+        } else {
+          badgeText = '0%';
+          comparisonText = 'Same as yesterday';
+        }
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -114,43 +187,51 @@ class _TotalUsageCard extends StatelessWidget {
                   color: AppTheme.primaryBlue,
                 ),
               ),
+
               const Spacer(),
+
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B5E).withOpacity(0.10),
+                  color: AppTheme.primaryBlue.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  '↑ 12%',
-                  style: TextStyle(
+                child: Text(
+                  badgeText,
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFFF6B5E),
+                    color: AppTheme.primaryBlue,
                   ),
                 ),
               ),
             ],
           ),
+
           const SizedBox(height: 18),
-          const Text(
-            '4h 18m',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+
+          Text(
+            _formatDuration(totalUsage),
+            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
           ),
+
           const SizedBox(height: 2),
+
           Text(
             'Total screen time today',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
             ),
           ),
+
           const SizedBox(height: 12),
-          const Text(
-            '28 minutes more than yesterday',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+
+          Text(
+            comparisonText,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -158,127 +239,140 @@ class _TotalUsageCard extends StatelessWidget {
   }
 }
 
-class _UsageChart extends StatelessWidget {
-  const _UsageChart();
+class _HourlyUsageChart extends StatelessWidget {
+  final List<HourlyUsageSummary> hourlyUsage;
+
+  const _HourlyUsageChart({required this.hourlyUsage});
 
   @override
   Widget build(BuildContext context) {
-    const values = [0.46, 0.68, 0.52, 0.88, 0.72, 0.42, 0.62];
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
     return Container(
-      height: 220,
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 14),
+      height: 230,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(values.length, (index) {
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: FractionallySizedBox(
-                        heightFactor: values[index],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: hourlyUsage.map((summary) {
+            final minutes = summary.totalUsage.inMinutes;
+
+            final usageRatio = (minutes / 60).clamp(0.0, 1.0).toDouble();
+
+            final showLabel = summary.hourStart.hour % 3 == 0;
+
+            return SizedBox(
+              width: 38,
+              child: Tooltip(
+                message: '${_hourText(summary.hourStart.hour)} • ${minutes}m',
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
                         child: Container(
+                          width: 18,
+                          height: minutes == 0 ? 2 : 145 * usageRatio,
                           decoration: BoxDecoration(
-                            color: index == 6
-                                ? AppTheme.primaryBlue
-                                : AppTheme.primaryBlue.withOpacity(0.30),
-                            borderRadius: BorderRadius.circular(10),
+                            color: minutes == 0
+                                ? AppTheme.primaryBlue.withOpacity(0.08)
+                                : AppTheme.primaryBlue,
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    days[index],
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      showLabel ? _shortHourText(summary.hourStart.hour) : '',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 }
 
 class _AppListCard extends StatelessWidget {
-  const _AppListCard();
+  final DailyUsageSummary today;
+  final DailyUsageSummary? yesterday;
+  final UsageProvider usageProvider;
+
+  const _AppListCard({
+    required this.today,
+    required this.yesterday,
+    required this.usageProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final entries = today.appUsage.entries.toList()
+      ..sort((a, b) => b.value.inSeconds.compareTo(a.value.inSeconds));
+
+    if (entries.isEmpty) {
+      return const Center(child: Text('No app usage today'));
+    }
+
+    final totalSeconds = today.totalUsage.inSeconds;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: const Column(
-        children: [
-          _AppUsageItem(
-            icon: Icons.photo_camera_outlined,
-            name: 'Instagram',
-            duration: '1h 28m',
-            percent: '34%',
-            change: '↑ 21%',
-            changeColor: Color(0xFFFF6B5E),
-            progress: 0.82,
-          ),
-          SizedBox(height: 20),
-          _AppUsageItem(
-            icon: Icons.play_circle_outline_rounded,
-            name: 'YouTube',
-            duration: '58m',
-            percent: '22%',
-            change: '↓ 14%',
-            changeColor: Color(0xFF34B27B),
-            progress: 0.58,
-          ),
-          SizedBox(height: 20),
-          _AppUsageItem(
-            icon: Icons.public_rounded,
-            name: 'Chrome',
-            duration: '47m',
-            percent: '18%',
-            change: '↑ 5%',
-            changeColor: Color(0xFFFF8A65),
-            progress: 0.46,
-          ),
-          SizedBox(height: 20),
-          _AppUsageItem(
-            icon: Icons.chat_bubble_outline_rounded,
-            name: 'WhatsApp',
-            duration: '31m',
-            percent: '12%',
-            change: '↓ 3%',
-            changeColor: Color(0xFF34B27B),
-            progress: 0.32,
-          ),
-          SizedBox(height: 20),
-          _AppUsageItem(
-            icon: Icons.more_horiz_rounded,
-            name: 'Other apps',
-            duration: '34m',
-            percent: '14%',
-            change: '↑ 2%',
-            changeColor: Color(0xFFFF8A65),
-            progress: 0.35,
-          ),
-        ],
+      child: Column(
+        children: List.generate(entries.length, (index) {
+          final entry = entries[index];
+
+          final percentage = totalSeconds == 0
+              ? 0.0
+              : entry.value.inSeconds / totalSeconds;
+
+          final change = usageProvider.getAppChangePercent(entry.key);
+
+          String changeText;
+
+          if (change == null) {
+            changeText = 'New';
+          } else if (change > 0) {
+            changeText = '↑ ${change.abs().round()}%';
+          } else if (change < 0) {
+            changeText = '↓ ${change.abs().round()}%';
+          } else {
+            changeText = '0%';
+          }
+
+          return Column(
+            children: [
+              _AppUsageItem(
+                icon: _iconForApp(entry.key),
+                name: entry.key,
+                duration: _formatDuration(entry.value),
+                percent: '${(percentage * 100).round()}%',
+                change: changeText,
+                changeColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                progress: percentage.clamp(0.0, 1.0),
+              ),
+
+              if (index != entries.length - 1) const SizedBox(height: 20),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -377,34 +471,46 @@ class _AppUsageItem extends StatelessWidget {
 }
 
 class _ComparisonCard extends StatelessWidget {
-  const _ComparisonCard();
+  final double? todayPercent;
+
+  const _ComparisonCard({required this.todayPercent});
 
   @override
   Widget build(BuildContext context) {
+    String todayValue;
+
+    if (todayPercent == null) {
+      todayValue = 'No history';
+    } else if (todayPercent! > 0) {
+      todayValue = '+${todayPercent!.abs().round()}%';
+    } else if (todayPercent! < 0) {
+      todayValue = '-${todayPercent!.abs().round()}%';
+    } else {
+      todayValue = '0%';
+    }
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          _ComparisonRow(
-            label: 'Today vs yesterday',
-            value: '+12%',
-            positive: false,
-          ),
-          Divider(height: 28),
-          _ComparisonRow(
+          _ComparisonRow(label: 'Today vs yesterday', value: todayValue),
+
+          const Divider(height: 28),
+
+          const _ComparisonRow(
             label: 'This week vs last week',
-            value: '-6%',
-            positive: true,
+            value: 'Waiting for history',
           ),
-          Divider(height: 28),
-          _ComparisonRow(
+
+          const Divider(height: 28),
+
+          const _ComparisonRow(
             label: 'This month vs last month',
-            value: '-9%',
-            positive: true,
+            value: 'Waiting for history',
           ),
         ],
       ),
@@ -415,18 +521,11 @@ class _ComparisonCard extends StatelessWidget {
 class _ComparisonRow extends StatelessWidget {
   final String label;
   final String value;
-  final bool positive;
 
-  const _ComparisonRow({
-    required this.label,
-    required this.value,
-    required this.positive,
-  });
+  const _ComparisonRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    final color = positive ? const Color(0xFF34B27B) : const Color(0xFFFF6B5E);
-
     return Row(
       children: [
         Expanded(
@@ -435,11 +534,125 @@ class _ComparisonRow extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(fontWeight: FontWeight.w800, color: color),
-        ),
+
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
       ],
     );
+  }
+}
+
+class _HistoryRequiredCard extends StatelessWidget {
+  final String period;
+
+  const _HistoryRequiredCard({required this.period});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.history_rounded,
+            size: 42,
+            color: AppTheme.primaryBlue,
+          ),
+
+          const SizedBox(height: 14),
+
+          Text(
+            '$period analytics needs usage history',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+            'Once daily summaries are saved locally, Focused will calculate weekly, monthly, and yearly trends here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              height: 1.5,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatDuration(Duration duration) {
+  final totalMinutes = duration.inMinutes;
+
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+
+  if (hours == 0) {
+    return '${minutes}m';
+  }
+
+  if (minutes == 0) {
+    return '${hours}h';
+  }
+
+  return '${hours}h ${minutes}m';
+}
+
+String _hourText(int hour) {
+  if (hour == 0) {
+    return '12:00 AM';
+  }
+
+  if (hour < 12) {
+    return '$hour:00 AM';
+  }
+
+  if (hour == 12) {
+    return '12:00 PM';
+  }
+
+  return '${hour - 12}:00 PM';
+}
+
+String _shortHourText(int hour) {
+  if (hour == 0) {
+    return '12a';
+  }
+
+  if (hour < 12) {
+    return '${hour}a';
+  }
+
+  if (hour == 12) {
+    return '12p';
+  }
+
+  return '${hour - 12}p';
+}
+
+IconData _iconForApp(String appName) {
+  switch (appName.toLowerCase()) {
+    case 'instagram':
+      return Icons.photo_camera_outlined;
+
+    case 'youtube':
+      return Icons.play_circle_outline_rounded;
+
+    case 'chrome':
+      return Icons.public_rounded;
+
+    case 'whatsapp':
+      return Icons.chat_bubble_outline_rounded;
+
+    case 'vs code':
+      return Icons.code_rounded;
+
+    default:
+      return Icons.apps_rounded;
   }
 }
