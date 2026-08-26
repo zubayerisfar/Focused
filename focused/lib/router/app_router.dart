@@ -1,11 +1,19 @@
 import 'package:go_router/go_router.dart';
 
 import '../screens/calendar/event_edit_screen.dart';
+
 import '../screens/main/main_shell.dart';
+
 import '../screens/settings/settings_screen.dart';
+
 import '../screens/tasks/task_edit_screen.dart';
+
 import '../screens/habits/habit_details_screen.dart';
 import '../screens/habits/habit_edit_screen.dart';
+
+import '../screens/focus/focus_complete_screen.dart';
+import '../screens/focus/focus_session_screen.dart';
+import '../screens/focus/focus_setup_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -53,6 +61,26 @@ final GoRouter appRouter = GoRouter(
       path: '/habit/edit',
       builder: (context, state) {
         return const HabitEditScreen(isEditing: true);
+      },
+    ),
+    GoRoute(
+      path: '/focus/setup',
+      builder: (context, state) {
+        return const FocusSetupScreen();
+      },
+    ),
+
+    GoRoute(
+      path: '/focus/session',
+      builder: (context, state) {
+        return const FocusSessionScreen();
+      },
+    ),
+
+    GoRoute(
+      path: '/focus/complete',
+      builder: (context, state) {
+        return const FocusCompleteScreen();
       },
     ),
   ],

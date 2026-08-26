@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../theme/app_theme.dart';
 
@@ -8,7 +9,7 @@ class FocusScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 120),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
       children: [
         Text(
           'Ready to focus?',
@@ -16,11 +17,9 @@ class FocusScreen extends StatelessWidget {
             context,
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
-
         const SizedBox(height: 6),
-
         Text(
-          'Choose your task and protect the next block of time.',
+          'Choose a task, remove distractions, and make progress.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
           ),
@@ -28,47 +27,79 @@ class FocusScreen extends StatelessWidget {
 
         const SizedBox(height: 28),
 
+        // Today's focus summary
+        Row(
+          children: [
+            Expanded(
+              child: _SummaryCard(
+                icon: Icons.timer_rounded,
+                value: '2h 40m',
+                label: 'Focused today',
+                color: AppTheme.primaryBlue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: _SummaryCard(
+                icon: Icons.bolt_rounded,
+                value: '160',
+                label: 'Points today',
+                color: Color(0xFF8E67D4),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 26),
+
+        Text(
+          'Current streak',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+
+        const SizedBox(height: 12),
+
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(22),
           ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: const Row(
             children: [
-              Text(
-                'Selected task',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              Icon(
+                Icons.local_fire_department_rounded,
+                size: 42,
+                color: Colors.orange,
               ),
-              SizedBox(height: 12),
-              Row(
+              SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    backgroundColor: Color(0x184D7CFE),
-                    child: Icon(
-                      Icons.code_rounded,
-                      color: AppTheme.primaryBlue,
-                    ),
+                  Text(
+                    '12 days',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                   ),
-                  SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Study Flutter',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.chevron_right),
+                  SizedBox(height: 2),
+                  Text('Keep it going'),
                 ],
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 18),
+        const SizedBox(height: 26),
+
+        Text(
+          'Last session',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+
+        const SizedBox(height: 12),
 
         Container(
           padding: const EdgeInsets.all(18),
@@ -76,55 +107,46 @@ class FocusScreen extends StatelessWidget {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(22),
           ),
-          child: const Column(
+          child: const Row(
             children: [
-              _FocusSettingRow(label: 'Total duration', value: '2 hours'),
-              Divider(height: 28),
-              _FocusSettingRow(label: 'Focus block', value: '50 min'),
-              Divider(height: 28),
-              _FocusSettingRow(label: 'Break', value: '10 min'),
+              CircleAvatar(
+                backgroundColor: Color(0x184D7CFE),
+                child: Icon(Icons.code_rounded, color: AppTheme.primaryBlue),
+              ),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Study Flutter',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text('50 min • Completed', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.check_circle_rounded, color: Color(0xFF34B27B)),
             ],
           ),
         ),
 
-        const SizedBox(height: 30),
-
-        Center(
-          child: Container(
-            width: 210,
-            height: 210,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppTheme.primaryBlue.withOpacity(0.18),
-                width: 14,
-              ),
-            ),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '2:00:00',
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(height: 4),
-                Text('Total focus plan'),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 30),
+        const SizedBox(height: 32),
 
         SizedBox(
-          height: 58,
+          height: 60,
           child: FilledButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              context.push('/focus/setup');
+            },
             icon: const Icon(Icons.play_arrow_rounded),
             label: const Text(
-              'Start Focus Session',
-              style: TextStyle(fontWeight: FontWeight.w700),
+              'Start Focus',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -133,32 +155,46 @@ class FocusScreen extends StatelessWidget {
   }
 }
 
-class _FocusSettingRow extends StatelessWidget {
-  final String label;
+class _SummaryCard extends StatelessWidget {
+  final IconData icon;
   final String value;
+  final String label;
+  final Color color;
 
-  const _FocusSettingRow({required this.label, required this.value});
+  const _SummaryCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 14),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 3),
+          Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.50),
+            ),
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppTheme.primaryBlue,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: 4),
-        const Icon(Icons.chevron_right_rounded, size: 20),
-      ],
+        ],
+      ),
     );
   }
 }

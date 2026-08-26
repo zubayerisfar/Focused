@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 
 import '../../theme/app_theme.dart';
 
+import 'package:go_router/go_router.dart';
+
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
 
@@ -135,7 +137,9 @@ class TodayScreen extends StatelessWidget {
         SizedBox(
           height: 56,
           child: FilledButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              context.push('/focus/setup');
+            },
             icon: const Icon(Icons.play_arrow_rounded),
             label: const Text(
               'Start Focus',
