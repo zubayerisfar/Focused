@@ -8,8 +8,20 @@ import '../models/app_category.dart';
 import '../models/focus_analysis_result.dart';
 import '../services/focus_interruption_analyzer.dart';
 
+import '../models/focus_session.dart';
+
 class UsageProvider extends ChangeNotifier {
   final UsageAnalyzer _analyzer = UsageAnalyzer();
+
+  void analyzeCompletedFocusSession(FocusSession session) {
+    _focusAnalysisResult = _focusInterruptionAnalyzer.analyzeSession(
+      session: session,
+      usageRecords: _todayRecords,
+      appCategories: _appCategories,
+    );
+
+    notifyListeners();
+  }
 
   final FocusInterruptionAnalyzer _focusInterruptionAnalyzer =
       FocusInterruptionAnalyzer();
@@ -200,19 +212,6 @@ class UsageProvider extends ChangeNotifier {
         endTime: at(yesterday, 16, 10),
       ),
     ];
-
-    _todaySummary = _analyzer.buildDailySummary(now, _todayRecords);
-
-    final focusStart = at(now, 14, 0);
-
-    final focusEnd = at(now, 15, 30);
-
-    _focusAnalysisResult = _focusInterruptionAnalyzer.analyze(
-      focusStart: focusStart,
-      focusEnd: focusEnd,
-      usageRecords: _todayRecords,
-      appCategories: _appCategories,
-    );
 
     _yesterdaySummary = _analyzer.buildDailySummary(
       yesterday,

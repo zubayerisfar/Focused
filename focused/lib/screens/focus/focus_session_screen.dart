@@ -1,21 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/focus_provider.dart';
 import '../../theme/app_theme.dart';
 
-class FocusSessionScreen extends StatefulWidget {
+class FocusSessionScreen extends StatelessWidget {
   const FocusSessionScreen({super.key});
 
   @override
-  State<FocusSessionScreen> createState() => _FocusSessionScreenState();
-}
-
-class _FocusSessionScreenState extends State<FocusSessionScreen> {
-  bool _isPaused = false;
-  bool _isBreak = false;
-
-  @override
   Widget build(BuildContext context) {
+    final focus = context.watch<FocusProvider>();
+
+    if (focus.sessionFinished) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go('/focus/complete');
+        }
+      });
+
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (!focus.isRunning) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_off_outlined, size: 52),
+
+                const SizedBox(height: 16),
+
+                const Text(
+                  'No active focus session',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+
+                const SizedBox(height: 20),
+
+                FilledButton(
+                  onPressed: () {
+                    context.go('/focus/setup');
+                  },
+                  child: const Text('Set Up Focus'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final isBreak = focus.isBreak;
+
+    final activeColor = isBreak
+        ? const Color(0xFF34B27B)
+        : AppTheme.primaryBlue;
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -25,20 +70,24 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
               Row(
                 children: [
                   IconButton(
-                    onPressed: _showExitConfirmation,
+                    onPressed: () {
+                      _showExitConfirmation(context);
+                    },
                     icon: const Icon(Icons.close_rounded),
                   ),
+
                   const Spacer(),
+
                   Text(
-                    _isBreak ? 'Break' : 'Focus',
+                    isBreak ? 'Break' : 'Focus',
                     style: TextStyle(
-                      color: _isBreak
-                          ? const Color(0xFF34B27B)
-                          : AppTheme.primaryBlue,
+                      color: activeColor,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+
                   const Spacer(),
+
                   const SizedBox(width: 48),
                 ],
               ),
@@ -46,17 +95,15 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
               const Spacer(),
 
               Icon(
-                _isBreak ? Icons.free_breakfast_rounded : Icons.code_rounded,
-                size: 42,
-                color: _isBreak
-                    ? const Color(0xFF34B27B)
-                    : AppTheme.primaryBlue,
+                isBreak ? Icons.free_breakfast_rounded : Icons.timer_rounded,
+                size: 44,
+                color: activeColor,
               ),
 
               const SizedBox(height: 18),
 
               Text(
-                _isBreak ? 'Take a break' : 'Study Flutter',
+                isBreak ? 'Take a break' : focus.taskName,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
@@ -66,9 +113,14 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
               const SizedBox(height: 8),
 
               Text(
-                _isBreak
-                    ? 'Step away for a few minutes.'
-                    : 'Focus block 1 of 3',
+                isBreak
+                    ? 'Break after focus block '
+                          '${focus.completedFocusBlocks} '
+                          'of ${focus.totalFocusBlocks}'
+                    : 'Focus block '
+                          '${focus.currentFocusBlockNumber} '
+                          'of ${focus.totalFocusBlocks}',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Theme.of(
                     context,
@@ -88,33 +140,30 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
                       width: 250,
                       height: 250,
                       child: CircularProgressIndicator(
-                        value: _isBreak ? 0.25 : 0.18,
+                        value: focus.currentBlockProgress,
                         strokeWidth: 14,
                         strokeCap: StrokeCap.round,
-                        backgroundColor:
-                            (_isBreak
-                                    ? const Color(0xFF34B27B)
-                                    : AppTheme.primaryBlue)
-                                .withOpacity(0.12),
-                        color: _isBreak
-                            ? const Color(0xFF34B27B)
-                            : AppTheme.primaryBlue,
+                        backgroundColor: activeColor.withOpacity(0.12),
+                        color: activeColor,
                       ),
                     ),
+
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _isBreak ? '08:42' : '41:27',
+                          _formatClock(focus.remainingSeconds),
                           style: const TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -1,
                           ),
                         ),
+
                         const SizedBox(height: 4),
+
                         Text(
-                          _isPaused ? 'Paused' : 'Remaining',
+                          focus.isPaused ? 'Paused' : 'Remaining',
                           style: TextStyle(
                             color: Theme.of(
                               context,
@@ -129,12 +178,14 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
 
               const Spacer(),
 
-              if (!_isBreak)
+              if (!isBreak)
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: _showExitConfirmation,
+                        onPressed: () {
+                          _showExitConfirmation(context);
+                        },
                         icon: const Icon(Icons.stop_rounded),
                         label: const Text('End'),
                         style: OutlinedButton.styleFrom(
@@ -142,21 +193,25 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(width: 12),
+
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
                         onPressed: () {
-                          setState(() {
-                            _isPaused = !_isPaused;
-                          });
+                          if (focus.isPaused) {
+                            context.read<FocusProvider>().resumeSession();
+                          } else {
+                            context.read<FocusProvider>().pauseSession();
+                          }
                         },
                         icon: Icon(
-                          _isPaused
+                          focus.isPaused
                               ? Icons.play_arrow_rounded
                               : Icons.pause_rounded,
                         ),
-                        label: Text(_isPaused ? 'Resume' : 'Pause'),
+                        label: Text(focus.isPaused ? 'Resume' : 'Pause'),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(56),
                         ),
@@ -165,45 +220,52 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
                   ],
                 ),
 
-              if (_isBreak)
-                Column(
+              if (isBreak)
+                Row(
                   children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: FilledButton(
+                    Expanded(
+                      child: OutlinedButton.icon(
                         onPressed: () {
-                          setState(() {
-                            _isBreak = false;
-                          });
+                          _showExitConfirmation(context);
                         },
-                        child: const Text(
-                          'Continue',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                        icon: const Icon(Icons.stop_rounded),
+                        label: const Text('End'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(56),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () {
-                        context.push('/focus/complete');
-                      },
-                      child: const Text('Skip Break'),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          context.read<FocusProvider>().skipBreak();
+                        },
+                        icon: const Icon(Icons.skip_next_rounded),
+                        label: const Text('Skip Break'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(56),
+                        ),
+                      ),
                     ),
                   ],
                 ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              if (!_isBreak)
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isBreak = true;
-                      _isPaused = false;
-                    });
-                  },
-                  child: const Text('Preview break screen'),
+              if (isBreak)
+                Text(
+                  'The next focus block starts automatically when the break ends.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.45),
+                  ),
                 ),
             ],
           ),
@@ -212,11 +274,11 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
     );
   }
 
-  void _showExitConfirmation() {
+  void _showExitConfirmation(BuildContext context) {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -224,16 +286,20 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.timer_off_outlined, size: 42),
+
                 const SizedBox(height: 12),
+
                 Text(
                   'End focus session?',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
+
                 const SizedBox(height: 8),
+
                 Text(
-                  'Your completed focus time will eventually still be recorded.',
+                  'The focus time you completed will still be included in this session.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Theme.of(
@@ -241,21 +307,27 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
                     ).colorScheme.onSurface.withOpacity(0.55),
                   ),
                 ),
+
                 const SizedBox(height: 22),
+
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: FilledButton(
                     onPressed: () {
-                      Navigator.pop(context);
-                      context.go('/');
+                      Navigator.pop(sheetContext);
+
+                      context.read<FocusProvider>().endSession();
+
+                      context.go('/focus/complete');
                     },
                     child: const Text('End Session'),
                   ),
                 ),
+
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
                   },
                   child: const Text('Keep Focusing'),
                 ),
@@ -266,4 +338,13 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
       },
     );
   }
+}
+
+String _formatClock(int totalSeconds) {
+  final minutes = totalSeconds ~/ 60;
+
+  final seconds = totalSeconds % 60;
+
+  return '${minutes.toString().padLeft(2, '0')}:'
+      '${seconds.toString().padLeft(2, '0')}';
 }

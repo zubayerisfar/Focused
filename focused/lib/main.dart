@@ -6,6 +6,8 @@ import 'app.dart';
 import 'providers/theme_provider.dart';
 import 'providers/usage_provider.dart';
 
+import 'providers/focus_provider.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -15,6 +17,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
 
         ChangeNotifierProvider(create: (_) => UsageProvider()..loadMockData()),
+
+        ChangeNotifierProvider(create: (_) => FocusProvider()),
       ],
       child: const FocusProductivityApp(),
     ),

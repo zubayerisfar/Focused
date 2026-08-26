@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../theme/app_theme.dart';
+
+import '../../providers/focus_provider.dart';
 
 class FocusSetupScreen extends StatefulWidget {
   const FocusSetupScreen({super.key});
@@ -25,9 +28,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       appBar: AppBar(
         title: const Text(
           'Set Up Focus',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       body: ListView(
@@ -35,18 +36,15 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
         children: [
           Text(
             'Plan your session',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
             'Choose what you want to work on and how you want to focus.',
             style: TextStyle(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withOpacity(0.55),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
             ),
           ),
 
@@ -75,16 +73,10 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
               ),
               title: Text(
                 _selectedTask,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              subtitle: const Text(
-                'Tap to choose another task',
-              ),
-              trailing: const Icon(
-                Icons.chevron_right_rounded,
-              ),
+              subtitle: const Text('Tap to choose another task'),
+              trailing: const Icon(Icons.chevron_right_rounded),
             ),
           ),
 
@@ -130,10 +122,9 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                 '${sessionPlan.where((item) => item.isWork).length} focus blocks',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.50),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.50),
                 ),
               ),
             ],
@@ -143,62 +134,54 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
           _AppCard(
             child: Column(
-              children: List.generate(
-                sessionPlan.length,
-                (index) {
-                  final item = sessionPlan[index];
+              children: List.generate(sessionPlan.length, (index) {
+                final item = sessionPlan[index];
 
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      bottom:
-                          index == sessionPlan.length - 1 ? 0 : 16,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: item.isWork
-                                ? AppTheme.primaryBlue.withOpacity(0.12)
-                                : const Color(0xFF34B27B)
-                                    .withOpacity(0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            item.isWork
-                                ? Icons.timer_rounded
-                                : Icons.free_breakfast_rounded,
-                            color: item.isWork
-                                ? AppTheme.primaryBlue
-                                : const Color(0xFF34B27B),
-                            size: 20,
-                          ),
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index == sessionPlan.length - 1 ? 0 : 16,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: item.isWork
+                              ? AppTheme.primaryBlue.withOpacity(0.12)
+                              : const Color(0xFF34B27B).withOpacity(0.12),
+                          shape: BoxShape.circle,
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            item.isWork ? 'Focus' : 'Break',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                        child: Icon(
+                          item.isWork
+                              ? Icons.timer_rounded
+                              : Icons.free_breakfast_rounded,
+                          color: item.isWork
+                              ? AppTheme.primaryBlue
+                              : const Color(0xFF34B27B),
+                          size: 20,
                         ),
-                        Text(
-                          '${item.minutes} min',
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.55),
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          item.isWork ? 'Focus' : 'Break',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      ),
+                      Text(
+                        '${item.minutes} min',
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.55),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ),
           ),
 
@@ -208,17 +191,19 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             height: 58,
             child: FilledButton.icon(
               onPressed: () {
+                context.read<FocusProvider>().startSession(
+                  taskName: _selectedTask,
+                  totalFocusMinutes: _totalMinutes,
+                  focusBlockMinutes: _focusMinutes,
+                  breakMinutes: _breakMinutes,
+                );
+
                 context.push('/focus/session');
               },
-              icon: const Icon(
-                Icons.play_arrow_rounded,
-              ),
+              icon: const Icon(Icons.play_arrow_rounded),
               label: const Text(
                 'Start Focus Session',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -233,27 +218,16 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     int remainingMinutes = _totalMinutes;
 
     while (remainingMinutes > 0) {
-      final currentFocusMinutes =
-          remainingMinutes >= _focusMinutes
-              ? _focusMinutes
-              : remainingMinutes;
+      final currentFocusMinutes = remainingMinutes >= _focusMinutes
+          ? _focusMinutes
+          : remainingMinutes;
 
-      plan.add(
-        _FocusPlanItem(
-          isWork: true,
-          minutes: currentFocusMinutes,
-        ),
-      );
+      plan.add(_FocusPlanItem(isWork: true, minutes: currentFocusMinutes));
 
       remainingMinutes -= currentFocusMinutes;
 
       if (remainingMinutes > 0) {
-        plan.add(
-          _FocusPlanItem(
-            isWork: false,
-            minutes: _breakMinutes,
-          ),
-        );
+        plan.add(_FocusPlanItem(isWork: false, minutes: _breakMinutes));
       }
     }
 
@@ -295,13 +269,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   void _showTotalDurationPicker() {
     _showOptions(
       title: 'Total duration',
-      options: const [
-        '30',
-        '60',
-        '90',
-        '120',
-        '180',
-      ],
+      options: const ['1', '30', '60', '90', '120', '180'],
       displayText: (value) {
         return _formatDuration(int.parse(value));
       },
@@ -316,14 +284,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   void _showFocusDurationPicker() {
     _showOptions(
       title: 'Focus block',
-      options: const [
-        '25',
-        '30',
-        '45',
-        '50',
-        '60',
-        '90',
-      ],
+      options: const ['1', '25', '30', '45', '50', '60', '90'],
       displayText: (value) => '$value min',
       onSelected: (value) {
         setState(() {
@@ -336,12 +297,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   void _showBreakDurationPicker() {
     _showOptions(
       title: 'Break',
-      options: const [
-        '5',
-        '10',
-        '15',
-        '20',
-      ],
+      options: const ['2', '5', '10', '15', '20'],
       displayText: (value) => '$value min',
       onSelected: (value) {
         setState(() {
@@ -363,41 +319,29 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              0,
-              16,
-              20,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 12),
-                ...options.map(
-                  (value) {
-                    return ListTile(
-                      title: Text(
-                        displayText?.call(value) ?? value,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      onTap: () {
-                        onSelected(value);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
+                ...options.map((value) {
+                  return ListTile(
+                    title: Text(
+                      displayText?.call(value) ?? value,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    onTap: () {
+                      onSelected(value);
+                      Navigator.pop(context);
+                    },
+                  );
+                }),
               ],
             ),
           ),
@@ -411,18 +355,13 @@ class _FocusPlanItem {
   final bool isWork;
   final int minutes;
 
-  const _FocusPlanItem({
-    required this.isWork,
-    required this.minutes,
-  });
+  const _FocusPlanItem({required this.isWork, required this.minutes});
 }
 
 class _AppCard extends StatelessWidget {
   final Widget child;
 
-  const _AppCard({
-    required this.child,
-  });
+  const _AppCard({required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -453,12 +392,7 @@ class _SettingRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -470,10 +404,7 @@ class _SettingRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-          ),
+          const Icon(Icons.chevron_right_rounded, size: 20),
         ],
       ),
     );
@@ -483,17 +414,15 @@ class _SettingRow extends StatelessWidget {
 class _SectionTitle extends StatelessWidget {
   final String title;
 
-  const _SectionTitle({
-    required this.title,
-  });
+  const _SectionTitle({required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
     );
   }
 }
