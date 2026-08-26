@@ -4,8 +4,35 @@ import '../models/app_usage_record.dart';
 import '../models/daily_usage_summary.dart';
 import '../services/usage_analyzer.dart';
 
+import '../models/app_category.dart';
+import '../models/focus_analysis_result.dart';
+import '../services/focus_interruption_analyzer.dart';
+
 class UsageProvider extends ChangeNotifier {
   final UsageAnalyzer _analyzer = UsageAnalyzer();
+
+  final FocusInterruptionAnalyzer _focusInterruptionAnalyzer =
+      FocusInterruptionAnalyzer();
+
+  final Map<String, AppCategory> _appCategories = {
+    'Instagram': AppCategory.distracting,
+    'YouTube': AppCategory.distracting,
+    'WhatsApp': AppCategory.distracting,
+
+    'VS Code': AppCategory.productive,
+
+    'Chrome': AppCategory.neutral,
+  };
+
+  FocusAnalysisResult? _focusAnalysisResult;
+
+  FocusAnalysisResult? get focusAnalysisResult {
+    return _focusAnalysisResult;
+  }
+
+  AppCategory getAppCategory(String appName) {
+    return _appCategories[appName] ?? AppCategory.neutral;
+  }
 
   List<AppUsageRecord> _todayRecords = [];
   List<AppUsageRecord> _yesterdayRecords = [];
@@ -74,24 +101,64 @@ class UsageProvider extends ChangeNotifier {
         startTime: at(now, 8, 10),
         endTime: at(now, 9, 38),
       ),
+
       AppUsageRecord(
         appId: 'com.google.android.youtube',
         appName: 'YouTube',
         startTime: at(now, 10, 0),
-        endTime: at(now, 10, 58),
+        endTime: at(now, 10, 51),
       ),
+
       AppUsageRecord(
         appId: 'com.android.chrome',
         appName: 'Chrome',
         startTime: at(now, 11, 0),
         endTime: at(now, 11, 47),
       ),
+
+      // Focus session starts here.
       AppUsageRecord(
         appId: 'vscode',
         appName: 'VS Code',
         startTime: at(now, 14, 0),
+        endTime: at(now, 14, 17),
+      ),
+
+      AppUsageRecord(
+        appId: 'com.instagram.android',
+        appName: 'Instagram',
+        startTime: at(now, 14, 17),
+        endTime: at(now, 14, 21),
+      ),
+
+      AppUsageRecord(
+        appId: 'vscode',
+        appName: 'VS Code',
+        startTime: at(now, 14, 21),
+        endTime: at(now, 14, 42),
+      ),
+
+      AppUsageRecord(
+        appId: 'com.whatsapp',
+        appName: 'WhatsApp',
+        startTime: at(now, 14, 42),
+        endTime: at(now, 14, 44),
+      ),
+
+      AppUsageRecord(
+        appId: 'vscode',
+        appName: 'VS Code',
+        startTime: at(now, 14, 44),
         endTime: at(now, 14, 50),
       ),
+
+      AppUsageRecord(
+        appId: 'com.google.android.youtube',
+        appName: 'YouTube',
+        startTime: at(now, 15, 5),
+        endTime: at(now, 15, 12),
+      ),
+
       AppUsageRecord(
         appId: 'com.whatsapp',
         appName: 'WhatsApp',
@@ -135,6 +202,17 @@ class UsageProvider extends ChangeNotifier {
     ];
 
     _todaySummary = _analyzer.buildDailySummary(now, _todayRecords);
+
+    final focusStart = at(now, 14, 0);
+
+    final focusEnd = at(now, 15, 30);
+
+    _focusAnalysisResult = _focusInterruptionAnalyzer.analyze(
+      focusStart: focusStart,
+      focusEnd: focusEnd,
+      usageRecords: _todayRecords,
+      appCategories: _appCategories,
+    );
 
     _yesterdaySummary = _analyzer.buildDailySummary(
       yesterday,
