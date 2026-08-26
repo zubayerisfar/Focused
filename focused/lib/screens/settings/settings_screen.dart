@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/theme_provider.dart';
@@ -14,18 +15,36 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'Settings',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
+          _SettingsSection(
+            title: 'Account',
+            children: [
+              const _ProfileRow(),
+              const Divider(height: 1),
+              _NavigationSetting(
+                icon: Icons.logout_rounded,
+                title: 'Sign out',
+                subtitle: 'Return to login screen',
+                onTap: () {
+                  context.go('/login');
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
           _SettingsSection(
             title: 'Appearance',
             children: [
               _ThemeOption(
                 title: 'System',
-                subtitle: 'Use your phone theme',
+                subtitle: 'Use your device theme',
                 mode: ThemeMode.system,
                 currentMode: themeProvider.themeMode,
               ),
@@ -77,18 +96,38 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          const _SettingsSection(
+          _SettingsSection(
             title: 'Devices',
             children: [
-              _SimpleSetting(
+              _NavigationSetting(
                 icon: Icons.devices_outlined,
                 title: 'My Devices',
-                value: '',
+                subtitle: 'Manage connected devices and DND',
+                onTap: () {
+                  context.push('/devices');
+                },
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(child: Icon(Icons.person_rounded)),
+      title: Text(
+        'Focused User',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text('Google account will appear here'),
     );
   }
 }
@@ -128,6 +167,32 @@ class _ThemeOption extends StatelessWidget {
   }
 }
 
+class _NavigationSetting extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _NavigationSetting({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: onTap,
+      leading: Icon(icon),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right_rounded),
+    );
+  }
+}
+
 class _SimpleSetting extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -148,15 +213,12 @@ class _SimpleSetting extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (value.isNotEmpty)
-            Text(
-              value,
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withOpacity(0.55),
-              ),
+          Text(
+            value,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
             ),
+          ),
           const SizedBox(width: 4),
           const Icon(Icons.chevron_right_rounded),
         ],
