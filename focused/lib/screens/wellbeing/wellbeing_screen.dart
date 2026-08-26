@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:provider/provider.dart';
+import '../../providers/usage_provider.dart';
+
 import '../../theme/app_theme.dart';
 
 class WellbeingScreen extends StatelessWidget {
@@ -8,6 +11,14 @@ class WellbeingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final usageProvider = context.watch<UsageProvider>();
+
+    final todaySummary = usageProvider.todaySummary;
+
+    final screenTimeText = todaySummary == null
+        ? '0m'
+        : _formatDuration(todaySummary.totalUsage);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
       children: [
@@ -20,14 +31,14 @@ class WellbeingScreen extends StatelessWidget {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 12),
-        const Row(
+        Row(
           children: [
             Expanded(
               child: _MetricCard(
                 icon: Icons.phone_android_rounded,
-                value: '4h 18m',
+                value: screenTimeText,
                 label: 'Screen time',
-                helper: '↑ 12% vs yesterday',
+                helper: 'Today',
                 color: AppTheme.primaryBlue,
               ),
             ),
@@ -685,4 +696,21 @@ class _InsightCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatDuration(Duration duration) {
+  final totalMinutes = duration.inMinutes;
+
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+
+  if (hours == 0) {
+    return '${minutes}m';
+  }
+
+  if (minutes == 0) {
+    return '${hours}h';
+  }
+
+  return '${hours}h ${minutes}m';
 }
