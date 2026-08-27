@@ -211,12 +211,34 @@ class _PlannerScreenState extends State<PlannerScreen> {
       newScheduledEnd = newScheduledStart.add(oldDuration);
     }
 
+    if (newScheduledStart != null && newScheduledEnd != null) {
+      final conflicts = context.read<TaskProvider>().findScheduleConflicts(
+        scheduledStart: newScheduledStart,
+        scheduledEnd: newScheduledEnd,
+        recurrence: task.recurrence,
+        customWeekdays: Set<int>.from(task.customWeekdays),
+        ignoreTaskId: task.id,
+      );
+
+      if (conflicts.isNotEmpty) {
+        if (!mounted) {
+          return;
+        }
+
+        final first = conflicts.first;
+        _showMessage(
+          'Schedule conflict with ${first.task.title} '
+          '(${DateFormat('h:mm a').format(first.existingStart)}–${DateFormat('h:mm a').format(first.existingEnd)}).',
+        );
+        return;
+      }
+    }
+
     final updated = Task(
       id: task.id,
       title: task.title,
       description: task.description,
       priority: task.priority,
-      estimatedMinutes: task.estimatedMinutes,
       plannedDate: DateTime(picked.year, picked.month, picked.day),
       deadline: task.deadline,
       scheduledStart: newScheduledStart,
@@ -685,12 +707,15 @@ class _PlannerEmptyState extends StatelessWidget {
 List<Widget> _taskMeta(Task task) {
   final items = <Widget>[];
 
-  items.add(
-    _MetaItem(
-      icon: Icons.timer_outlined,
-      text: _durationText(task.estimatedMinutes),
-    ),
-  );
+  final scheduledMinutes = task.scheduledDurationMinutes;
+  if (scheduledMinutes != null) {
+    items.add(
+      _MetaItem(
+        icon: Icons.timer_outlined,
+        text: _durationText(scheduledMinutes),
+      ),
+    );
+  }
 
   if (task.scheduledStart != null) {
     items.add(

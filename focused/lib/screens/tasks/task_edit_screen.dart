@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/task.dart';
 import '../../models/task_recurrence.dart';
 import '../../models/task_reminder_result.dart';
+import '../../models/task_schedule_conflict.dart';
 import '../../providers/task_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -27,7 +28,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
   final TextEditingController _descriptionController = TextEditingController();
 
   TaskPriority _priority = TaskPriority.important;
-  int _estimatedMinutes = 60;
   DateTime? _plannedDate;
   DateTime? _deadlineDate;
 
@@ -80,7 +80,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     _titleController.text = task.title;
     _descriptionController.text = task.description;
     _priority = task.priority;
-    _estimatedMinutes = task.estimatedMinutes;
     _plannedDate = task.plannedDate == null ? null : _dateOnly(task.plannedDate!);
     _deadlineDate = task.deadline == null ? null : _dateOnly(task.deadline!);
     _recurrence = task.recurrence;
@@ -201,13 +200,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           const SizedBox(height: 12),
           _SettingsCard(
             children: [
-              _SettingRow(
-                icon: Icons.timer_outlined,
-                title: 'Estimated duration',
-                value: _durationLabel(_estimatedMinutes),
-                onTap: _showDurationPicker,
-              ),
-              const Divider(height: 1),
               _SettingRow(
                 icon: Icons.event_note_outlined,
                 title: 'Plan for',
@@ -403,6 +395,23 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
       }
     }
 
+    final taskProvider = context.read<TaskProvider>();
+
+    if (scheduledStart != null && scheduledEnd != null) {
+      final conflicts = taskProvider.findScheduleConflicts(
+        scheduledStart: scheduledStart,
+        scheduledEnd: scheduledEnd,
+        recurrence: _recurrence,
+        customWeekdays: Set<int>.from(_customWeekdays),
+        ignoreTaskId: widget.taskId,
+      );
+
+      if (conflicts.isNotEmpty) {
+        await _showScheduleConflicts(conflicts);
+        return;
+      }
+    }
+
     final deadline = _deadlineDate == null ? null : _endOfDay(_deadlineDate!);
     final recurrence = _scheduleOnCalendar ? _recurrence : TaskRecurrence.none;
     final customWeekdays = _scheduleOnCalendar
@@ -415,7 +424,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     });
 
     try {
-      final taskProvider = context.read<TaskProvider>();
       late String savedTaskId;
 
       if (widget.isEditing) {
@@ -429,7 +437,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           title: title,
           description: _descriptionController.text.trim(),
           priority: _priority,
-          estimatedMinutes: _estimatedMinutes,
           plannedDate: _plannedDate,
           deadline: deadline,
           scheduledStart: scheduledStart,
@@ -449,7 +456,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           title: title,
           description: _descriptionController.text.trim(),
           priority: _priority,
-          estimatedMinutes: _estimatedMinutes,
           plannedDate: _plannedDate,
           deadline: deadline,
           scheduledStart: scheduledStart,
@@ -501,6 +507,58 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     }
   }
 
+  Future<void> _showScheduleConflicts(
+    List<TaskScheduleConflict> conflicts,
+  ) async {
+    final visible = conflicts.take(4).toList();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Schedule conflict'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This time overlaps with an existing scheduled task. Choose another time before saving.',
+              ),
+              const SizedBox(height: 14),
+              ...visible.map(
+                (conflict) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, size: 19),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${conflict.task.title}\n'
+                          '${DateFormat('EEE, d MMM • h:mm a').format(conflict.existingStart)}'
+                          ' – ${DateFormat('h:mm a').format(conflict.existingEnd)}',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (conflicts.length > visible.length)
+                Text('+${conflicts.length - visible.length} more conflict(s)'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Change time'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _showReminderResult(
     TaskReminderScheduleResult result,
   ) async {
@@ -521,34 +579,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
             ),
           ],
         );
-      },
-    );
-  }
-
-  String _durationLabel(int minutes) {
-    if (minutes < 60) {
-      return '$minutes min';
-    }
-
-    final hours = minutes ~/ 60;
-    final remaining = minutes % 60;
-
-    if (remaining == 0) {
-      return hours == 1 ? '1 hour' : '$hours hours';
-    }
-
-    return '${hours}h ${remaining}m';
-  }
-
-  void _showDurationPicker() {
-    _showSimpleOptions<int>(
-      title: 'Estimated duration',
-      values: const [30, 45, 60, 90, 120],
-      label: _durationLabel,
-      onSelected: (value) {
-        setState(() {
-          _estimatedMinutes = value;
-        });
       },
     );
   }

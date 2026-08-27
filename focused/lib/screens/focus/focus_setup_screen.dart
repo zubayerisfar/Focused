@@ -19,10 +19,9 @@ class FocusSetupScreen extends StatefulWidget {
 class _FocusSetupScreenState extends State<FocusSetupScreen> {
   String? _selectedTaskId;
 
-  // This remains a fallback only.
-  // When a real task is loaded, its estimatedMinutes
-  // becomes the initial total focus duration.
-  int _totalMinutes = 120;
+  // Unscheduled tasks default to 60 minutes.
+  // Scheduled tasks derive their default focus time from Start → End.
+  int _totalMinutes = 60;
 
   int _focusMinutes = 50;
   int _breakMinutes = 10;
@@ -66,10 +65,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     if (task != null) {
       _selectedTaskId = task.id;
 
-      // FIX:
-      // Focus Setup now defaults to the selected task's
-      // estimated duration instead of always using 2 hours.
-      _totalMinutes = task.estimatedMinutes;
+      _totalMinutes = _focusMinutesForTask(task);
     }
   }
 
@@ -151,7 +147,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
               subtitle: Text(
                 selectedTask == null
                     ? 'Create a task before starting focus'
-                    : '${_formatDuration(selectedTask.estimatedMinutes)} • ${selectedTask.priority.label}',
+                    : '${_taskDurationLabel(selectedTask)} • ${selectedTask.priority.label}',
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
             ),
@@ -413,7 +409,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: Text(
-                    '${_formatDuration(task.estimatedMinutes)} • ${task.priority.label}',
+                    '${_taskDurationLabel(task)} • ${task.priority.label}',
                   ),
                   trailing: selected
                       ? const Icon(
@@ -425,11 +421,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                     setState(() {
                       _selectedTaskId = task.id;
 
-                      // FIX:
-                      // When the user selects another task,
-                      // update Total Duration to that task's
-                      // estimated duration as well.
-                      _totalMinutes = task.estimatedMinutes;
+                      _totalMinutes = _focusMinutesForTask(task);
                     });
 
                     Navigator.pop(sheetContext);
@@ -537,6 +529,20 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   // =========================================================
   // HELPERS
   // =========================================================
+
+  int _focusMinutesForTask(Task task) {
+    return task.defaultFocusMinutes;
+  }
+
+  String _taskDurationLabel(Task task) {
+    final scheduledMinutes = task.scheduledDurationMinutes;
+
+    if (scheduledMinutes == null) {
+      return 'Flexible duration';
+    }
+
+    return _formatDuration(scheduledMinutes);
+  }
 
   String _formatDuration(int minutes) {
     if (minutes < 60) {

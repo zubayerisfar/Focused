@@ -1,103 +1,121 @@
 import 'package:flutter_test/flutter_test.dart';
-
-import '../lib/models/task.dart';
-import '../lib/models/task_recurrence.dart';
-import '../lib/services/task_schedule_service.dart';
+import 'package:focused/models/task.dart';
+import 'package:focused/models/task_recurrence.dart';
+import 'package:focused/services/task_schedule_service.dart';
 
 void main() {
   const service = TaskScheduleService();
 
   Task task({
     required TaskRecurrence recurrence,
+    required DateTime start,
+    required DateTime end,
     Set<int> customWeekdays = const {},
-    DateTime? start,
-    DateTime? end,
   }) {
     return Task(
-      id: 'task-${recurrence.name}',
-      title: 'Code',
+      id: 'task',
+      title: 'Task',
       priority: TaskPriority.important,
-      estimatedMinutes: 120,
-      scheduledStart: start ?? DateTime(2026, 8, 27, 19),
-      scheduledEnd: end ?? DateTime(2026, 8, 27, 21),
+      scheduledStart: start,
+      scheduledEnd: end,
       recurrence: recurrence,
       customWeekdays: customWeekdays,
-      createdAt: DateTime(2026, 8, 27, 10),
+      createdAt: start,
     );
   }
 
-  group('TaskScheduleService', () {
-    test('one-time task occurs only on anchor date', () {
-      final value = task(recurrence: TaskRecurrence.none);
+  test('daily recurrence starts on anchor date and repeats after it', () {
+    final value = task(
+      recurrence: TaskRecurrence.daily,
+      start: DateTime(2026, 8, 28, 19),
+      end: DateTime(2026, 8, 28, 21),
+    );
 
-      expect(service.occursOnDate(value, DateTime(2026, 8, 27)), isTrue);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 28)), isFalse);
-    });
+    expect(service.occursOnDate(value, DateTime(2026, 8, 27)), isFalse);
+    expect(service.occursOnDate(value, DateTime(2026, 8, 28)), isTrue);
+    expect(service.occursOnDate(value, DateTime(2026, 8, 29)), isTrue);
+  });
 
-    test('daily task occurs every day from anchor onward', () {
-      final value = task(recurrence: TaskRecurrence.daily);
+  test('weekdays skips saturday and sunday', () {
+    final value = task(
+      recurrence: TaskRecurrence.weekdays,
+      start: DateTime(2026, 8, 27, 19),
+      end: DateTime(2026, 8, 27, 20),
+    );
 
-      expect(service.occursOnDate(value, DateTime(2026, 8, 26)), isFalse);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 27)), isTrue);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 30)), isTrue);
-    });
+    expect(service.occursOnDate(value, DateTime(2026, 8, 28)), isTrue);
+    expect(service.occursOnDate(value, DateTime(2026, 8, 29)), isFalse);
+    expect(service.occursOnDate(value, DateTime(2026, 8, 30)), isFalse);
+    expect(service.occursOnDate(value, DateTime(2026, 8, 31)), isTrue);
+  });
 
-    test('weekday task excludes Saturday and Sunday', () {
-      final value = task(recurrence: TaskRecurrence.weekdays);
+  test('weekly only occurs on anchor weekday', () {
+    final value = task(
+      recurrence: TaskRecurrence.weekly,
+      start: DateTime(2026, 8, 27, 19),
+      end: DateTime(2026, 8, 27, 20),
+    );
 
-      expect(service.occursOnDate(value, DateTime(2026, 8, 28)), isTrue);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 29)), isFalse);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 30)), isFalse);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 31)), isTrue);
-    });
+    expect(service.occursOnDate(value, DateTime(2026, 9, 3)), isTrue);
+    expect(service.occursOnDate(value, DateTime(2026, 9, 4)), isFalse);
+  });
 
-    test('weekly task repeats on anchor weekday', () {
-      final value = task(recurrence: TaskRecurrence.weekly);
+  test('custom days only occur on selected weekdays', () {
+    final value = task(
+      recurrence: TaskRecurrence.customDays,
+      start: DateTime(2026, 8, 28, 19),
+      end: DateTime(2026, 8, 28, 20),
+      customWeekdays: const {
+        DateTime.monday,
+        DateTime.wednesday,
+        DateTime.friday,
+      },
+    );
 
-      expect(service.occursOnDate(value, DateTime(2026, 8, 27)), isTrue);
-      expect(service.occursOnDate(value, DateTime(2026, 9, 3)), isTrue);
-      expect(service.occursOnDate(value, DateTime(2026, 9, 4)), isFalse);
-    });
+    expect(service.occursOnDate(value, DateTime(2026, 8, 31)), isTrue);
+    expect(service.occursOnDate(value, DateTime(2026, 9, 1)), isFalse);
+    expect(service.occursOnDate(value, DateTime(2026, 9, 2)), isTrue);
+  });
 
-    test('custom days only occur on selected weekdays', () {
-      final value = task(
-        recurrence: TaskRecurrence.customDays,
-        customWeekdays: const {
-          DateTime.monday,
-          DateTime.wednesday,
-          DateTime.friday,
-        },
-      );
+  test('occurrence keeps original duration on generated day', () {
+    final value = task(
+      recurrence: TaskRecurrence.daily,
+      start: DateTime(2026, 8, 27, 23),
+      end: DateTime(2026, 8, 28, 1),
+    );
 
-      expect(service.occursOnDate(value, DateTime(2026, 8, 28)), isTrue);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 29)), isFalse);
-      expect(service.occursOnDate(value, DateTime(2026, 8, 31)), isTrue);
-      expect(service.occursOnDate(value, DateTime(2026, 9, 2)), isTrue);
-    });
+    final occurrence = service.occurrenceForDate(
+      value,
+      DateTime(2026, 8, 30),
+    );
 
-    test('generated occurrence keeps original clock time and duration', () {
-      final value = task(recurrence: TaskRecurrence.daily);
+    expect(occurrence, isNotNull);
+    expect(occurrence!.start, DateTime(2026, 8, 30, 23));
+    expect(occurrence.end, DateTime(2026, 8, 31, 1));
+    expect(occurrence.duration, const Duration(hours: 2));
+  });
 
-      final occurrence = service.occurrenceForDate(
+  test('next occurrence is strictly after supplied time', () {
+    final value = task(
+      recurrence: TaskRecurrence.daily,
+      start: DateTime(2026, 8, 27, 19),
+      end: DateTime(2026, 8, 27, 20),
+    );
+
+    expect(
+      service.nextOccurrenceStart(
         value,
-        DateTime(2026, 9, 5),
-      );
+        DateTime(2026, 8, 27, 18),
+      ),
+      DateTime(2026, 8, 27, 19),
+    );
 
-      expect(occurrence, isNotNull);
-      expect(occurrence!.start, DateTime(2026, 9, 5, 19));
-      expect(occurrence.end, DateTime(2026, 9, 5, 21));
-      expect(occurrence.duration, const Duration(hours: 2));
-    });
-
-    test('nextOccurrenceStart skips a same-day occurrence that already passed', () {
-      final value = task(recurrence: TaskRecurrence.daily);
-
-      final next = service.nextOccurrenceStart(
+    expect(
+      service.nextOccurrenceStart(
         value,
-        DateTime(2026, 8, 27, 22),
-      );
-
-      expect(next, DateTime(2026, 8, 28, 19));
-    });
+        DateTime(2026, 8, 27, 19),
+      ),
+      DateTime(2026, 8, 28, 19),
+    );
   });
 }

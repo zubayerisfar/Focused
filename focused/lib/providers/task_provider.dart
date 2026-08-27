@@ -6,12 +6,15 @@ import '../models/task.dart';
 import '../models/task_occurrence.dart';
 import '../models/task_recurrence.dart';
 import '../models/task_reminder_result.dart';
+import '../models/task_schedule_conflict.dart';
+import '../services/task_conflict_service.dart';
 import '../services/task_notification_service.dart';
 import '../services/task_schedule_service.dart';
 import '../services/task_storage_service.dart';
 
 class TaskProvider extends ChangeNotifier {
   final TaskScheduleService _scheduleService = const TaskScheduleService();
+  final TaskConflictService _conflictService = const TaskConflictService();
   final TaskNotificationService? _notificationService;
   final TaskStorageService? _storageService;
   final List<Task> _tasks = [];
@@ -49,7 +52,6 @@ class TaskProvider extends ChangeNotifier {
     required String title,
     String description = '',
     required TaskPriority priority,
-    required int estimatedMinutes,
     DateTime? plannedDate,
     DateTime? deadline,
     DateTime? scheduledStart,
@@ -66,7 +68,6 @@ class TaskProvider extends ChangeNotifier {
       title: title,
       description: description,
       priority: priority,
-      estimatedMinutes: estimatedMinutes,
       plannedDate: plannedDate,
       deadline: deadline,
       scheduledStart: scheduledStart,
@@ -198,6 +199,23 @@ class TaskProvider extends ChangeNotifier {
     } else {
       await _scheduleReminderSafely(updatedTask);
     }
+  }
+
+  List<TaskScheduleConflict> findScheduleConflicts({
+    required DateTime scheduledStart,
+    required DateTime scheduledEnd,
+    TaskRecurrence recurrence = TaskRecurrence.none,
+    Set<int> customWeekdays = const {},
+    String? ignoreTaskId,
+  }) {
+    return _conflictService.findConflicts(
+      candidateStart: scheduledStart,
+      candidateEnd: scheduledEnd,
+      recurrence: recurrence,
+      customWeekdays: Set<int>.from(customWeekdays),
+      existingTasks: _tasks,
+      ignoreTaskId: ignoreTaskId,
+    );
   }
 
   List<TaskOccurrence> scheduledOccurrencesForDate(DateTime date) {

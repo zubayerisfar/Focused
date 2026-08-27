@@ -714,17 +714,9 @@ class _HabitTile extends StatelessWidget {
 String _taskSubtitle(Task task) {
   final parts = <String>[];
 
-  if (task.estimatedMinutes < 60) {
-    parts.add('${task.estimatedMinutes} min');
-  } else {
-    final hours = task.estimatedMinutes ~/ 60;
-    final minutes = task.estimatedMinutes % 60;
-
-    if (minutes == 0) {
-      parts.add(hours == 1 ? '1 hour' : '$hours hours');
-    } else {
-      parts.add('${hours}h ${minutes}m');
-    }
+  final scheduledMinutes = task.scheduledDurationMinutes;
+  if (scheduledMinutes != null) {
+    parts.add(_formatMinutes(scheduledMinutes));
   }
 
   if (task.recurrence != TaskRecurrence.none) {
@@ -740,7 +732,26 @@ String _taskSubtitle(Task task) {
     }
   }
 
+  if (parts.isEmpty) {
+    parts.add('Flexible task');
+  }
+
   return parts.join(' • ');
+}
+
+String _formatMinutes(int minutes) {
+  if (minutes < 60) {
+    return '$minutes min';
+  }
+
+  final hours = minutes ~/ 60;
+  final remainder = minutes % 60;
+
+  if (remainder == 0) {
+    return hours == 1 ? '1 hour' : '$hours hours';
+  }
+
+  return '${hours}h ${remainder}m';
 }
 
 bool _sameDate(DateTime first, DateTime second) {

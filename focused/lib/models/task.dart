@@ -31,7 +31,6 @@ class Task {
   final String title;
   final String description;
   final TaskPriority priority;
-  final int estimatedMinutes;
   final DateTime? plannedDate;
   final DateTime? deadline;
   final DateTime? scheduledStart;
@@ -43,12 +42,27 @@ class Task {
   final DateTime createdAt;
   final DateTime? completedAt;
 
+  Duration? get scheduledDuration {
+    final start = scheduledStart;
+    final end = scheduledEnd;
+    if (start == null || end == null) return null;
+    return end.difference(start);
+  }
+
+  int? get scheduledDurationMinutes {
+    final duration = scheduledDuration;
+    if (duration == null) return null;
+    final minutes = duration.inMinutes;
+    return minutes > 0 ? minutes : 1;
+  }
+
+  int get defaultFocusMinutes => scheduledDurationMinutes ?? 60;
+
   Task({
     required String id,
     required String title,
     this.description = '',
     required this.priority,
-    required this.estimatedMinutes,
     this.plannedDate,
     this.deadline,
     this.scheduledStart,
@@ -61,21 +75,11 @@ class Task {
     this.completedAt,
   })  : id = id.trim(),
         title = title.trim() {
-    if (this.id.isEmpty) {
-      throw ArgumentError('Task ID cannot be empty.');
-    }
-
-    if (this.title.isEmpty) {
-      throw ArgumentError('Task title cannot be empty.');
-    }
-
-    if (estimatedMinutes <= 0) {
-      throw ArgumentError('Estimated duration must be greater than zero.');
-    }
+    if (this.id.isEmpty) throw ArgumentError('Task ID cannot be empty.');
+    if (this.title.isEmpty) throw ArgumentError('Task title cannot be empty.');
 
     final hasStart = scheduledStart != null;
     final hasEnd = scheduledEnd != null;
-
     if (hasStart != hasEnd) {
       throw ArgumentError(
         'Scheduled start and end must either both exist or both be null.',
@@ -91,7 +95,6 @@ class Task {
     if (!isCompleted && completedAt != null) {
       throw ArgumentError('An incomplete task cannot have completedAt.');
     }
-
     if (isCompleted && completedAt == null) {
       throw ArgumentError('A completed task must have completedAt.');
     }
@@ -114,23 +117,18 @@ class Task {
     if (reminderMinutesBefore != null && reminderMinutesBefore! < 0) {
       throw ArgumentError('Reminder minutes cannot be negative.');
     }
-
     if (reminderMinutesBefore != null && scheduledStart == null) {
       throw ArgumentError('A reminder requires a scheduled task.');
     }
   }
 
   Task markCompleted(DateTime time) {
-    if (isCompleted) {
-      return this;
-    }
-
+    if (isCompleted) return this;
     return Task(
       id: id,
       title: title,
       description: description,
       priority: priority,
-      estimatedMinutes: estimatedMinutes,
       plannedDate: plannedDate,
       deadline: deadline,
       scheduledStart: scheduledStart,
@@ -145,16 +143,12 @@ class Task {
   }
 
   Task markIncomplete() {
-    if (!isCompleted) {
-      return this;
-    }
-
+    if (!isCompleted) return this;
     return Task(
       id: id,
       title: title,
       description: description,
       priority: priority,
-      estimatedMinutes: estimatedMinutes,
       plannedDate: plannedDate,
       deadline: deadline,
       scheduledStart: scheduledStart,
@@ -170,12 +164,11 @@ class Task {
 
   Map<String, dynamic> toMap() {
     return {
-      'schemaVersion': 2,
+      'schemaVersion': 3,
       'id': id,
       'title': title,
       'description': description,
       'priority': priority.name,
-      'estimatedMinutes': estimatedMinutes,
       'plannedDate': plannedDate?.toIso8601String(),
       'deadline': deadline?.toIso8601String(),
       'scheduledStart': scheduledStart?.toIso8601String(),
@@ -191,15 +184,10 @@ class Task {
 
   factory Task.fromMap(Map<dynamic, dynamic> map) {
     final priorityName = map['priority'];
-
     if (priorityName is! String) {
       throw const FormatException('Task priority is missing or invalid.');
     }
-
-    final matches = TaskPriority.values.where(
-      (priority) => priority.name == priorityName,
-    );
-
+    final matches = TaskPriority.values.where((p) => p.name == priorityName);
     if (matches.isEmpty) {
       throw FormatException('Unknown task priority: $priorityName');
     }
@@ -209,7 +197,6 @@ class Task {
       title: _requiredString(map, 'title'),
       description: map['description'] is String ? map['description'] as String : '',
       priority: matches.first,
-      estimatedMinutes: _requiredInt(map, 'estimatedMinutes'),
       plannedDate: _optionalDate(map['plannedDate']),
       deadline: _optionalDate(map['deadline']),
       scheduledStart: _optionalDate(map['scheduledStart']),
@@ -228,85 +215,38 @@ class Task {
   static TaskRecurrence _parseRecurrence(dynamic value) {
     if (value is String) {
       for (final recurrence in TaskRecurrence.values) {
-        if (recurrence.name == value) {
-          return recurrence;
-        }
+        if (recurrence.name == value) return recurrence;
       }
     }
-
     return TaskRecurrence.none;
   }
 
   static Set<int> _parseWeekdays(dynamic value) {
-    if (value is! List) {
-      return <int>{};
-    }
-
+    if (value is! List) return <int>{};
     return value
         .whereType<num>()
         .map((item) => item.toInt())
-        .where(
-          (weekday) =>
-              weekday >= DateTime.monday && weekday <= DateTime.sunday,
-        )
+        .where((day) => day >= DateTime.monday && day <= DateTime.sunday)
         .toSet();
   }
 }
 
 String _requiredString(Map<dynamic, dynamic> map, String key) {
   final value = map[key];
-
   if (value is! String || value.trim().isEmpty) {
     throw FormatException('Missing or invalid $key.');
   }
-
   return value;
 }
 
-int _requiredInt(Map<dynamic, dynamic> map, String key) {
-  final value = map[key];
-
-  if (value is int) {
-    return value;
-  }
-
-  if (value is num) {
-    return value.toInt();
-  }
-
-  throw FormatException('Missing or invalid $key.');
-}
-
 DateTime _requiredDate(Map<dynamic, dynamic> map, String key) {
-  final value = map[key];
-
-  if (value is! String) {
-    throw FormatException('Missing or invalid $key.');
-  }
-
-  final date = DateTime.tryParse(value);
-
-  if (date == null) {
-    throw FormatException('Invalid date stored for $key.');
-  }
-
-  return date;
+  final value = _optionalDate(map[key]);
+  if (value == null) throw FormatException('Missing or invalid $key.');
+  return value;
 }
 
 DateTime? _optionalDate(dynamic value) {
-  if (value == null) {
-    return null;
-  }
-
-  if (value is! String) {
-    throw const FormatException('Stored date is invalid.');
-  }
-
-  final date = DateTime.tryParse(value);
-
-  if (date == null) {
-    throw FormatException('Invalid stored date: $value');
-  }
-
-  return date;
+  if (value == null) return null;
+  if (value is! String) throw const FormatException('Invalid date value.');
+  return DateTime.tryParse(value) ?? (throw FormatException('Invalid date: $value'));
 }

@@ -61,7 +61,6 @@ void main() {
     final task = await provider.createTask(
       title: 'Code',
       priority: TaskPriority.important,
-      estimatedMinutes: 60,
       plannedDate: DateTime(2026, 8, 27),
       scheduledStart: DateTime(2026, 8, 27, 19),
       scheduledEnd: DateTime(2026, 8, 27, 20),
@@ -95,7 +94,6 @@ void main() {
     final task = await provider.createTask(
       title: 'Study',
       priority: TaskPriority.important,
-      estimatedMinutes: 30,
       scheduledStart: DateTime(2026, 8, 27, 19),
       scheduledEnd: DateTime(2026, 8, 27, 19, 30),
       reminderMinutesBefore: 5,
@@ -119,7 +117,6 @@ void main() {
     final task = await provider.createTask(
       title: 'Read',
       priority: TaskPriority.growth,
-      estimatedMinutes: 30,
       scheduledStart: DateTime(2026, 8, 27, 19),
       scheduledEnd: DateTime(2026, 8, 27, 19, 30),
       reminderMinutesBefore: 5,
