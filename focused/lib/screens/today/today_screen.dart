@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-
-import '../../theme/app_theme.dart';
-
 import 'package:go_router/go_router.dart';
-
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/task.dart';
+import '../../models/task_occurrence.dart';
+import '../../models/task_recurrence.dart';
 import '../../providers/task_provider.dart';
+import '../../theme/app_theme.dart';
 
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
@@ -16,42 +15,50 @@ class TodayScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
-
-    final nextTask = taskProvider.nextTask();
+    final now = DateTime.now();
+    final nextTask = taskProvider.nextTask(now: now);
+    final todaySchedule = taskProvider.scheduledOccurrencesForDate(now);
 
     final taskGroups = taskProvider.tasksByPriorityForDate(
-      DateTime.now(),
+      now,
       includeCompleted: false,
     );
 
-    final criticalTasks = taskGroups[TaskPriority.critical] ?? [];
+    List<Task> unscheduled(List<Task> tasks) {
+      return tasks.where((task) => task.scheduledStart == null).toList();
+    }
 
-    final importantTasks = taskGroups[TaskPriority.important] ?? [];
+    final criticalTasks = unscheduled(
+      taskGroups[TaskPriority.critical] ?? const <Task>[],
+    );
+    final importantTasks = unscheduled(
+      taskGroups[TaskPriority.important] ?? const <Task>[],
+    );
+    final growthTasks = unscheduled(
+      taskGroups[TaskPriority.growth] ?? const <Task>[],
+    );
 
-    final growthTasks = taskGroups[TaskPriority.growth] ?? [];
-    final currentDate = DateFormat('EEEE, MMMM d').format(DateTime.now());
+    final currentDate = DateFormat('EEEE, MMMM d').format(now);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
       children: [
         Text(
           'Good morning',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
         ),
         const SizedBox(height: 4),
         Text(
           currentDate,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-          ),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+              ),
         ),
-
         const SizedBox(height: 20),
-
-        Row(
-          children: const [
+        const Row(
+          children: [
             Expanded(
               child: _SummaryCard(
                 icon: Icons.local_fire_department_rounded,
@@ -71,19 +78,14 @@ class TodayScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-
         const SizedBox(height: 24),
-
         Text(
           'Next task',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
         ),
-
         const SizedBox(height: 10),
-
         if (nextTask != null)
           _NextTaskCard(task: nextTask)
         else
@@ -92,94 +94,89 @@ class TodayScreen extends StatelessWidget {
               context.push('/task/new');
             },
           ),
-
         const SizedBox(height: 26),
-        _DigitalBalanceCard(onTap: () => context.push('/wellbeing/app-usage')),
-
+        _DigitalBalanceCard(
+          onTap: () {
+            context.push('/wellbeing/app-usage');
+          },
+        ),
         const SizedBox(height: 24),
         if (criticalTasks.isNotEmpty) ...[
-          const _SectionTitle(title: 'Critical', color: Color(0xFFFF6B5E)),
-
-          const SizedBox(height: 10),
-
-          ...criticalTasks.map(
-            (task) => _TaskTile(task: task, color: const Color(0xFFFF6B5E)),
+          const _SectionTitle(
+            title: 'Critical',
+            color: Color(0xFFFF6B5E),
           ),
-
+          const SizedBox(height: 10),
+          ...criticalTasks.map(
+            (task) => _TaskTile(
+              task: task,
+              color: const Color(0xFFFF6B5E),
+            ),
+          ),
           const SizedBox(height: 18),
         ],
         if (importantTasks.isNotEmpty) ...[
-          const _SectionTitle(title: 'Important', color: AppTheme.primaryBlue),
-
-          const SizedBox(height: 10),
-
-          ...importantTasks.map(
-            (task) => _TaskTile(task: task, color: AppTheme.primaryBlue),
+          const _SectionTitle(
+            title: 'Important',
+            color: AppTheme.primaryBlue,
           ),
-
+          const SizedBox(height: 10),
+          ...importantTasks.map(
+            (task) => _TaskTile(
+              task: task,
+              color: AppTheme.primaryBlue,
+            ),
+          ),
           const SizedBox(height: 18),
         ],
         if (growthTasks.isNotEmpty) ...[
-          const _SectionTitle(title: 'Growth', color: Color(0xFF34B27B)),
-
-          const SizedBox(height: 10),
-
-          ...growthTasks.map(
-            (task) => _TaskTile(task: task, color: const Color(0xFF34B27B)),
+          const _SectionTitle(
+            title: 'Growth',
+            color: Color(0xFF34B27B),
           ),
-
+          const SizedBox(height: 10),
+          ...growthTasks.map(
+            (task) => _TaskTile(
+              task: task,
+              color: const Color(0xFF34B27B),
+            ),
+          ),
           const SizedBox(height: 18),
         ],
         const _SectionTitle(
           title: 'Today\'s schedule',
           color: AppTheme.primaryBlue,
         ),
-
         const SizedBox(height: 10),
-
-        const _ScheduleCard(),
-
+        _ScheduleCard(occurrences: todaySchedule),
         const SizedBox(height: 26),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const _SectionTitle(title: 'Habits', color: AppTheme.primaryBlue),
-            TextButton(onPressed: () {}, child: const Text('View all')),
+            const _SectionTitle(
+              title: 'Habits',
+              color: AppTheme.primaryBlue,
+            ),
+            TextButton(
+              onPressed: () {},
+              child: const Text('View all'),
+            ),
           ],
         ),
-
         const SizedBox(height: 8),
-
         const _HabitTile(
           icon: Icons.water_drop_rounded,
           title: 'Drink water',
           progress: '5 / 8 cups',
           color: Color(0xFF42A5F5),
         ),
-
         const _HabitTile(
           icon: Icons.menu_book_rounded,
           title: 'Read',
           progress: '12 / 20 pages',
           color: Color(0xFF8E67D4),
         ),
-
         const SizedBox(height: 24),
-
-        SizedBox(
-          height: 56,
-          child: FilledButton.icon(
-            onPressed: () {
-              context.push('/focus/setup');
-            },
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: const Text(
-              'Start Focus',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -217,9 +214,7 @@ class _DigitalBalanceCard extends StatelessWidget {
                   color: AppTheme.primaryBlue,
                 ),
               ),
-
               const SizedBox(width: 14),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,22 +223,20 @@ class _DigitalBalanceCard extends StatelessWidget {
                       'Digital balance',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
-
                     const SizedBox(height: 4),
-
                     Text(
                       '4h 18m screen time  •  36m distraction',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.55),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.55),
                       ),
                     ),
                   ],
                 ),
               ),
-
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -255,12 +248,13 @@ class _DigitalBalanceCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 2),
-                  Text('distraction', style: TextStyle(fontSize: 10)),
+                  Text(
+                    'distraction',
+                    style: TextStyle(fontSize: 10),
+                  ),
                 ],
               ),
-
               const SizedBox(width: 6),
-
               const Icon(Icons.chevron_right_rounded),
             ],
           ),
@@ -298,16 +292,19 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-            ),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withOpacity(0.55),
+                ),
           ),
         ],
       ),
@@ -319,7 +316,10 @@ class _SectionTitle extends StatelessWidget {
   final String title;
   final Color color;
 
-  const _SectionTitle({required this.title, required this.color});
+  const _SectionTitle({
+    required this.title,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -329,14 +329,17 @@ class _SectionTitle extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
         ),
         const SizedBox(width: 8),
         Text(
           title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
         ),
       ],
     );
@@ -347,7 +350,10 @@ class _TaskTile extends StatelessWidget {
   final Task task;
   final Color color;
 
-  const _TaskTile({required this.task, required this.color});
+  const _TaskTile({
+    required this.task,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -368,9 +374,7 @@ class _TaskTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-
           const SizedBox(width: 14),
-
           InkWell(
             onTap: () async {
               await context.read<TaskProvider>().setCompleted(task.id, true);
@@ -385,9 +389,7 @@ class _TaskTile extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(width: 14),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,23 +398,27 @@ class _TaskTile extends StatelessWidget {
                   task.title,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   _taskSubtitle(task),
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.50),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.50),
                   ),
                 ),
               ],
             ),
           ),
-
-          const Icon(Icons.chevron_right_rounded, size: 20),
+          IconButton(
+            tooltip: 'Edit task',
+            onPressed: () {
+              context.push('/task/edit/${Uri.encodeComponent(task.id)}');
+            },
+            icon: const Icon(Icons.chevron_right_rounded, size: 20),
+          ),
         ],
       ),
     );
@@ -457,9 +463,7 @@ class _NextTaskCard extends StatelessWidget {
                   ),
                 ),
               ),
-
               const Spacer(),
-
               if (task.scheduledStart != null)
                 Text(
                   DateFormat('h:mm a').format(task.scheduledStart!),
@@ -467,31 +471,30 @@ class _NextTaskCard extends StatelessWidget {
                 ),
             ],
           ),
-
           const SizedBox(height: 14),
-
           Text(
             task.title,
-            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-
           const SizedBox(height: 5),
-
           Text(
             _taskSubtitle(task),
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
             ),
           ),
-
           const SizedBox(height: 18),
-
           SizedBox(
             width: double.infinity,
             height: 48,
             child: FilledButton.icon(
               onPressed: () {
-                context.push('/focus/setup');
+                context.push(
+                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+                );
               },
               icon: const Icon(Icons.play_arrow_rounded),
               label: const Text('Start Focus'),
@@ -523,16 +526,12 @@ class _NoTasksCard extends StatelessWidget {
             size: 38,
             color: AppTheme.primaryBlue,
           ),
-
           const SizedBox(height: 10),
-
           const Text(
             'Nothing to work on yet',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
-
           const SizedBox(height: 12),
-
           OutlinedButton.icon(
             onPressed: onCreateTask,
             icon: const Icon(Icons.add_rounded),
@@ -545,76 +544,106 @@ class _NoTasksCard extends StatelessWidget {
 }
 
 class _ScheduleCard extends StatelessWidget {
-  const _ScheduleCard();
+  final List<TaskOccurrence> occurrences;
+
+  const _ScheduleCard({required this.occurrences});
 
   @override
   Widget build(BuildContext context) {
+    if (occurrences.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text('No scheduled tasks today.'),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          _ScheduleItem(
-            time: '09:00',
-            title: 'Project work',
-            color: AppTheme.primaryBlue,
-          ),
-          SizedBox(height: 18),
-          _ScheduleItem(
-            time: '13:00',
-            title: 'Study session',
-            color: Color(0xFF8E67D4),
-          ),
-          SizedBox(height: 18),
-          _ScheduleItem(
-            time: '17:30',
-            title: 'Exercise',
-            color: Color(0xFF34B27B),
-          ),
+          for (var index = 0; index < occurrences.length; index++) ...[
+            _ScheduleOccurrence(occurrence: occurrences[index]),
+            if (index != occurrences.length - 1)
+              const SizedBox(height: 18),
+          ],
         ],
       ),
     );
   }
 }
 
-class _ScheduleItem extends StatelessWidget {
-  final String time;
-  final String title;
-  final Color color;
+class _ScheduleOccurrence extends StatelessWidget {
+  final TaskOccurrence occurrence;
 
-  const _ScheduleItem({
-    required this.time,
-    required this.title,
-    required this.color,
-  });
+  const _ScheduleOccurrence({required this.occurrence});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 52,
-          child: Text(
-            time,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+    final task = occurrence.task;
+
+    return InkWell(
+      onTap: () {
+        context.push('/task/edit/${Uri.encodeComponent(task.id)}');
+      },
+      child: Row(
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(
+              DateFormat('h:mm a').format(occurrence.start),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
-        ),
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: _priorityColor(task.priority),
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (task.recurrence != TaskRecurrence.none)
+                  Text(
+                    task.recurrence.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.50),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Start focus',
+            onPressed: () {
+              context.push(
+                '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+              );
+            },
+            icon: const Icon(Icons.play_arrow_rounded),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -666,9 +695,10 @@ class _HabitTile extends StatelessWidget {
                   progress,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.50),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.50),
                   ),
                 ),
               ],
@@ -697,9 +727,12 @@ String _taskSubtitle(Task task) {
     }
   }
 
+  if (task.recurrence != TaskRecurrence.none) {
+    parts.add(task.recurrence.label);
+  }
+
   if (task.deadline != null) {
     final today = DateTime.now();
-
     if (_sameDate(task.deadline!, today)) {
       parts.add('Due today');
     } else {
@@ -720,10 +753,8 @@ Color _priorityColor(TaskPriority priority) {
   switch (priority) {
     case TaskPriority.critical:
       return const Color(0xFFFF6B5E);
-
     case TaskPriority.important:
       return AppTheme.primaryBlue;
-
     case TaskPriority.growth:
       return const Color(0xFF34B27B);
   }

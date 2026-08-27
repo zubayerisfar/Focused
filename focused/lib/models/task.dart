@@ -1,3 +1,5 @@
+import 'task_recurrence.dart';
+
 enum TaskPriority { critical, important, growth }
 
 extension TaskPriorityInfo on TaskPriority {
@@ -28,27 +30,16 @@ class Task {
   final String id;
   final String title;
   final String description;
-
   final TaskPriority priority;
-
   final int estimatedMinutes;
-
-  /// Day the user intends to work on this task.
-  ///
-  /// This is NOT the same thing as a deadline.
   final DateTime? plannedDate;
-
-  /// Latest time/date by which the task should be finished.
   final DateTime? deadline;
-
-  /// Optional calendar time.
-  ///
-  /// These will later connect to Google Calendar.
   final DateTime? scheduledStart;
   final DateTime? scheduledEnd;
-
+  final TaskRecurrence recurrence;
+  final Set<int> customWeekdays;
+  final int? reminderMinutesBefore;
   final bool isCompleted;
-
   final DateTime createdAt;
   final DateTime? completedAt;
 
@@ -62,11 +53,14 @@ class Task {
     this.deadline,
     this.scheduledStart,
     this.scheduledEnd,
+    this.recurrence = TaskRecurrence.none,
+    this.customWeekdays = const {},
+    this.reminderMinutesBefore,
     this.isCompleted = false,
     required this.createdAt,
     this.completedAt,
-  }) : id = id.trim(),
-       title = title.trim() {
+  })  : id = id.trim(),
+        title = title.trim() {
     if (this.id.isEmpty) {
       throw ArgumentError('Task ID cannot be empty.');
     }
@@ -101,6 +95,29 @@ class Task {
     if (isCompleted && completedAt == null) {
       throw ArgumentError('A completed task must have completedAt.');
     }
+
+    if (recurrence != TaskRecurrence.none &&
+        (scheduledStart == null || scheduledEnd == null)) {
+      throw ArgumentError('Recurring tasks must have a schedule.');
+    }
+
+    if (recurrence == TaskRecurrence.customDays && customWeekdays.isEmpty) {
+      throw ArgumentError('Custom recurrence requires at least one weekday.');
+    }
+
+    for (final weekday in customWeekdays) {
+      if (weekday < DateTime.monday || weekday > DateTime.sunday) {
+        throw ArgumentError('Weekday must be between 1 and 7.');
+      }
+    }
+
+    if (reminderMinutesBefore != null && reminderMinutesBefore! < 0) {
+      throw ArgumentError('Reminder minutes cannot be negative.');
+    }
+
+    if (reminderMinutesBefore != null && scheduledStart == null) {
+      throw ArgumentError('A reminder requires a scheduled task.');
+    }
   }
 
   Task markCompleted(DateTime time) {
@@ -118,6 +135,9 @@ class Task {
       deadline: deadline,
       scheduledStart: scheduledStart,
       scheduledEnd: scheduledEnd,
+      recurrence: recurrence,
+      customWeekdays: Set<int>.from(customWeekdays),
+      reminderMinutesBefore: reminderMinutesBefore,
       isCompleted: true,
       createdAt: createdAt,
       completedAt: time,
@@ -139,6 +159,9 @@ class Task {
       deadline: deadline,
       scheduledStart: scheduledStart,
       scheduledEnd: scheduledEnd,
+      recurrence: recurrence,
+      customWeekdays: Set<int>.from(customWeekdays),
+      reminderMinutesBefore: reminderMinutesBefore,
       isCompleted: false,
       createdAt: createdAt,
       completedAt: null,
@@ -147,7 +170,7 @@ class Task {
 
   Map<String, dynamic> toMap() {
     return {
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'id': id,
       'title': title,
       'description': description,
@@ -157,6 +180,9 @@ class Task {
       'deadline': deadline?.toIso8601String(),
       'scheduledStart': scheduledStart?.toIso8601String(),
       'scheduledEnd': scheduledEnd?.toIso8601String(),
+      'recurrence': recurrence.name,
+      'customWeekdays': customWeekdays.toList()..sort(),
+      'reminderMinutesBefore': reminderMinutesBefore,
       'isCompleted': isCompleted,
       'createdAt': createdAt.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
@@ -170,28 +196,60 @@ class Task {
       throw const FormatException('Task priority is missing or invalid.');
     }
 
-    final priority = TaskPriority.values.where(
-      (item) => item.name == priorityName,
+    final matches = TaskPriority.values.where(
+      (priority) => priority.name == priorityName,
     );
 
-    if (priority.isEmpty) {
+    if (matches.isEmpty) {
       throw FormatException('Unknown task priority: $priorityName');
     }
 
     return Task(
       id: _requiredString(map, 'id'),
       title: _requiredString(map, 'title'),
-      description: map['description'] as String? ?? '',
-      priority: priority.first,
+      description: map['description'] is String ? map['description'] as String : '',
+      priority: matches.first,
       estimatedMinutes: _requiredInt(map, 'estimatedMinutes'),
       plannedDate: _optionalDate(map['plannedDate']),
       deadline: _optionalDate(map['deadline']),
       scheduledStart: _optionalDate(map['scheduledStart']),
       scheduledEnd: _optionalDate(map['scheduledEnd']),
-      isCompleted: map['isCompleted'] as bool? ?? false,
+      recurrence: _parseRecurrence(map['recurrence']),
+      customWeekdays: _parseWeekdays(map['customWeekdays']),
+      reminderMinutesBefore: map['reminderMinutesBefore'] is num
+          ? (map['reminderMinutesBefore'] as num).toInt()
+          : null,
+      isCompleted: map['isCompleted'] is bool ? map['isCompleted'] as bool : false,
       createdAt: _requiredDate(map, 'createdAt'),
       completedAt: _optionalDate(map['completedAt']),
     );
+  }
+
+  static TaskRecurrence _parseRecurrence(dynamic value) {
+    if (value is String) {
+      for (final recurrence in TaskRecurrence.values) {
+        if (recurrence.name == value) {
+          return recurrence;
+        }
+      }
+    }
+
+    return TaskRecurrence.none;
+  }
+
+  static Set<int> _parseWeekdays(dynamic value) {
+    if (value is! List) {
+      return <int>{};
+    }
+
+    return value
+        .whereType<num>()
+        .map((item) => item.toInt())
+        .where(
+          (weekday) =>
+              weekday >= DateTime.monday && weekday <= DateTime.sunday,
+        )
+        .toSet();
   }
 }
 
@@ -208,11 +266,15 @@ String _requiredString(Map<dynamic, dynamic> map, String key) {
 int _requiredInt(Map<dynamic, dynamic> map, String key) {
   final value = map[key];
 
-  if (value is! int) {
-    throw FormatException('Missing or invalid $key.');
+  if (value is int) {
+    return value;
   }
 
-  return value;
+  if (value is num) {
+    return value.toInt();
+  }
+
+  throw FormatException('Missing or invalid $key.');
 }
 
 DateTime _requiredDate(Map<dynamic, dynamic> map, String key) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/task_provider.dart';
 import '../../providers/theme_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -90,6 +91,61 @@ class SettingsScreen extends StatelessWidget {
                 icon: Icons.calendar_month_outlined,
                 title: 'Google Calendar',
                 value: 'Not connected',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          _SettingsSection(
+            title: 'Notifications',
+            children: [
+              _NavigationSetting(
+                icon: Icons.notifications_active_outlined,
+                title: 'Send test notification',
+                subtitle: 'Verify that Android can display Focused notifications',
+                onTap: () async {
+                  final success = await context
+                      .read<TaskProvider>()
+                      .sendTestNotification();
+
+                  if (!context.mounted) {
+                    return;
+                  }
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success
+                            ? 'Test notification sent.'
+                            : 'Notification permission is not available. Check Android notification settings.',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              _NavigationSetting(
+                icon: Icons.schedule_outlined,
+                title: 'Pending reminders',
+                subtitle: 'Check how many reminders Android currently has queued',
+                onTap: () async {
+                  final count = await context
+                      .read<TaskProvider>()
+                      .pendingReminderCount();
+
+                  if (!context.mounted) {
+                    return;
+                  }
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '$count pending reminder${count == 1 ? '' : 's'}.',
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

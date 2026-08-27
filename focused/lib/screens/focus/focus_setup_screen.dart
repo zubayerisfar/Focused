@@ -8,19 +8,70 @@ import '../../providers/task_provider.dart';
 import '../../theme/app_theme.dart';
 
 class FocusSetupScreen extends StatefulWidget {
-  const FocusSetupScreen({super.key});
+  final String? initialTaskId;
+
+  const FocusSetupScreen({super.key, this.initialTaskId});
 
   @override
   State<FocusSetupScreen> createState() => _FocusSetupScreenState();
 }
 
 class _FocusSetupScreenState extends State<FocusSetupScreen> {
-  // We now store the task ID instead of a fake task name.
   String? _selectedTaskId;
 
+  // This remains a fallback only.
+  // When a real task is loaded, its estimatedMinutes
+  // becomes the initial total focus duration.
   int _totalMinutes = 120;
+
   int _focusMinutes = 50;
   int _breakMinutes = 10;
+
+  bool _didInitializeFromTask = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _selectedTaskId = widget.initialTaskId;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didInitializeFromTask) {
+      return;
+    }
+
+    _didInitializeFromTask = true;
+
+    final taskProvider = context.read<TaskProvider>();
+
+    Task? task;
+
+    // If Focus Setup was opened from a specific task,
+    // load that exact task first.
+    if (_selectedTaskId != null) {
+      final candidate = taskProvider.getTaskById(_selectedTaskId!);
+
+      if (candidate != null && !candidate.isCompleted) {
+        task = candidate;
+      }
+    }
+
+    // Otherwise use TaskProvider's recommended next task.
+    task ??= taskProvider.nextTask();
+
+    if (task != null) {
+      _selectedTaskId = task.id;
+
+      // FIX:
+      // Focus Setup now defaults to the selected task's
+      // estimated duration instead of always using 2 hours.
+      _totalMinutes = task.estimatedMinutes;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,20 +79,14 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
     Task? selectedTask;
 
-    // If the user manually selected a task,
-    // try to retrieve it from TaskProvider.
     if (_selectedTaskId != null) {
       final candidate = taskProvider.getTaskById(_selectedTaskId!);
 
-      // Completed tasks should not be used
-      // for new focus sessions.
       if (candidate != null && !candidate.isCompleted) {
         selectedTask = candidate;
       }
     }
 
-    // If no task was manually selected,
-    // automatically use the next useful task.
     selectedTask ??= taskProvider.nextTask();
 
     final sessionPlan = _buildSessionPlan();
@@ -253,7 +298,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
           SizedBox(
             height: 58,
             child: FilledButton.icon(
-              // No task = cannot start focus.
               onPressed: selectedTask == null
                   ? null
                   : () {
@@ -285,7 +329,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   List<_FocusPlanItem> _buildSessionPlan() {
     final plan = <_FocusPlanItem>[];
 
-    int remainingMinutes = _totalMinutes;
+    var remainingMinutes = _totalMinutes;
 
     while (remainingMinutes > 0) {
       final currentFocusMinutes = remainingMinutes >= _focusMinutes
@@ -296,8 +340,8 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
       remainingMinutes -= currentFocusMinutes;
 
-      // Only insert a break if
-      // another focus block remains.
+      // Break time is NOT counted toward total focus duration.
+      // Add a break only when another focus block remains.
       if (remainingMinutes > 0 && _breakMinutes > 0) {
         plan.add(_FocusPlanItem(isWork: false, minutes: _breakMinutes));
       }
@@ -380,6 +424,12 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   onTap: () {
                     setState(() {
                       _selectedTaskId = task.id;
+
+                      // FIX:
+                      // When the user selects another task,
+                      // update Total Duration to that task's
+                      // estimated duration as well.
+                      _totalMinutes = task.estimatedMinutes;
                     });
 
                     Navigator.pop(sheetContext);

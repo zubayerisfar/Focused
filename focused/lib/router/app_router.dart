@@ -1,151 +1,94 @@
 import 'package:go_router/go_router.dart';
 
 import '../screens/auth/login_screen.dart';
-
-import '../screens/main/main_shell.dart';
-
-import '../screens/settings/settings_screen.dart';
-
-import '../screens/devices/devices_screen.dart';
-
-import '../screens/tasks/task_edit_screen.dart';
-
 import '../screens/calendar/event_edit_screen.dart';
-
+import '../screens/devices/devices_screen.dart';
+import '../screens/focus/focus_complete_screen.dart';
+import '../screens/focus/focus_session_screen.dart';
+import '../screens/focus/focus_setup_screen.dart';
 import '../screens/habits/habit_details_screen.dart';
 import '../screens/habits/habit_edit_screen.dart';
-
-import '../screens/focus/focus_setup_screen.dart';
-import '../screens/focus/focus_session_screen.dart';
-import '../screens/focus/focus_complete_screen.dart';
-
+import '../screens/main/main_shell.dart';
+import '../screens/settings/settings_screen.dart';
+import '../screens/tasks/task_edit_screen.dart';
 import '../screens/wellbeing/app_usage_details_screen.dart';
 import '../screens/wellbeing/focus_interruption_details_screen.dart';
 import '../screens/wellbeing/usage_permission_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
-
   routes: [
-    // Main application
     GoRoute(
       path: '/',
-      builder: (context, state) {
-        return const MainShell();
-      },
+      builder: (context, state) => const MainShell(),
     ),
-
-    // Authentication
     GoRoute(
       path: '/login',
-      builder: (context, state) {
-        return const LoginScreen();
-      },
+      builder: (context, state) => const LoginScreen(),
     ),
-
-    // Settings
     GoRoute(
       path: '/settings',
-      builder: (context, state) {
-        return const SettingsScreen();
-      },
+      builder: (context, state) => const SettingsScreen(),
     ),
-
-    // Devices
     GoRoute(
       path: '/devices',
-      builder: (context, state) {
-        return const DevicesScreen();
-      },
+      builder: (context, state) => const DevicesScreen(),
     ),
-
-    // Tasks
     GoRoute(
       path: '/task/new',
-      builder: (context, state) {
-        return const TaskEditScreen();
-      },
+      builder: (context, state) => const TaskEditScreen(),
     ),
-
-    // Calendar
+    GoRoute(
+      path: '/task/edit/:taskId',
+      builder: (context, state) => TaskEditScreen(
+        taskId: state.pathParameters['taskId'],
+      ),
+    ),
     GoRoute(
       path: '/calendar/event/new',
-      builder: (context, state) {
-        return const EventEditScreen();
-      },
+      builder: (context, state) => const EventEditScreen(),
     ),
-
     GoRoute(
       path: '/calendar/event/edit',
-      builder: (context, state) {
-        return const EventEditScreen(isEditing: true);
-      },
+      builder: (context, state) => const EventEditScreen(isEditing: true),
     ),
-
-    // Habits
     GoRoute(
       path: '/habit/new',
-      builder: (context, state) {
-        return const HabitEditScreen();
-      },
+      builder: (context, state) => const HabitEditScreen(),
     ),
-
     GoRoute(
       path: '/habit/details',
-      builder: (context, state) {
-        return const HabitDetailsScreen();
-      },
+      builder: (context, state) => const HabitDetailsScreen(),
     ),
-
     GoRoute(
       path: '/habit/edit',
-      builder: (context, state) {
-        return const HabitEditScreen(isEditing: true);
-      },
+      builder: (context, state) => const HabitEditScreen(isEditing: true),
     ),
-
-    // Focus
     GoRoute(
       path: '/focus/setup',
-      builder: (context, state) {
-        return const FocusSetupScreen();
-      },
+      builder: (context, state) => FocusSetupScreen(
+        initialTaskId: state.uri.queryParameters['taskId'],
+      ),
     ),
-
     GoRoute(
       path: '/focus/session',
-      builder: (context, state) {
-        return const FocusSessionScreen();
-      },
+      builder: (context, state) => const FocusSessionScreen(),
     ),
-
     GoRoute(
       path: '/focus/complete',
-      builder: (context, state) {
-        return const FocusCompleteScreen();
-      },
+      builder: (context, state) => const FocusCompleteScreen(),
     ),
-
-    // Digital wellbeing / usage insights
     GoRoute(
       path: '/wellbeing/app-usage',
-      builder: (context, state) {
-        return const AppUsageDetailsScreen();
-      },
+      builder: (context, state) => const AppUsageDetailsScreen(),
     ),
-
     GoRoute(
       path: '/wellbeing/focus-interruptions',
-      builder: (context, state) {
-        return const FocusInterruptionDetailsScreen();
-      },
+      builder: (context, state) => const FocusInterruptionDetailsScreen(),
     ),
-
     GoRoute(
       path: '/wellbeing/permission',
-      builder: (context, state) {
-        return const UsagePermissionScreen();
-      },
+      builder: (context, state) => const UsagePermissionScreen(),
     ),
   ],
 );
