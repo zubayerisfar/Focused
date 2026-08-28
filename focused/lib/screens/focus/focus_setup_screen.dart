@@ -306,7 +306,8 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   ? null
                   : () {
                       context.read<FocusProvider>().startSession(
-                        taskName: selectedTask!.title,
+                        taskId: selectedTask!.id,
+                        taskName: selectedTask.title,
                         totalFocusMinutes: _totalMinutes,
                         focusBlockMinutes: _focusMinutes,
                         breakMinutes: _breakMinutes,

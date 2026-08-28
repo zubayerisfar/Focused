@@ -6,16 +6,39 @@ import 'package:provider/provider.dart';
 import '../../models/task.dart';
 import '../../models/task_occurrence.dart';
 import '../../models/task_recurrence.dart';
+import '../../providers/focus_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../services/productivity_streak_service.dart';
 import '../../theme/app_theme.dart';
 
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
 
+  static const _streakService = ProductivityStreakService();
+
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
+    final focusProvider = context.watch<FocusProvider>();
     final now = DateTime.now();
+
+    final focusedToday = focusProvider.focusedDurationForDate(now);
+    final sessionsToday = focusProvider.sessionCountForDate(now);
+    final longestSession = focusProvider.longestFocusSessionForDate(now);
+
+    final productivityDays = <DateTime>{
+      ...taskProvider.completionActivityDates(),
+      ...focusProvider.focusActivityDates(),
+    };
+    final streak = _streakService.calculateCurrentStreak(
+      now: now,
+      activityDates: productivityDays,
+    );
+
+    final totalTasksToday = taskProvider.taskCountForDate(now);
+    final completedTasksToday = taskProvider.completedTaskCountForDate(now);
+    final remainingTasksToday = taskProvider.remainingTaskCountForDate(now);
+
     final nextTask = taskProvider.nextTask(now: now);
     final todaySchedule = taskProvider.scheduledOccurrencesForDate(now);
 
@@ -44,7 +67,7 @@ class TodayScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
       children: [
         Text(
-          'Good morning',
+          _greetingFor(now),
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -57,26 +80,38 @@ class TodayScreen extends StatelessWidget {
               ),
         ),
         const SizedBox(height: 20),
-        const Row(
+        Row(
           children: [
             Expanded(
               child: _SummaryCard(
                 icon: Icons.local_fire_department_rounded,
-                value: '12',
+                value: '$streak',
                 label: 'Day streak',
                 iconColor: Colors.orange,
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: _SummaryCard(
                 icon: Icons.timer_rounded,
-                value: '2h 40m',
+                value: _formatFocusDuration(focusedToday),
                 label: 'Focused today',
                 iconColor: AppTheme.primaryBlue,
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        _TodayProgressCard(
+          completed: completedTasksToday,
+          total: totalTasksToday,
+          remaining: remainingTasksToday,
+        ),
+        const SizedBox(height: 12),
+        _FocusSummaryCard(
+          sessionsToday: sessionsToday,
+          focusedToday: focusedToday,
+          longestSession: longestSession,
         ),
         const SizedBox(height: 24),
         Text(
@@ -97,7 +132,7 @@ class TodayScreen extends StatelessWidget {
         const SizedBox(height: 26),
         _DigitalBalanceCard(
           onTap: () {
-            context.push('/wellbeing/app-usage');
+            context.push('/wellbeing/permission');
           },
         ),
         const SizedBox(height: 24),
@@ -150,34 +185,171 @@ class TodayScreen extends StatelessWidget {
         const SizedBox(height: 10),
         _ScheduleCard(occurrences: todaySchedule),
         const SizedBox(height: 26),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const _SectionTitle(
-              title: 'Habits',
-              color: AppTheme.primaryBlue,
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Text('View all'),
-            ),
-          ],
+        const _SectionTitle(
+          title: 'Habits',
+          color: AppTheme.primaryBlue,
         ),
-        const SizedBox(height: 8),
-        const _HabitTile(
-          icon: Icons.water_drop_rounded,
-          title: 'Drink water',
-          progress: '5 / 8 cups',
-          color: Color(0xFF42A5F5),
-        ),
-        const _HabitTile(
-          icon: Icons.menu_book_rounded,
-          title: 'Read',
-          progress: '12 / 20 pages',
-          color: Color(0xFF8E67D4),
+        const SizedBox(height: 10),
+        _HabitsStatusCard(
+          onCreateHabit: () {
+            context.push('/habit/new');
+          },
         ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+class _TodayProgressCard extends StatelessWidget {
+  final int completed;
+  final int total;
+  final int remaining;
+
+  const _TodayProgressCard({
+    required this.completed,
+    required this.total,
+    required this.remaining,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = total == 0 ? 0.0 : completed / total;
+    final helper = total == 0
+        ? 'No tasks planned for today.'
+        : remaining == 0
+            ? 'Everything planned for today is complete.'
+            : '$remaining ${remaining == 1 ? 'task' : 'tasks'} remaining today.';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.task_alt_rounded,
+                color: Color(0xFF34B27B),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Today\'s progress',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              Text(
+                total == 0 ? '0 / 0' : '$completed / $total',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: progress,
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withOpacity(0.08),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            helper,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FocusSummaryCard extends StatelessWidget {
+  final int sessionsToday;
+  final Duration focusedToday;
+  final Duration longestSession;
+
+  const _FocusSummaryCard({
+    required this.sessionsToday,
+    required this.focusedToday,
+    required this.longestSession,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.center_focus_strong_rounded,
+              color: AppTheme.primaryBlue,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$sessionsToday ${sessionsToday == 1 ? 'session' : 'sessions'} today',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  focusedToday == Duration.zero
+                      ? 'No focus session recorded yet.'
+                      : 'Active focus ${_formatFocusDuration(focusedToday)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.55),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (longestSession.inMicroseconds > 0)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _formatFocusDuration(longestSession),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'longest',
+                  style: TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
@@ -225,7 +397,7 @@ class _DigitalBalanceCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '4h 18m screen time  •  36m distraction',
+                      'Usage monitoring is not connected yet.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context)
@@ -237,24 +409,7 @@ class _DigitalBalanceCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '↓ 8%',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF34B27B),
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'distraction',
-                    style: TextStyle(fontSize: 10),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               const Icon(Icons.chevron_right_rounded),
             ],
           ),
@@ -377,7 +532,16 @@ class _TaskTile extends StatelessWidget {
           const SizedBox(width: 14),
           InkWell(
             onTap: () async {
-              await context.read<TaskProvider>().setCompleted(task.id, true);
+              try {
+                await context.read<TaskProvider>().setCompleted(task.id, true);
+              } catch (_) {
+                if (!context.mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not update the task.')),
+                );
+              }
             },
             borderRadius: BorderRadius.circular(20),
             child: Container(
@@ -690,9 +854,7 @@ class _ScheduleOccurrence extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: occurrence.isCompleted
-              ? 'Task completed'
-              : 'Start focus',
+          tooltip: occurrence.isCompleted ? 'Task completed' : 'Start focus',
           onPressed: occurrence.isCompleted
               ? null
               : () {
@@ -711,27 +873,18 @@ class _ScheduleOccurrence extends StatelessWidget {
   }
 }
 
-class _HabitTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String progress;
-  final Color color;
+class _HabitsStatusCard extends StatelessWidget {
+  final VoidCallback onCreateHabit;
 
-  const _HabitTile({
-    required this.icon,
-    required this.title,
-    required this.progress,
-    required this.color,
-  });
+  const _HabitsStatusCard({required this.onCreateHabit});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
@@ -739,39 +892,79 @@ class _HabitTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.13),
-              shape: BoxShape.circle,
+              color: const Color(0xFF8E67D4).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: color),
+            child: const Icon(
+              Icons.check_circle_outline_rounded,
+              color: Color(0xFF8E67D4),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                const Text(
+                  'Habit progress is not connected yet',
+                  style: TextStyle(fontWeight: FontWeight.w800),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
-                  progress,
+                  'No placeholder habit totals are shown on Today.',
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withOpacity(0.50),
+                        .withOpacity(0.55),
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded),
+          TextButton(
+            onPressed: onCreateHabit,
+            child: const Text('Add'),
+          ),
         ],
       ),
     );
   }
+}
+
+String _greetingFor(DateTime now) {
+  if (now.hour < 12) {
+    return 'Good morning';
+  }
+  if (now.hour < 17) {
+    return 'Good afternoon';
+  }
+  return 'Good evening';
+}
+
+String _formatFocusDuration(Duration duration) {
+  if (duration.inSeconds <= 0) {
+    return '0 min';
+  }
+
+  if (duration.inSeconds < 60) {
+    return '<1 min';
+  }
+
+  final totalMinutes = duration.inMinutes;
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+
+  if (hours == 0) {
+    return '$minutes min';
+  }
+
+  if (minutes == 0) {
+    return '${hours}h';
+  }
+
+  return '${hours}h ${minutes}m';
 }
 
 String _taskSubtitle(Task task) {

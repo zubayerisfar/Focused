@@ -23,7 +23,8 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<FocusProvider>().lastSession;
+    final focusProvider = context.watch<FocusProvider>();
+    final session = focusProvider.lastSession;
 
     if (session == null) {
       return Scaffold(
@@ -119,6 +120,37 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
 
               const SizedBox(height: 24),
             ],
+            if (focusProvider.lastPersistenceError != null) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'This session is visible now, but Focused could not save it to local history. '
+                        'Do not clear the app until the storage issue is fixed.',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -152,7 +184,13 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
             SizedBox(
               height: 58,
               child: FilledButton(
-                onPressed: () {
+                onPressed: () async {
+                  await focusProvider.flushPendingPersistence();
+
+                  if (!context.mounted) {
+                    return;
+                  }
+
                   context.go('/');
                 },
                 child: const Text(
@@ -209,6 +247,28 @@ class _SessionResultsCard extends StatelessWidget {
                 '/${session.totalFocusBlocks}',
             color: const Color(0xFF34B27B),
           ),
+
+          if (session.breakDuration.inMicroseconds > 0) ...[
+            const Divider(height: 30),
+
+            _ResultRow(
+              icon: Icons.free_breakfast_rounded,
+              title: 'Break time',
+              value: _formatDuration(session.breakDuration),
+              color: const Color(0xFF34B27B),
+            ),
+          ],
+
+          if (session.pausedDuration.inMicroseconds > 0) ...[
+            const Divider(height: 30),
+
+            _ResultRow(
+              icon: Icons.pause_circle_outline_rounded,
+              title: 'Paused time',
+              value: _formatDuration(session.pausedDuration),
+              color: Colors.blueGrey,
+            ),
+          ],
 
           const Divider(height: 30),
 

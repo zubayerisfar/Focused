@@ -398,6 +398,55 @@ class TaskProvider extends ChangeNotifier {
     )?.completedAt;
   }
 
+  /// Number of tasks that belong to the selected date.
+  ///
+  /// A recurring master contributes at most one occurrence for the day.
+  int taskCountForDate(DateTime date) {
+    return tasksForDate(
+      date,
+      includeCompleted: true,
+    ).length;
+  }
+
+  int completedTaskCountForDate(DateTime date) {
+    final dateTasks = tasksForDate(
+      date,
+      includeCompleted: true,
+    );
+
+    return dateTasks.where((task) {
+      return isTaskCompletedForDate(task, date);
+    }).length;
+  }
+
+  int remainingTaskCountForDate(DateTime date) {
+    final total = taskCountForDate(date);
+    final completed = completedTaskCountForDate(date);
+    return total - completed;
+  }
+
+  /// Local calendar dates on which the user actually completed task work.
+  ///
+  /// This intentionally uses completedAt rather than the planned occurrence
+  /// date. A late completion therefore contributes to the day on which the
+  /// user actually performed the completion action.
+  Set<DateTime> completionActivityDates() {
+    final result = <DateTime>{};
+
+    for (final task in _tasks) {
+      final completedAt = task.completedAt;
+      if (task.isCompleted && completedAt != null) {
+        result.add(_dateOnlyLocal(completedAt));
+      }
+    }
+
+    for (final completion in _occurrenceCompletions) {
+      result.add(_dateOnlyLocal(completion.completedAt));
+    }
+
+    return Set<DateTime>.unmodifiable(result);
+  }
+
   DateTime? nextOccurrenceStartForTask(
     Task task,
     DateTime after,
