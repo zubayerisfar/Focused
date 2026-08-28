@@ -48,7 +48,8 @@ class FocusInterruptionAnalyzer {
       }
 
       final category =
-          appCategories[record.appName] ??
+          appCategories[record.appId] ??
+              appCategories[record.appName] ??
               AppCategory.neutral;
 
       if (category !=

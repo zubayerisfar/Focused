@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:provider/provider.dart';
@@ -7,10 +9,12 @@ import 'providers/focus_provider.dart';
 import 'providers/task_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/usage_provider.dart';
+import 'services/android_usage_stats_service.dart';
 import 'services/focus_session_storage_service.dart';
 import 'services/task_notification_service.dart';
 import 'services/task_occurrence_completion_storage_service.dart';
 import 'services/task_storage_service.dart';
+import 'services/usage_record_storage_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,27 +28,19 @@ Future<void> main() async {
   final taskStorageService = TaskStorageService();
   final occurrenceCompletionStorage =
       TaskOccurrenceCompletionStorageService();
-  final focusSessionStorageService =
-      FocusSessionStorageService();
+  final focusSessionStorageService = FocusSessionStorageService();
+  final usageRecordStorageService = UsageRecordStorageService();
 
   await taskStorageService.init();
   await occurrenceCompletionStorage.init();
   await focusSessionStorageService.init();
+  await usageRecordStorageService.init();
 
   // ---------------------------------------------------------
   // NOTIFICATIONS
   // ---------------------------------------------------------
-  //
-  // IMPORTANT:
-  // Do NOT await notification initialization here.
-  //
-  // TaskNotificationService initializes lazily when a reminder
-  // is created or changed. That prevents native notification/
-  // timezone setup from blocking app startup.
-  // ---------------------------------------------------------
 
-  final taskNotificationService =
-      TaskNotificationService();
+  final taskNotificationService = TaskNotificationService();
 
   // ---------------------------------------------------------
   // PROVIDERS WITH STORED DATA
@@ -52,20 +48,26 @@ Future<void> main() async {
 
   final taskProvider = TaskProvider(
     storageService: taskStorageService,
-    notificationService:
-        taskNotificationService,
-    occurrenceCompletionStorage:
-        occurrenceCompletionStorage,
+    notificationService: taskNotificationService,
+    occurrenceCompletionStorage: occurrenceCompletionStorage,
   );
 
   await taskProvider.loadStoredTasks();
 
   final focusProvider = FocusProvider(
-    storageService:
-        focusSessionStorageService,
+    storageService: focusSessionStorageService,
   );
 
   await focusProvider.loadStoredSessions();
+
+  final usageProvider = UsageProvider(
+    usageStatsService: AndroidUsageStatsService(),
+    storageService: usageRecordStorageService,
+  );
+
+  // Load local snapshots first so the UI can render immediately. The native
+  // Android permission check/query runs after the app has started.
+  await usageProvider.loadStoredUsage();
 
   // ---------------------------------------------------------
   // START APP
@@ -77,15 +79,12 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (_) => ThemeProvider(),
         ),
-
-        ChangeNotifierProvider(
-          create: (_) => UsageProvider(),
+        ChangeNotifierProvider.value(
+          value: usageProvider,
         ),
-
         ChangeNotifierProvider.value(
           value: focusProvider,
         ),
-
         ChangeNotifierProvider.value(
           value: taskProvider,
         ),
@@ -93,4 +92,8 @@ Future<void> main() async {
       child: const FocusProductivityApp(),
     ),
   );
+
+  // Do not block first paint on UsageStats. If access was already granted,
+  // today/yesterday are refreshed in the background.
+  unawaited(usageProvider.refreshPermissionAndUsage());
 }

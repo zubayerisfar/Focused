@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/focus_session.dart';
+import '../../models/task_recurrence.dart';
 import '../../providers/focus_provider.dart';
+import '../../providers/task_provider.dart';
 import '../../theme/app_theme.dart';
 
 import '../../models/focus_analysis_result.dart';
@@ -20,6 +22,7 @@ class FocusCompleteScreen extends StatefulWidget {
 
 class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
   bool _analysisRequested = false;
+  bool _updatingTask = false;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +62,35 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
         context.read<UsageProvider>().analyzeCompletedFocusSession(session);
       });
     }
-    final analysis = context.watch<UsageProvider>().focusAnalysisResult;
+    final usageProvider = context.watch<UsageProvider>();
+    final analysis = usageProvider.focusAnalysisResult;
+
+    final taskProvider = context.watch<TaskProvider>();
+    final linkedTask = session.taskId == null
+        ? null
+        : taskProvider.getTaskById(session.taskId!);
+
+    final sessionDate = DateTime(
+      session.startedAt.year,
+      session.startedAt.month,
+      session.startedAt.day,
+    );
+
+    final canManageLinkedTaskForSessionDate = linkedTask != null &&
+        (linkedTask.recurrence == TaskRecurrence.none ||
+            taskProvider
+                .tasksForDate(
+                  sessionDate,
+                  includeCompleted: true,
+                )
+                .any((task) => task.id == linkedTask.id));
+
+    final linkedTaskCompleted = linkedTask != null &&
+        canManageLinkedTaskForSessionDate &&
+        taskProvider.isTaskCompletedForDate(
+          linkedTask,
+          sessionDate,
+        );
 
     return Scaffold(
       body: SafeArea(
@@ -115,9 +146,16 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
 
             const SizedBox(height: 24),
 
-            if (analysis != null) ...[
+            if (usageProvider.isAnalyzingFocus) ...[
+              const _UsageAnalysisLoadingCard(),
+              const SizedBox(height: 24),
+            ] else if (analysis != null) ...[
               _FocusQualityCard(session: session, analysis: analysis),
-
+              const SizedBox(height: 24),
+            ] else if (usageProvider.analysisUnavailableReason != null) ...[
+              _UsageAnalysisUnavailableCard(
+                message: usageProvider.analysisUnavailableReason!,
+              ),
               const SizedBox(height: 24),
             ],
             if (focusProvider.lastPersistenceError != null) ...[
@@ -147,6 +185,56 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            if (linkedTask != null) ...[
+              _LinkedTaskCompletionCard(
+                taskName: linkedTask.title,
+                isCompleted: linkedTaskCompleted,
+                canManageForSessionDate: canManageLinkedTaskForSessionDate,
+                isUpdating: _updatingTask,
+                onToggleCompleted: canManageLinkedTaskForSessionDate
+                    ? () async {
+                        if (_updatingTask) {
+                          return;
+                        }
+
+                        setState(() {
+                          _updatingTask = true;
+                        });
+
+                        try {
+                          await context
+                              .read<TaskProvider>()
+                              .setCompletedForDate(
+                                linkedTask.id,
+                                sessionDate,
+                                !linkedTaskCompleted,
+                                completedAt: linkedTaskCompleted
+                                    ? null
+                                    : DateTime.now(),
+                              );
+                        } catch (_) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Could not update the linked task.',
+                                ),
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _updatingTask = false;
+                            });
+                          }
+                        }
+                      }
+                    : null,
               ),
               const SizedBox(height: 24),
             ],
@@ -193,14 +281,136 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
 
                   context.go('/');
                 },
-                child: const Text(
-                  'Done',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                child: Text(
+                  linkedTask != null &&
+                          canManageLinkedTaskForSessionDate &&
+                          !linkedTaskCompleted
+                      ? 'Keep task open & Done'
+                      : 'Done',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LinkedTaskCompletionCard extends StatelessWidget {
+  final String taskName;
+  final bool isCompleted;
+  final bool canManageForSessionDate;
+  final bool isUpdating;
+  final Future<void> Function()? onToggleCompleted;
+
+  const _LinkedTaskCompletionCard({
+    required this.taskName,
+    required this.isCompleted,
+    required this.canManageForSessionDate,
+    required this.isUpdating,
+    required this.onToggleCompleted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isCompleted
+        ? const Color(0xFF34B27B)
+        : AppTheme.primaryBlue;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                isCompleted
+                    ? Icons.task_alt_rounded
+                    : Icons.assignment_outlined,
+                color: color,
+                size: 30,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isCompleted ? 'Task completed' : 'Task is still open',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      canManageForSessionDate
+                          ? isCompleted
+                              ? '“$taskName” is marked complete. Its reminder and Today/Planner state are updated.'
+                              : 'Finishing a focus timer records focused time, but it does not automatically mean the task itself is finished. Mark it complete here if the work is done.'
+                          : 'This session is linked to “$taskName”, but there is no recurring occurrence for this session date. Manage that occurrence from Planner or Calendar.',
+                      style: TextStyle(
+                        height: 1.35,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.62),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (canManageForSessionDate) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: isCompleted
+                  ? OutlinedButton.icon(
+                      onPressed: isUpdating
+                          ? null
+                          : () {
+                              onToggleCompleted?.call();
+                            },
+                      icon: isUpdating
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.undo_rounded),
+                      label: const Text('Reopen task'),
+                    )
+                  : FilledButton.icon(
+                      onPressed: isUpdating
+                          ? null
+                          : () {
+                              onToggleCompleted?.call();
+                            },
+                      icon: isUpdating
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_rounded),
+                      label: const Text('Mark task complete'),
+                    ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -277,6 +487,68 @@ class _SessionResultsCard extends StatelessWidget {
             title: 'Session elapsed',
             value: _formatDuration(session.totalElapsedDuration),
             color: Colors.orange,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _UsageAnalysisLoadingCard extends StatelessWidget {
+  const _UsageAnalysisLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Reading real Android app activity for this focus session…',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UsageAnalysisUnavailableCard extends StatelessWidget {
+  final String message;
+
+  const _UsageAnalysisUnavailableCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Colors.orange),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35),
+            ),
           ),
         ],
       ),

@@ -1,28 +1,32 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Needed to restore scheduled reminders after reboot -->
+    <!-- Notification / reminder permissions -->
     <uses-permission
         android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Needed for precise task reminders on Android 12+ -->
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- Needed on Android 13+ -->
     <uses-permission
         android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Real Android app usage monitoring -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:label="Focused"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- Fires scheduled local notifications -->
+        <!-- Scheduled local notifications -->
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
 
-        <!-- Restores notifications after reboot/app update -->
+        <!-- Restore reminders after reboot/update -->
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
@@ -30,10 +34,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-
-                <!-- Some HTC/older Android devices -->
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
 

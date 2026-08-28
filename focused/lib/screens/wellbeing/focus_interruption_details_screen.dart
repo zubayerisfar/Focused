@@ -172,7 +172,7 @@ class _SessionSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Study Flutter',
+            'Focus session',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
 

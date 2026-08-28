@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/daily_usage_summary.dart';
 import '../../models/hourly_usage_summary.dart';
+import '../../models/usage_access_status.dart';
 import '../../providers/usage_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -26,12 +27,41 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
     final yesterdaySummary = usageProvider.yesterdaySummary;
 
     if (todaySummary == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: const Text('App Usage')),
+        body: _UsageUnavailableBody(
+          status: usageProvider.accessStatus,
+          refreshing: usageProvider.isRefreshing,
+          error: usageProvider.lastError,
+          onGrant: usageProvider.requestUsageAccess,
+          onRefresh: () => usageProvider.refreshPermissionAndUsage(force: true),
+        ),
+      );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('App Usage')),
-      body: ListView(
+      appBar: AppBar(
+        title: const Text('App Usage'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh real usage',
+            onPressed: usageProvider.isRefreshing
+                ? null
+                : () => usageProvider.refreshPermissionAndUsage(force: true),
+            icon: usageProvider.isRefreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () => usageProvider.refreshPermissionAndUsage(force: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
           SegmentedButton<int>(
@@ -69,7 +99,7 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
             const SizedBox(height: 6),
 
             Text(
-              'See when you used your device most today.',
+              'See when Android reported the most foreground-app activity today.',
               style: TextStyle(
                 color: Theme.of(
                   context,
@@ -118,6 +148,89 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
             _HistoryRequiredCard(period: _periods[_selectedPeriod]),
           ],
         ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UsageUnavailableBody extends StatelessWidget {
+  final UsageAccessStatus status;
+  final bool refreshing;
+  final String? error;
+  final Future<void> Function() onGrant;
+  final Future<void> Function() onRefresh;
+
+  const _UsageUnavailableBody({
+    required this.status,
+    required this.refreshing,
+    required this.error,
+    required this.onGrant,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (refreshing || status == UsageAccessStatus.checking) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final unsupported = status == UsageAccessStatus.unsupported;
+    final granted = status == UsageAccessStatus.granted;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              unsupported ? Icons.desktop_windows_outlined : Icons.shield_outlined,
+              size: 54,
+              color: AppTheme.primaryBlue,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              unsupported
+                  ? 'Android UsageStats is not available here'
+                  : granted
+                      ? 'No usage snapshot yet'
+                      : 'Usage Access is required',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              unsupported
+                  ? 'Real app-usage collection is currently implemented for Android. Windows will use a separate foreground-window collector later.'
+                  : granted
+                      ? 'Refresh to query real foreground-app events from Android.'
+                      : 'Grant Focused Usage Access in Android settings to read real foreground-app history.',
+              textAlign: TextAlign.center,
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFFF8A65), fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 20),
+            if (!unsupported)
+              FilledButton.icon(
+                onPressed: () async {
+                  if (granted) {
+                    await onRefresh();
+                  } else {
+                    await onGrant();
+                  }
+                },
+                icon: Icon(granted ? Icons.refresh_rounded : Icons.open_in_new_rounded),
+                label: Text(granted ? 'Refresh usage' : 'Grant Usage Access'),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -217,7 +330,7 @@ class _TotalUsageCard extends StatelessWidget {
           const SizedBox(height: 2),
 
           Text(
-            'Total screen time today',
+            'Measured app usage today',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
             ),
@@ -569,7 +682,7 @@ class _HistoryRequiredCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           Text(
-            'Once daily summaries are saved locally, Focused will calculate weekly, monthly, and yearly trends here.',
+            'Focused now saves daily usage snapshots locally. Weekly, monthly, and yearly aggregation will be added after this real-data pipeline is validated on devices.',
             textAlign: TextAlign.center,
             style: TextStyle(
               height: 1.5,

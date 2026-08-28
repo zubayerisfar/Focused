@@ -8,6 +8,7 @@ import '../../models/task_occurrence.dart';
 import '../../models/task_recurrence.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/usage_provider.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -20,6 +21,7 @@ class TodayScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
     final focusProvider = context.watch<FocusProvider>();
+    final usageProvider = context.watch<UsageProvider>();
     final now = DateTime.now();
 
     final focusedToday = focusProvider.focusedDurationForDate(now);
@@ -131,8 +133,16 @@ class TodayScreen extends StatelessWidget {
           ),
         const SizedBox(height: 26),
         _DigitalBalanceCard(
+          totalUsage: usageProvider.todaySummary?.totalUsage,
+          changePercent: usageProvider.todayVsYesterdayPercent,
+          hasUsageAccess: usageProvider.hasUsageAccess,
+          isRefreshing: usageProvider.isRefreshing,
           onTap: () {
-            context.push('/wellbeing/permission');
+            if (usageProvider.hasUsageAccess) {
+              context.push('/wellbeing/app-usage');
+            } else {
+              context.push('/wellbeing/permission');
+            }
           },
         ),
         const SizedBox(height: 24),
@@ -355,12 +365,43 @@ class _FocusSummaryCard extends StatelessWidget {
 }
 
 class _DigitalBalanceCard extends StatelessWidget {
+  final Duration? totalUsage;
+  final double? changePercent;
+  final bool hasUsageAccess;
+  final bool isRefreshing;
   final VoidCallback onTap;
 
-  const _DigitalBalanceCard({required this.onTap});
+  const _DigitalBalanceCard({
+    required this.totalUsage,
+    required this.changePercent,
+    required this.hasUsageAccess,
+    required this.isRefreshing,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final usage = totalUsage;
+
+    String subtitle;
+    if (!hasUsageAccess) {
+      subtitle = 'Connect Android Usage Access to measure real app usage.';
+    } else if (isRefreshing && usage == null) {
+      subtitle = 'Refreshing real app usage…';
+    } else if (usage == null) {
+      subtitle = 'Usage Access is connected. Tap to refresh data.';
+    } else {
+      final change = changePercent;
+      final comparison = change == null
+          ? 'no yesterday baseline yet'
+          : change > 0
+              ? '${change.abs().round()}% more than yesterday'
+              : change < 0
+                  ? '${change.abs().round()}% less than yesterday'
+                  : 'same as yesterday';
+      subtitle = '${_formatUsageDuration(usage)} today • $comparison';
+    }
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -391,13 +432,25 @@ class _DigitalBalanceCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Digital balance',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                    Row(
+                      children: [
+                        const Text(
+                          'Digital balance',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        if (isRefreshing) ...[
+                          const SizedBox(width: 8),
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Usage monitoring is not connected yet.',
+                      subtitle,
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context)
@@ -1025,4 +1078,20 @@ Color _priorityColor(TaskPriority priority) {
     case TaskPriority.growth:
       return const Color(0xFF34B27B);
   }
+}
+
+String _formatUsageDuration(Duration duration) {
+  final totalMinutes = duration.inMinutes;
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+
+  if (hours == 0) {
+    return '${minutes}m';
+  }
+
+  if (minutes == 0) {
+    return '${hours}h';
+  }
+
+  return '${hours}h ${minutes}m';
 }
