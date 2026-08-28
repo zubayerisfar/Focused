@@ -12,6 +12,23 @@ enum _PlannerView { today, upcoming, backlog, completed }
 
 enum _TaskMenuAction { edit, reschedule, delete }
 
+
+class _PlannerEntry {
+  final Task task;
+  final DateTime? occurrenceDate;
+  final bool isCompleted;
+  final DateTime? completedAt;
+  final bool canToggleComplete;
+
+  const _PlannerEntry({
+    required this.task,
+    required this.isCompleted,
+    this.occurrenceDate,
+    this.completedAt,
+    this.canToggleComplete = true,
+  });
+}
+
 class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key});
 
@@ -25,22 +42,89 @@ class _PlannerScreenState extends State<PlannerScreen> {
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
-
     final now = DateTime.now();
 
     final todayTasks = taskProvider.plannerToday(now: now);
-
     final upcomingTasks = taskProvider.plannerUpcoming(now: now);
-
     final backlogTasks = taskProvider.plannerBacklog(now: now);
-
     final completedTasks = taskProvider.plannerCompleted();
+    final completedRecurring =
+        taskProvider.completedRecurringOccurrences();
 
-    final visibleTasks = switch (_selectedView) {
-      _PlannerView.today => todayTasks,
-      _PlannerView.upcoming => upcomingTasks,
-      _PlannerView.backlog => backlogTasks,
-      _PlannerView.completed => completedTasks,
+    final todayEntries = todayTasks.map((task) {
+      final occurrenceDate =
+          task.recurrence == TaskRecurrence.none ? null : now;
+
+      return _PlannerEntry(
+        task: task,
+        occurrenceDate: occurrenceDate,
+        isCompleted: taskProvider.isTaskCompletedForDate(
+          task,
+          occurrenceDate ?? now,
+        ),
+        completedAt: taskProvider.completedAtForDate(
+          task,
+          occurrenceDate ?? now,
+        ),
+      );
+    }).toList();
+
+    final upcomingEntries = upcomingTasks.map((task) {
+      final occurrenceDate =
+          task.recurrence == TaskRecurrence.none
+              ? null
+              : taskProvider.nextOccurrenceStartForTask(
+                  task,
+                  now,
+                );
+
+      return _PlannerEntry(
+        task: task,
+        occurrenceDate: occurrenceDate,
+        isCompleted: false,
+        canToggleComplete:
+            task.recurrence == TaskRecurrence.none,
+      );
+    }).toList();
+
+    final backlogEntries = backlogTasks
+        .map(
+          (task) => _PlannerEntry(
+            task: task,
+            isCompleted: false,
+          ),
+        )
+        .toList();
+
+    final completedEntries = <_PlannerEntry>[
+      ...completedTasks.map(
+        (task) => _PlannerEntry(
+          task: task,
+          isCompleted: true,
+          completedAt: task.completedAt,
+        ),
+      ),
+      ...completedRecurring.map(
+        (occurrence) => _PlannerEntry(
+          task: occurrence.task,
+          occurrenceDate: occurrence.start,
+          isCompleted: true,
+          completedAt: occurrence.completedAt,
+        ),
+      ),
+    ]..sort((first, second) {
+        final firstTime =
+            first.completedAt ?? first.task.createdAt;
+        final secondTime =
+            second.completedAt ?? second.task.createdAt;
+        return secondTime.compareTo(firstTime);
+      });
+
+    final visibleEntries = switch (_selectedView) {
+      _PlannerView.today => todayEntries,
+      _PlannerView.upcoming => upcomingEntries,
+      _PlannerView.backlog => backlogEntries,
+      _PlannerView.completed => completedEntries,
     };
 
     return Column(
@@ -49,12 +133,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: _PlannerSummary(
             openCount: taskProvider.incompleteTasks.length,
-            completedCount: completedTasks.length,
+            completedCount: completedEntries.length,
           ),
         ),
-
         const SizedBox(height: 16),
-
         SizedBox(
           height: 44,
           child: SingleChildScrollView(
@@ -64,7 +146,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
               children: [
                 _PlannerChip(
                   label: 'Today',
-                  count: todayTasks.length,
+                  count: todayEntries.length,
                   selected: _selectedView == _PlannerView.today,
                   onTap: () {
                     setState(() {
@@ -72,12 +154,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(width: 8),
-
                 _PlannerChip(
                   label: 'Upcoming',
-                  count: upcomingTasks.length,
+                  count: upcomingEntries.length,
                   selected: _selectedView == _PlannerView.upcoming,
                   onTap: () {
                     setState(() {
@@ -85,12 +165,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(width: 8),
-
                 _PlannerChip(
                   label: 'Backlog',
-                  count: backlogTasks.length,
+                  count: backlogEntries.length,
                   selected: _selectedView == _PlannerView.backlog,
                   onTap: () {
                     setState(() {
@@ -98,12 +176,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(width: 8),
-
                 _PlannerChip(
                   label: 'Completed',
-                  count: completedTasks.length,
+                  count: completedEntries.length,
                   selected: _selectedView == _PlannerView.completed,
                   onTap: () {
                     setState(() {
@@ -115,24 +191,29 @@ class _PlannerScreenState extends State<PlannerScreen> {
             ),
           ),
         ),
-
         const SizedBox(height: 12),
-
         Expanded(
-          child: visibleTasks.isEmpty
+          child: visibleEntries.isEmpty
               ? _PlannerEmptyState(view: _selectedView)
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                  itemCount: visibleTasks.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemCount: visibleEntries.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: 10),
                   itemBuilder: (context, index) {
-                    final task = visibleTasks[index];
+                    final entry = visibleEntries[index];
+                    final task = entry.task;
 
                     return _PlannerTaskCard(
                       task: task,
                       now: now,
-                      onToggleComplete: () => _toggleTask(task),
-                      onStartFocus: task.isCompleted
+                      occurrenceDate: entry.occurrenceDate,
+                      isCompleted: entry.isCompleted,
+                      completedAt: entry.completedAt,
+                      onToggleComplete: entry.canToggleComplete
+                          ? () => _toggleEntry(entry)
+                          : null,
+                      onStartFocus: entry.isCompleted
                           ? null
                           : () {
                               context.push(
@@ -161,11 +242,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  Future<void> _toggleTask(Task task) async {
+  Future<void> _toggleEntry(_PlannerEntry entry) async {
+    final task = entry.task;
+
     try {
-      await context.read<TaskProvider>().setCompleted(
+      await context.read<TaskProvider>().setCompletedForDate(
         task.id,
-        !task.isCompleted,
+        entry.occurrenceDate ?? DateTime.now(),
+        !entry.isCompleted,
       );
     } catch (_) {
       if (!mounted) {
@@ -273,8 +357,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete task?'),
-          content: Text('"${task.title}" will be permanently removed.'),
+          title: Text(
+            task.recurrence == TaskRecurrence.none
+                ? 'Delete task?'
+                : 'Delete recurring series?',
+          ),
+          content: Text(
+            task.recurrence == TaskRecurrence.none
+                ? '"${task.title}" will be permanently removed.'
+                : '"${task.title}" and its occurrence completion history '
+                    'will be permanently removed.',
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -439,16 +532,19 @@ class _PlannerChip extends StatelessWidget {
 class _PlannerTaskCard extends StatelessWidget {
   final Task task;
   final DateTime now;
-
-  final VoidCallback onToggleComplete;
-
+  final DateTime? occurrenceDate;
+  final bool isCompleted;
+  final DateTime? completedAt;
+  final VoidCallback? onToggleComplete;
   final VoidCallback? onStartFocus;
-
   final ValueChanged<_TaskMenuAction> onMenuAction;
 
   const _PlannerTaskCard({
     required this.task,
     required this.now,
+    required this.occurrenceDate,
+    required this.isCompleted,
+    required this.completedAt,
     required this.onToggleComplete,
     required this.onStartFocus,
     required this.onMenuAction,
@@ -474,21 +570,24 @@ class _PlannerTaskCard extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(30),
               onTap: onToggleComplete,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: task.isCompleted ? color : Colors.transparent,
-                  border: Border.all(color: color, width: 2),
+              child: Opacity(
+                opacity: onToggleComplete == null ? 0.35 : 1,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isCompleted ? color : Colors.transparent,
+                    border: Border.all(color: color, width: 2),
+                  ),
+                  child: isCompleted
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        )
+                      : null,
                 ),
-                child: task.isCompleted
-                    ? const Icon(
-                        Icons.check_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      )
-                    : null,
               ),
             ),
           ),
@@ -520,7 +619,7 @@ class _PlannerTaskCard extends StatelessWidget {
                       ),
                     ),
 
-                    if (overdue && !task.isCompleted) ...[
+                    if (overdue && !isCompleted) ...[
                       const SizedBox(width: 7),
 
                       Container(
@@ -552,7 +651,7 @@ class _PlannerTaskCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    decoration: task.isCompleted
+                    decoration: isCompleted
                         ? TextDecoration.lineThrough
                         : null,
                   ),
@@ -576,9 +675,18 @@ class _PlannerTaskCard extends StatelessWidget {
 
                 const SizedBox(height: 10),
 
-                Wrap(spacing: 10, runSpacing: 7, children: _taskMeta(task)),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 7,
+                  children: _taskMeta(
+                    task,
+                    occurrenceDate: occurrenceDate,
+                    isCompleted: isCompleted,
+                    completedAt: completedAt,
+                  ),
+                ),
 
-                if (!task.isCompleted) ...[
+                if (!isCompleted) ...[
                   const SizedBox(height: 13),
 
                   OutlinedButton.icon(
@@ -604,7 +712,7 @@ class _PlannerTaskCard extends StatelessWidget {
                   ),
                 ),
 
-                if (!task.isCompleted)
+                if (!isCompleted)
                   const PopupMenuItem(
                     value: _TaskMenuAction.reschedule,
                     child: ListTile(
@@ -704,7 +812,12 @@ class _PlannerEmptyState extends StatelessWidget {
   }
 }
 
-List<Widget> _taskMeta(Task task) {
+List<Widget> _taskMeta(
+  Task task, {
+  DateTime? occurrenceDate,
+  required bool isCompleted,
+  DateTime? completedAt,
+}) {
   final items = <Widget>[];
 
   final scheduledMinutes = task.scheduledDurationMinutes;
@@ -717,11 +830,16 @@ List<Widget> _taskMeta(Task task) {
     );
   }
 
-  if (task.scheduledStart != null) {
+  final displayStart = _scheduledStartForDate(
+    task,
+    occurrenceDate,
+  );
+
+  if (displayStart != null) {
     items.add(
       _MetaItem(
         icon: Icons.schedule_rounded,
-        text: DateFormat('EEE, d MMM • h:mm a').format(task.scheduledStart!),
+        text: DateFormat('EEE, d MMM • h:mm a').format(displayStart),
       ),
     );
   } else if (task.plannedDate != null) {
@@ -742,16 +860,46 @@ List<Widget> _taskMeta(Task task) {
     );
   }
 
-  if (task.isCompleted && task.completedAt != null) {
+  if (isCompleted && completedAt != null) {
     items.add(
       _MetaItem(
         icon: Icons.check_circle_outline,
-        text: 'Done ${DateFormat('d MMM').format(task.completedAt!)}',
+        text: 'Done ${DateFormat('d MMM').format(completedAt)}',
       ),
     );
   }
 
   return items;
+}
+
+DateTime? _scheduledStartForDate(
+  Task task,
+  DateTime? occurrenceDate,
+) {
+  final scheduledStart = task.scheduledStart;
+  if (scheduledStart == null) {
+    return null;
+  }
+
+  if (task.recurrence == TaskRecurrence.none ||
+      occurrenceDate == null) {
+    return scheduledStart;
+  }
+
+  final localDate = occurrenceDate.isUtc
+      ? occurrenceDate.toLocal()
+      : occurrenceDate;
+
+  return DateTime(
+    localDate.year,
+    localDate.month,
+    localDate.day,
+    scheduledStart.hour,
+    scheduledStart.minute,
+    scheduledStart.second,
+    scheduledStart.millisecond,
+    scheduledStart.microsecond,
+  );
 }
 
 class _MetaItem extends StatelessWidget {

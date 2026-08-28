@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 
 import '../models/task.dart';
 import '../models/task_occurrence.dart';
+import '../models/task_occurrence_completion.dart';
 import '../models/task_recurrence.dart';
 import '../models/task_reminder_result.dart';
 import '../models/task_schedule_conflict.dart';
 import '../services/task_conflict_service.dart';
 import '../services/task_notification_service.dart';
+import '../services/task_occurrence_completion_storage_service.dart';
 import '../services/task_schedule_service.dart';
 import '../services/task_storage_service.dart';
 
@@ -17,7 +19,9 @@ class TaskProvider extends ChangeNotifier {
   final TaskConflictService _conflictService = const TaskConflictService();
   final TaskNotificationService? _notificationService;
   final TaskStorageService? _storageService;
+  final TaskOccurrenceCompletionStorageService? _occurrenceCompletionStorage;
   final List<Task> _tasks = [];
+  final List<TaskOccurrenceCompletion> _occurrenceCompletions = [];
 
   TaskReminderScheduleResult? _lastReminderResult;
   final Random _random = Random.secure();
@@ -25,10 +29,15 @@ class TaskProvider extends ChangeNotifier {
   TaskProvider({
     TaskStorageService? storageService,
     TaskNotificationService? notificationService,
+    TaskOccurrenceCompletionStorageService? occurrenceCompletionStorage,
   })  : _storageService = storageService,
-        _notificationService = notificationService;
+        _notificationService = notificationService,
+        _occurrenceCompletionStorage = occurrenceCompletionStorage;
 
   List<Task> get tasks => List.unmodifiable(_tasks);
+
+  List<TaskOccurrenceCompletion> get occurrenceCompletions =>
+      List.unmodifiable(_occurrenceCompletions);
 
   List<Task> get incompleteTasks =>
       List.unmodifiable(_tasks.where((task) => !task.isCompleted));
@@ -85,15 +94,41 @@ class TaskProvider extends ChangeNotifier {
   Future<void> loadStoredTasks() async {
     final storage = _storageService;
 
-    if (storage == null) {
-      return;
+    if (storage != null) {
+      final storedTasks = storage.loadTasks();
+
+      _tasks
+        ..clear()
+        ..addAll(storedTasks);
     }
 
-    final storedTasks = storage.loadTasks();
+    final completionStorage = _occurrenceCompletionStorage;
 
-    _tasks
-      ..clear()
-      ..addAll(storedTasks);
+    if (completionStorage != null) {
+      final tasksById = {
+        for (final task in _tasks) task.id: task,
+      };
+      final validCompletions = <TaskOccurrenceCompletion>[];
+
+      for (final completion in completionStorage.loadCompletions()) {
+        final task = tasksById[completion.taskId];
+
+        if (task != null &&
+            task.recurrence != TaskRecurrence.none) {
+          validCompletions.add(completion);
+          continue;
+        }
+
+        await completionStorage.deleteCompletion(
+          taskId: completion.taskId,
+          occurrenceDate: completion.occurrenceDate,
+        );
+      }
+
+      _occurrenceCompletions
+        ..clear()
+        ..addAll(validCompletions);
+    }
 
     notifyListeners();
   }
@@ -127,14 +162,49 @@ class TaskProvider extends ChangeNotifier {
     }
 
     final previousTask = _tasks[index];
+    final previousCompletions = _occurrenceCompletions
+        .where((completion) => completion.taskId == updatedTask.id)
+        .toList();
+
     _tasks[index] = updatedTask;
     notifyListeners();
 
     try {
       await _storageService?.saveTask(updatedTask);
+
+      if (previousTask.recurrence != TaskRecurrence.none &&
+          updatedTask.recurrence == TaskRecurrence.none) {
+        await _occurrenceCompletionStorage?.deleteForTask(
+          updatedTask.id,
+        );
+        _occurrenceCompletions.removeWhere(
+          (completion) => completion.taskId == updatedTask.id,
+        );
+        notifyListeners();
+      }
     } catch (_) {
       _tasks[index] = previousTask;
+
+      _occurrenceCompletions.removeWhere(
+        (completion) => completion.taskId == updatedTask.id,
+      );
+      _occurrenceCompletions.addAll(previousCompletions);
       notifyListeners();
+
+      try {
+        await _storageService?.saveTask(previousTask);
+        for (final completion in previousCompletions) {
+          await _occurrenceCompletionStorage?.saveCompletion(
+            completion,
+          );
+        }
+      } catch (rollbackError, rollbackStackTrace) {
+        debugPrint(
+          'Could not fully roll back task update: $rollbackError',
+        );
+        debugPrintStack(stackTrace: rollbackStackTrace);
+      }
+
       rethrow;
     }
 
@@ -149,13 +219,33 @@ class TaskProvider extends ChangeNotifier {
     }
 
     final removedTask = _tasks.removeAt(index);
+    final removedCompletions = _occurrenceCompletions
+        .where((completion) => completion.taskId == id)
+        .toList();
+
+    _occurrenceCompletions.removeWhere(
+      (completion) => completion.taskId == id,
+    );
     notifyListeners();
 
     try {
       await _storageService?.deleteTask(id);
+      await _occurrenceCompletionStorage?.deleteForTask(id);
     } catch (_) {
       _tasks.insert(index, removedTask);
+      _occurrenceCompletions.addAll(removedCompletions);
       notifyListeners();
+
+      try {
+        await _storageService?.saveTask(removedTask);
+        for (final completion in removedCompletions) {
+          await _occurrenceCompletionStorage?.saveCompletion(completion);
+        }
+      } catch (rollbackError, rollbackStackTrace) {
+        debugPrint('Could not fully roll back task deletion: $rollbackError');
+        debugPrintStack(stackTrace: rollbackStackTrace);
+      }
+
       rethrow;
     }
 
@@ -174,6 +264,13 @@ class TaskProvider extends ChangeNotifier {
     }
 
     final previousTask = _tasks[index];
+
+    if (previousTask.recurrence != TaskRecurrence.none) {
+      throw StateError(
+        'Recurring tasks must be completed per occurrence. '
+        'Use setCompletedForDate instead.',
+      );
+    }
 
     if (previousTask.isCompleted == completed) {
       return;
@@ -201,6 +298,310 @@ class TaskProvider extends ChangeNotifier {
     }
   }
 
+
+  Future<void> setCompletedForDate(
+    String taskId,
+    DateTime occurrenceDate,
+    bool completed, {
+    DateTime? completedAt,
+  }) async {
+    final task = getTaskById(taskId);
+
+    if (task == null) {
+      throw StateError('Cannot complete a task that does not exist.');
+    }
+
+    if (task.recurrence == TaskRecurrence.none) {
+      await setCompleted(
+        taskId,
+        completed,
+        time: completedAt,
+      );
+      return;
+    }
+
+    final day = _dateOnlyLocal(occurrenceDate);
+
+    if (!_scheduleService.occursOnDate(task, day)) {
+      throw StateError(
+        'The recurring task does not have an occurrence on this date.',
+      );
+    }
+
+    if (completed) {
+      await _completeOccurrence(
+        task,
+        day,
+        completedAt ?? DateTime.now(),
+      );
+    } else {
+      await _uncompleteOccurrence(
+        task,
+        day,
+      );
+    }
+  }
+
+  bool isOccurrenceCompleted(
+    String taskId,
+    DateTime occurrenceDate,
+  ) {
+    return occurrenceCompletionFor(
+          taskId,
+          occurrenceDate,
+        ) !=
+        null;
+  }
+
+  TaskOccurrenceCompletion? occurrenceCompletionFor(
+    String taskId,
+    DateTime occurrenceDate,
+  ) {
+    final day = _dateOnlyLocal(occurrenceDate);
+
+    for (final completion in _occurrenceCompletions) {
+      if (completion.taskId == taskId &&
+          _sameDate(completion.occurrenceDate, day)) {
+        return completion;
+      }
+    }
+
+    return null;
+  }
+
+  bool isTaskCompletedForDate(
+    Task task,
+    DateTime date,
+  ) {
+    if (task.recurrence == TaskRecurrence.none) {
+      return task.isCompleted;
+    }
+
+    if (!_scheduleService.occursOnDate(task, date)) {
+      return false;
+    }
+
+    return isOccurrenceCompleted(task.id, date);
+  }
+
+  DateTime? completedAtForDate(
+    Task task,
+    DateTime date,
+  ) {
+    if (task.recurrence == TaskRecurrence.none) {
+      return task.completedAt;
+    }
+
+    return occurrenceCompletionFor(
+      task.id,
+      date,
+    )?.completedAt;
+  }
+
+  DateTime? nextOccurrenceStartForTask(
+    Task task,
+    DateTime after,
+  ) {
+    return _scheduleService.nextOccurrenceStart(
+      task,
+      after,
+    );
+  }
+
+  List<TaskOccurrence> completedRecurringOccurrences() {
+    final result = <TaskOccurrence>[];
+
+    for (final completion in _occurrenceCompletions) {
+      final task = getTaskById(completion.taskId);
+
+      if (task == null ||
+          task.recurrence == TaskRecurrence.none) {
+        continue;
+      }
+
+      final occurrence = _occurrenceFromCompletion(
+        task,
+        completion,
+      );
+
+      if (occurrence != null) {
+        result.add(occurrence);
+      }
+    }
+
+    result.sort((first, second) {
+      final firstCompleted = first.completedAt ?? first.start;
+      final secondCompleted = second.completedAt ?? second.start;
+      return secondCompleted.compareTo(firstCompleted);
+    });
+
+    return List.unmodifiable(result);
+  }
+
+  TaskOccurrence? _occurrenceFromCompletion(
+    Task task,
+    TaskOccurrenceCompletion completion,
+  ) {
+    final scheduledStart = task.scheduledStart;
+    final scheduledEnd = task.scheduledEnd;
+
+    if (scheduledStart == null || scheduledEnd == null) {
+      return null;
+    }
+
+    final day = _dateOnlyLocal(
+      completion.occurrenceDate,
+    );
+    final start = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      scheduledStart.hour,
+      scheduledStart.minute,
+      scheduledStart.second,
+      scheduledStart.millisecond,
+      scheduledStart.microsecond,
+    );
+
+    return TaskOccurrence(
+      task: task,
+      start: start,
+      end: start.add(
+        scheduledEnd.difference(scheduledStart),
+      ),
+      isCompleted: true,
+      completedAt: completion.completedAt,
+    );
+  }
+
+  Future<void> _completeOccurrence(
+    Task task,
+    DateTime occurrenceDate,
+    DateTime completedAt,
+  ) async {
+    final existing = occurrenceCompletionFor(
+      task.id,
+      occurrenceDate,
+    );
+
+    if (existing != null) {
+      return;
+    }
+
+    final completion = TaskOccurrenceCompletion(
+      taskId: task.id,
+      occurrenceDate: occurrenceDate,
+      completedAt: completedAt,
+    );
+
+    _occurrenceCompletions.add(completion);
+    notifyListeners();
+
+    try {
+      await _occurrenceCompletionStorage?.saveCompletion(
+        completion,
+      );
+    } catch (_) {
+      _occurrenceCompletions.removeWhere(
+        (item) => item.storageKey == completion.storageKey,
+      );
+      notifyListeners();
+      rethrow;
+    }
+
+    await _rescheduleReminderAfterOccurrenceCompletion(
+      task,
+      occurrenceDate,
+    );
+  }
+
+  Future<void> _uncompleteOccurrence(
+    Task task,
+    DateTime occurrenceDate,
+  ) async {
+    final existing = occurrenceCompletionFor(
+      task.id,
+      occurrenceDate,
+    );
+
+    if (existing == null) {
+      return;
+    }
+
+    _occurrenceCompletions.removeWhere(
+      (item) => item.storageKey == existing.storageKey,
+    );
+    notifyListeners();
+
+    try {
+      await _occurrenceCompletionStorage?.deleteCompletion(
+        taskId: task.id,
+        occurrenceDate: occurrenceDate,
+      );
+    } catch (_) {
+      _occurrenceCompletions.add(existing);
+      notifyListeners();
+      rethrow;
+    }
+
+    if (_sameDate(
+      _dateOnlyLocal(occurrenceDate),
+      _dateOnlyLocal(DateTime.now()),
+    )) {
+      await _scheduleReminderSafely(task);
+    }
+  }
+
+  Future<void> _rescheduleReminderAfterOccurrenceCompletion(
+    Task task,
+    DateTime occurrenceDate,
+  ) async {
+    if (_notificationService == null ||
+        task.reminderMinutesBefore == null ||
+        !_sameDate(
+          _dateOnlyLocal(occurrenceDate),
+          _dateOnlyLocal(DateTime.now()),
+        )) {
+      return;
+    }
+
+    final occurrence = _scheduleService.occurrenceForDate(
+      task,
+      occurrenceDate,
+    );
+
+    if (occurrence == null) {
+      return;
+    }
+
+    final nextStart = _scheduleService.nextOccurrenceStart(
+      task,
+      occurrence.end,
+    );
+
+    if (nextStart == null) {
+      await _cancelReminderSafely(task.id);
+      return;
+    }
+
+    final notificationTask = Task(
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      plannedDate: task.plannedDate,
+      deadline: task.deadline,
+      scheduledStart: nextStart,
+      scheduledEnd: nextStart.add(occurrence.duration),
+      recurrence: task.recurrence,
+      customWeekdays: Set<int>.from(task.customWeekdays),
+      reminderMinutesBefore: task.reminderMinutesBefore,
+      createdAt: task.createdAt,
+    );
+
+    await _scheduleReminderSafely(notificationTask);
+  }
+
   List<TaskScheduleConflict> findScheduleConflicts({
     required DateTime scheduledStart,
     required DateTime scheduledEnd,
@@ -218,17 +619,61 @@ class TaskProvider extends ChangeNotifier {
     );
   }
 
-  List<TaskOccurrence> scheduledOccurrencesForDate(DateTime date) {
+  List<TaskOccurrence> scheduledOccurrencesForDate(
+    DateTime date, {
+    bool includeCompleted = true,
+  }) {
     final result = <TaskOccurrence>[];
 
     for (final task in _tasks) {
-      if (task.isCompleted) {
+      final occurrence = _scheduleService.occurrenceForDate(
+        task,
+        date,
+      );
+
+      if (occurrence != null) {
+        final isCompleted = isTaskCompletedForDate(
+          task,
+          occurrence.start,
+        );
+
+        if (!includeCompleted && isCompleted) {
+          continue;
+        }
+
+        result.add(
+          occurrence.withCompletion(
+            isCompleted: isCompleted,
+            completedAt: completedAtForDate(
+              task,
+              occurrence.start,
+            ),
+          ),
+        );
         continue;
       }
 
-      final occurrence = _scheduleService.occurrenceForDate(task, date);
-      if (occurrence != null) {
-        result.add(occurrence);
+      if (!includeCompleted ||
+          task.recurrence == TaskRecurrence.none) {
+        continue;
+      }
+
+      final historicalCompletion = occurrenceCompletionFor(
+        task.id,
+        date,
+      );
+
+      if (historicalCompletion == null) {
+        continue;
+      }
+
+      final historicalOccurrence = _occurrenceFromCompletion(
+        task,
+        historicalCompletion,
+      );
+
+      if (historicalOccurrence != null) {
+        result.add(historicalOccurrence);
       }
     }
 
@@ -241,7 +686,8 @@ class TaskProvider extends ChangeNotifier {
     bool includeCompleted = true,
   }) {
     final result = _tasks.where((task) {
-      if (!includeCompleted && task.isCompleted) {
+      if (!includeCompleted &&
+          isTaskCompletedForDate(task, date)) {
         return false;
       }
 
@@ -293,7 +739,8 @@ class TaskProvider extends ChangeNotifier {
     final activeScheduled = incomplete.where((task) {
       final occurrence = _scheduleService.occurrenceForDate(task, currentTime);
 
-      if (occurrence == null) {
+      if (occurrence == null ||
+          isTaskCompletedForDate(task, occurrence.start)) {
         return false;
       }
 
@@ -339,7 +786,10 @@ class TaskProvider extends ChangeNotifier {
 
     final upcomingToday = incomplete.where((task) {
       final occurrence = _scheduleService.occurrenceForDate(task, currentTime);
-      return occurrence != null && occurrence.start.isAfter(currentTime);
+
+      return occurrence != null &&
+          !isTaskCompletedForDate(task, occurrence.start) &&
+          occurrence.start.isAfter(currentTime);
     }).toList();
 
     upcomingToday.sort((a, b) {
@@ -365,8 +815,24 @@ class TaskProvider extends ChangeNotifier {
       return plannedToday.first;
     }
 
-    incomplete.sort(_compareTasks);
-    return incomplete.first;
+    final fallback = incomplete.where((task) {
+      if (task.recurrence == TaskRecurrence.none) {
+        return true;
+      }
+
+      if (!_scheduleService.occursOnDate(task, currentTime)) {
+        return true;
+      }
+
+      return !isOccurrenceCompleted(task.id, currentTime);
+    }).toList();
+
+    if (fallback.isEmpty) {
+      return null;
+    }
+
+    fallback.sort(_compareTasks);
+    return fallback.first;
   }
 
   List<Task> plannerToday({DateTime? now}) {
@@ -475,7 +941,8 @@ class TaskProvider extends ChangeNotifier {
   bool _isActiveScheduledTask(Task task, DateTime now) {
     final occurrence = _scheduleService.occurrenceForDate(task, now);
 
-    if (occurrence == null) {
+    if (occurrence == null ||
+        isTaskCompletedForDate(task, occurrence.start)) {
       return false;
     }
 
@@ -563,6 +1030,12 @@ class TaskProvider extends ChangeNotifier {
   }
 
   int _todayTaskRank(Task task, DateTime now) {
+    if (task.recurrence != TaskRecurrence.none &&
+        _scheduleService.occursOnDate(task, now) &&
+        isOccurrenceCompleted(task.id, now)) {
+      return 4;
+    }
+
     if (_isActiveScheduledTask(task, now)) {
       return 0;
     }
@@ -674,6 +1147,11 @@ class TaskProvider extends ChangeNotifier {
 
   DateTime _dateOnly(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _dateOnlyLocal(DateTime date) {
+    final local = date.isUtc ? date.toLocal() : date;
+    return DateTime(local.year, local.month, local.day);
   }
 
   String _generateId(DateTime creationTime) {

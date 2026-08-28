@@ -139,8 +139,7 @@ class _CalendarScreenState
   }
 }
 
-class _OccurrenceCard
-    extends StatelessWidget {
+class _OccurrenceCard extends StatelessWidget {
   final TaskOccurrence occurrence;
 
   const _OccurrenceCard({
@@ -150,121 +149,167 @@ class _OccurrenceCard
   @override
   Widget build(BuildContext context) {
     final task = occurrence.task;
-    final color =
-        _priorityColor(task.priority);
+    final color = _priorityColor(task.priority);
+    final today = DateTime.now();
+    final occurrenceDay = DateTime(
+      occurrence.start.year,
+      occurrence.start.month,
+      occurrence.start.day,
+    );
+    final todayDay = DateTime(
+      today.year,
+      today.month,
+      today.day,
+    );
+    final canToggleComplete =
+        task.recurrence == TaskRecurrence.none ||
+        !occurrenceDay.isAfter(todayDay);
 
     return Container(
-      margin:
-          const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surface,
-        borderRadius:
-            BorderRadius.circular(20),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 4,
             height: 56,
             decoration: BoxDecoration(
               color: color,
-              borderRadius:
-                  BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
-
           const SizedBox(width: 14),
+          InkWell(
+            borderRadius: BorderRadius.circular(30),
+            onTap: canToggleComplete
+                ? () async {
+                    try {
+                      await context.read<TaskProvider>().setCompletedForDate(
+                            task.id,
+                            occurrence.start,
+                            !occurrence.isCompleted,
+                          );
+                    } catch (_) {
+                      if (!context.mounted) {
+                        return;
+                      }
 
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not update the task.'),
+                        ),
+                      );
+                    }
+                  }
+                : null,
+            child: Opacity(
+              opacity: canToggleComplete ? 1 : 0.35,
+              child: Container(
+                width: 26,
+                height: 26,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: occurrence.isCompleted
+                      ? color
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: color,
+                    width: 2,
+                  ),
+                ),
+                child: occurrence.isCompleted
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 17,
+                        color: Colors.white,
+                      )
+                    : null,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
           SizedBox(
             width: 76,
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  DateFormat('h:mm a')
-                      .format(
-                    occurrence.start,
-                  ),
-                  style: const TextStyle(
-                    fontWeight:
-                        FontWeight.w800,
+                  DateFormat('h:mm a').format(occurrence.start),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    decoration: occurrence.isCompleted
+                        ? TextDecoration.lineThrough
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  DateFormat('h:mm a')
-                      .format(
-                    occurrence.end,
-                  ),
+                  DateFormat('h:mm a').format(occurrence.end),
                   style: TextStyle(
                     fontSize: 11,
-                    color:
-                        Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(
-                              0.50,
-                            ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.50),
                   ),
                 ),
               ],
             ),
           ),
-
           const SizedBox(width: 10),
-
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   task.title,
-                  style: const TextStyle(
-                    fontWeight:
-                        FontWeight.w800,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    decoration: occurrence.isCompleted
+                        ? TextDecoration.lineThrough
+                        : null,
                   ),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   task.recurrence.label,
                   style: TextStyle(
                     fontSize: 11,
-                    color:
-                        Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(
-                              0.50,
-                            ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.50),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 Wrap(
                   spacing: 8,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () {
-                        context.push(
-                          '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.play_arrow_rounded,
+                      onPressed: occurrence.isCompleted
+                          ? null
+                          : () {
+                              context.push(
+                                '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+                              );
+                            },
+                      icon: Icon(
+                        occurrence.isCompleted
+                            ? Icons.check_circle_rounded
+                            : Icons.play_arrow_rounded,
                         size: 18,
                       ),
-                      label:
-                          const Text('Focus'),
+                      label: Text(
+                        occurrence.isCompleted
+                            ? 'Completed'
+                            : 'Focus',
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
@@ -272,8 +317,7 @@ class _OccurrenceCard
                           '/task/edit/${Uri.encodeComponent(task.id)}',
                         );
                       },
-                      child:
-                          const Text('Edit'),
+                      child: const Text('Edit'),
                     ),
                   ],
                 ),

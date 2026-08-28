@@ -8,6 +8,7 @@ import 'providers/task_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/usage_provider.dart';
 import 'services/task_notification_service.dart';
+import 'services/task_occurrence_completion_storage_service.dart';
 import 'services/task_storage_service.dart';
 
 Future<void> main() async {
@@ -20,8 +21,11 @@ Future<void> main() async {
   await Hive.initFlutter();
 
   final taskStorageService = TaskStorageService();
+  final occurrenceCompletionStorage =
+      TaskOccurrenceCompletionStorageService();
 
   await taskStorageService.init();
+  await occurrenceCompletionStorage.init();
 
   // ---------------------------------------------------------
   // NOTIFICATIONS
@@ -46,6 +50,7 @@ Future<void> main() async {
   final taskProvider = TaskProvider(
     storageService: taskStorageService,
     notificationService: taskNotificationService,
+    occurrenceCompletionStorage: occurrenceCompletionStorage,
   );
 
   await taskProvider.loadStoredTasks();

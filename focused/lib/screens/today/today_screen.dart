@@ -588,36 +588,91 @@ class _ScheduleOccurrence extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final task = occurrence.task;
+    final color = _priorityColor(task.priority);
 
-    return InkWell(
-      onTap: () {
-        context.push('/task/edit/${Uri.encodeComponent(task.id)}');
-      },
-      child: Row(
-        children: [
-          SizedBox(
-            width: 72,
-            child: Text(
-              DateFormat('h:mm a').format(occurrence.start),
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          Container(
-            width: 10,
-            height: 10,
+    return Row(
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(30),
+          onTap: () async {
+            try {
+              await context.read<TaskProvider>().setCompletedForDate(
+                    task.id,
+                    occurrence.start,
+                    !occurrence.isCompleted,
+                  );
+            } catch (_) {
+              if (!context.mounted) {
+                return;
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Could not update the task.'),
+                ),
+              );
+            }
+          },
+          child: Container(
+            width: 26,
+            height: 26,
             decoration: BoxDecoration(
-              color: _priorityColor(task.priority),
               shape: BoxShape.circle,
+              color: occurrence.isCompleted ? color : Colors.transparent,
+              border: Border.all(
+                color: color,
+                width: 2,
+              ),
+            ),
+            child: occurrence.isCompleted
+                ? const Icon(
+                    Icons.check_rounded,
+                    size: 17,
+                    color: Colors.white,
+                  )
+                : null,
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 72,
+          child: Text(
+            DateFormat('h:mm a').format(occurrence.start),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              decoration: occurrence.isCompleted
+                  ? TextDecoration.lineThrough
+                  : null,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
+        ),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InkWell(
+            onTap: () {
+              context.push(
+                '/task/edit/${Uri.encodeComponent(task.id)}',
+              );
+            },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   task.title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    decoration: occurrence.isCompleted
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
                 ),
                 if (task.recurrence != TaskRecurrence.none)
                   Text(
@@ -633,17 +688,25 @@ class _ScheduleOccurrence extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Start focus',
-            onPressed: () {
-              context.push(
-                '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
-              );
-            },
-            icon: const Icon(Icons.play_arrow_rounded),
+        ),
+        IconButton(
+          tooltip: occurrence.isCompleted
+              ? 'Task completed'
+              : 'Start focus',
+          onPressed: occurrence.isCompleted
+              ? null
+              : () {
+                  context.push(
+                    '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+                  );
+                },
+          icon: Icon(
+            occurrence.isCompleted
+                ? Icons.check_circle_rounded
+                : Icons.play_arrow_rounded,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

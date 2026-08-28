@@ -54,7 +54,11 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     if (_selectedTaskId != null) {
       final candidate = taskProvider.getTaskById(_selectedTaskId!);
 
-      if (candidate != null && !candidate.isCompleted) {
+      if (candidate != null &&
+          !taskProvider.isTaskCompletedForDate(
+            candidate,
+            DateTime.now(),
+          )) {
         task = candidate;
       }
     }
@@ -78,7 +82,11 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     if (_selectedTaskId != null) {
       final candidate = taskProvider.getTaskById(_selectedTaskId!);
 
-      if (candidate != null && !candidate.isCompleted) {
+      if (candidate != null &&
+          !taskProvider.isTaskCompletedForDate(
+            candidate,
+            DateTime.now(),
+          )) {
         selectedTask = candidate;
       }
     }
@@ -351,7 +359,16 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   // =========================================================
 
   void _showTaskPicker() {
-    final tasks = context.read<TaskProvider>().incompleteTasks;
+    final taskProvider = context.read<TaskProvider>();
+    final today = DateTime.now();
+    final tasks = taskProvider.incompleteTasks
+        .where(
+          (task) => !taskProvider.isTaskCompletedForDate(
+            task,
+            today,
+          ),
+        )
+        .toList();
 
     if (tasks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
