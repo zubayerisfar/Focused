@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import '../calendar/calendar_screen.dart';
 import '../focus/focus_screen.dart';
-import '../habits/habits_screen.dart';
 import '../planner/planner_screen.dart';
 import '../today/today_screen.dart';
-import '../wellbeing/wellbeing_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -18,105 +14,154 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
+  // Each destination owns its scrolling independently. Keeping the three
+  // pages in an IndexedStack preserves Planner/Focus state when switching tabs,
+  // while PrimaryScrollController.none prevents offstage scroll views from
+  // sharing the Scaffold's primary controller during layout/tests.
   final List<Widget> _screens = const [
-    TodayScreen(),
-    PlannerScreen(),
-    CalendarScreen(),
-    FocusScreen(),
-    HabitsScreen(),
-    WellbeingScreen(),
-  ];
-
-  final List<String> _titles = const [
-    'Today',
-    'Planner',
-    'Calendar',
-    'Focus',
-    'Habits',
-    'Insights',
+    PrimaryScrollController.none(child: TodayScreen()),
+    PrimaryScrollController.none(child: PlannerScreen()),
+    PrimaryScrollController.none(child: FocusScreen()),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _titles[_currentIndex],
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          if (_currentIndex == 0 || _currentIndex == 1)
-            IconButton(
-              tooltip: 'New task',
-              onPressed: () {
-                context.push('/task/new');
-              },
-              icon: const Icon(Icons.add_rounded),
-            ),
-
-          IconButton(
-            tooltip: 'Settings',
-            onPressed: () {
-              context.push('/settings');
-            },
-            icon: const Icon(Icons.settings_outlined),
-          ),
-
-          const SizedBox(width: 4),
-        ],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
       ),
-
-      body: IndexedStack(index: _currentIndex, children: _screens),
-
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-
-        onDestinationSelected: (index) {
+      bottomNavigationBar: _FocusedBottomNavigation(
+        currentIndex: _currentIndex,
+        onSelected: (index) {
           setState(() {
             _currentIndex = index;
           });
         },
-
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Today',
-          ),
-
-          NavigationDestination(
-            icon: Icon(Icons.checklist_outlined),
-            selectedIcon: Icon(Icons.checklist_rounded),
-            label: 'Planner',
-          ),
-
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month_rounded),
-            label: 'Calendar',
-          ),
-
-          NavigationDestination(
-            icon: Icon(Icons.timer_outlined),
-            selectedIcon: Icon(Icons.timer_rounded),
-            label: 'Focus',
-          ),
-
-          NavigationDestination(
-            icon: Icon(Icons.check_circle_outline),
-            selectedIcon: Icon(Icons.check_circle),
-            label: 'Habits',
-          ),
-
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights_rounded),
-            label: 'Insights',
-          ),
-        ],
       ),
     );
   }
+}
+
+class _FocusedBottomNavigation extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  const _FocusedBottomNavigation({
+    required this.currentIndex,
+    required this.onSelected,
+  });
+
+  static const _items = <_NavItem>[
+    _NavItem(
+      label: 'Today',
+      icon: Icons.home_outlined,
+      selectedIcon: Icons.home_rounded,
+    ),
+    _NavItem(
+      label: 'Planner',
+      icon: Icons.view_timeline_outlined,
+      selectedIcon: Icons.view_timeline_rounded,
+    ),
+    _NavItem(
+      label: 'Focus',
+      icon: Icons.center_focus_strong_outlined,
+      selectedIcon: Icons.center_focus_strong_rounded,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).dividerColor,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 74,
+          child: Row(
+            children: List.generate(_items.length, (index) {
+              final item = _items[index];
+              final selected = index == currentIndex;
+
+              return Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: selected,
+                  label: item.label,
+                  child: InkWell(
+                    key: ValueKey(
+                      'nav-${item.label.toLowerCase()}',
+                    ),
+                    onTap: () => onSelected(index),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 50,
+                          height: 38,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? scheme.primaryContainer
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(14),
+                            border: selected
+                                ? Border.all(
+                                    color: scheme.primary.withOpacity(0.28),
+                                  )
+                                : null,
+                          ),
+                          child: Icon(
+                            selected ? item.selectedIcon : item.icon,
+                            color: selected
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                            size: 25,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight:
+                                selected ? FontWeight.w800 : FontWeight.w600,
+                            color: selected
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+  });
 }

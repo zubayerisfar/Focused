@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import '../../models/task.dart';
 import '../../models/task_occurrence.dart';
-import '../../models/task_recurrence.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/usage_provider.dart';
@@ -22,497 +21,240 @@ class TodayScreen extends StatelessWidget {
     final taskProvider = context.watch<TaskProvider>();
     final focusProvider = context.watch<FocusProvider>();
     final usageProvider = context.watch<UsageProvider>();
+
     final now = DateTime.now();
+    final schedule = taskProvider.scheduledOccurrencesForDate(now);
+    final allTodayTasks = taskProvider.tasksForDate(
+      now,
+      includeCompleted: true,
+    );
+    final unscheduled = allTodayTasks
+        .where((task) => task.scheduledStart == null)
+        .toList();
 
+    final completed = taskProvider.completedTaskCountForDate(now);
+    final total = taskProvider.taskCountForDate(now);
     final focusedToday = focusProvider.focusedDurationForDate(now);
-    final sessionsToday = focusProvider.sessionCountForDate(now);
-    final longestSession = focusProvider.longestFocusSessionForDate(now);
-
-    final productivityDays = <DateTime>{
+    final usageToday = usageProvider.todaySummary?.totalUsage;
+    final activityDates = <DateTime>{
       ...taskProvider.completionActivityDates(),
       ...focusProvider.focusActivityDates(),
     };
     final streak = _streakService.calculateCurrentStreak(
       now: now,
-      activityDates: productivityDays,
+      activityDates: activityDates,
     );
 
-    final totalTasksToday = taskProvider.taskCountForDate(now);
-    final completedTasksToday = taskProvider.completedTaskCountForDate(now);
-    final remainingTasksToday = taskProvider.remainingTaskCountForDate(now);
-
-    final nextTask = taskProvider.nextTask(now: now);
-    final todaySchedule = taskProvider.scheduledOccurrencesForDate(now);
-
-    final taskGroups = taskProvider.tasksByPriorityForDate(
-      now,
-      includeCompleted: false,
-    );
-
-    List<Task> unscheduled(List<Task> tasks) {
-      return tasks.where((task) => task.scheduledStart == null).toList();
-    }
-
-    final criticalTasks = unscheduled(
-      taskGroups[TaskPriority.critical] ?? const <Task>[],
-    );
-    final importantTasks = unscheduled(
-      taskGroups[TaskPriority.important] ?? const <Task>[],
-    );
-    final growthTasks = unscheduled(
-      taskGroups[TaskPriority.growth] ?? const <Task>[],
-    );
-
-    final currentDate = DateFormat('EEEE, MMMM d').format(now);
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-      children: [
-        Text(
-          _greetingFor(now),
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          currentDate,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-              ),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: _SummaryCard(
-                icon: Icons.local_fire_department_rounded,
-                value: '$streak',
-                label: 'Day streak',
-                iconColor: Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SummaryCard(
-                icon: Icons.timer_rounded,
-                value: _formatFocusDuration(focusedToday),
-                label: 'Focused today',
-                iconColor: AppTheme.primaryBlue,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _TodayProgressCard(
-          completed: completedTasksToday,
-          total: totalTasksToday,
-          remaining: remainingTasksToday,
-        ),
-        const SizedBox(height: 12),
-        _FocusSummaryCard(
-          sessionsToday: sessionsToday,
-          focusedToday: focusedToday,
-          longestSession: longestSession,
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Next task',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-        const SizedBox(height: 10),
-        if (nextTask != null)
-          _NextTaskCard(task: nextTask)
-        else
-          _NoTasksCard(
-            onCreateTask: () {
-              context.push('/task/new');
-            },
-          ),
-        const SizedBox(height: 26),
-        _DigitalBalanceCard(
-          totalUsage: usageProvider.todaySummary?.totalUsage,
-          changePercent: usageProvider.todayVsYesterdayPercent,
-          hasUsageAccess: usageProvider.hasUsageAccess,
-          isRefreshing: usageProvider.isRefreshing,
-          onTap: () {
-            if (usageProvider.hasUsageAccess) {
-              context.push('/wellbeing/app-usage');
-            } else {
-              context.push('/wellbeing/permission');
-            }
-          },
-        ),
-        const SizedBox(height: 24),
-        if (criticalTasks.isNotEmpty) ...[
-          const _SectionTitle(
-            title: 'Critical',
-            color: Color(0xFFFF6B5E),
-          ),
-          const SizedBox(height: 10),
-          ...criticalTasks.map(
-            (task) => _TaskTile(
-              task: task,
-              color: const Color(0xFFFF6B5E),
+    return SafeArea(
+      bottom: false,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: _TodayHeader(
+              streak: streak,
+              focusedToday: focusedToday,
+              usageToday: usageToday,
+              usageConnected: usageProvider.hasUsageAccess,
             ),
           ),
-          const SizedBox(height: 18),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateFormat('EEEE').format(now),
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            DateFormat('MMMM d').format(now),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _ProgressPill(completed: completed, total: total),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text('Your day', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 6),
+                Text(
+                  schedule.isEmpty
+                      ? 'Nothing is fixed on the clock yet.'
+                      : 'A clear timeline of what you planned.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (schedule.isEmpty)
+                  const _NoPlanTimeline()
+                else
+                  _TodayTimeline(occurrences: schedule, now: now),
+                if (unscheduled.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  Text(
+                    'Anytime today',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  ...unscheduled.map(
+                    (task) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _AnytimeTaskRow(task: task, date: now),
+                    ),
+                  ),
+                ],
+              ]),
+            ),
+          ),
         ],
-        if (importantTasks.isNotEmpty) ...[
-          const _SectionTitle(
-            title: 'Important',
-            color: AppTheme.primaryBlue,
-          ),
-          const SizedBox(height: 10),
-          ...importantTasks.map(
-            (task) => _TaskTile(
-              task: task,
-              color: AppTheme.primaryBlue,
-            ),
-          ),
-          const SizedBox(height: 18),
-        ],
-        if (growthTasks.isNotEmpty) ...[
-          const _SectionTitle(
-            title: 'Growth',
-            color: Color(0xFF34B27B),
-          ),
-          const SizedBox(height: 10),
-          ...growthTasks.map(
-            (task) => _TaskTile(
-              task: task,
-              color: const Color(0xFF34B27B),
-            ),
-          ),
-          const SizedBox(height: 18),
-        ],
-        const _SectionTitle(
-          title: 'Today\'s schedule',
-          color: AppTheme.primaryBlue,
-        ),
-        const SizedBox(height: 10),
-        _ScheduleCard(occurrences: todaySchedule),
-        const SizedBox(height: 26),
-        const _SectionTitle(
-          title: 'Habits',
-          color: AppTheme.primaryBlue,
-        ),
-        const SizedBox(height: 10),
-        _HabitsStatusCard(
-          onCreateHabit: () {
-            context.push('/habit/new');
-          },
-        ),
-        const SizedBox(height: 24),
-      ],
+      ),
     );
   }
 }
 
-class _TodayProgressCard extends StatelessWidget {
-  final int completed;
-  final int total;
-  final int remaining;
+class _TodayHeader extends StatelessWidget {
+  final int streak;
+  final Duration focusedToday;
+  final Duration? usageToday;
+  final bool usageConnected;
 
-  const _TodayProgressCard({
-    required this.completed,
-    required this.total,
-    required this.remaining,
+  const _TodayHeader({
+    required this.streak,
+    required this.focusedToday,
+    required this.usageToday,
+    required this.usageConnected,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = total == 0 ? 0.0 : completed / total;
-    final helper = total == 0
-        ? 'No tasks planned for today.'
-        : remaining == 0
-            ? 'Everything planned for today is complete.'
-            : '$remaining ${remaining == 1 ? 'task' : 'tasks'} remaining today.';
+    final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.task_alt_rounded,
-                color: Color(0xFF34B27B),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Today\'s progress',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
               Text(
-                total == 0 ? '0 / 0' : '$completed / $total',
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                'Focused',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const Spacer(),
+              IconButton.filledTonal(
+                tooltip: 'Digital wellbeing',
+                onPressed: () => context.push('/wellbeing'),
+                icon: const Icon(Icons.insights_rounded),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Settings',
+                onPressed: () => context.push('/settings'),
+                icon: const Icon(Icons.settings_outlined),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              minHeight: 8,
-              value: progress,
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withOpacity(0.08),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            helper,
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FocusSummaryCard extends StatelessWidget {
-  final int sessionsToday;
-  final Duration focusedToday;
-  final Duration longestSession;
-
-  const _FocusSummaryCard({
-    required this.sessionsToday,
-    required this.focusedToday,
-    required this.longestSession,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
           Container(
-            width: 44,
-            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(14),
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
-            child: const Icon(
-              Icons.center_focus_strong_rounded,
-              color: AppTheme.primaryBlue,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  '$sessionsToday ${sessionsToday == 1 ? 'session' : 'sessions'} today',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                Expanded(
+                  child: _StatusMetric(
+                    icon: Icons.local_fire_department_rounded,
+                    value: '$streak',
+                    label: 'day streak',
+                    accent: AppTheme.warning,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  focusedToday == Duration.zero
-                      ? 'No focus session recorded yet.'
-                      : 'Active focus ${_formatFocusDuration(focusedToday)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.55),
+                _StatusDivider(color: Theme.of(context).dividerColor),
+                Expanded(
+                  child: _StatusMetric(
+                    icon: Icons.timer_rounded,
+                    value: _formatDuration(focusedToday),
+                    label: 'focus today',
+                    accent: scheme.primary,
+                  ),
+                ),
+                _StatusDivider(color: Theme.of(context).dividerColor),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => context.push('/wellbeing'),
+                    child: _StatusMetric(
+                      icon: Icons.smartphone_rounded,
+                      value: usageToday == null
+                          ? (usageConnected ? 'No data' : 'Connect')
+                          : _formatDuration(usageToday!),
+                      label: 'app usage',
+                      accent: AppTheme.success,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          if (longestSession.inMicroseconds > 0)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  _formatFocusDuration(longestSession),
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'longest',
-                  style: TextStyle(fontSize: 10),
-                ),
-              ],
-            ),
         ],
       ),
     );
   }
 }
 
-class _DigitalBalanceCard extends StatelessWidget {
-  final Duration? totalUsage;
-  final double? changePercent;
-  final bool hasUsageAccess;
-  final bool isRefreshing;
-  final VoidCallback onTap;
-
-  const _DigitalBalanceCard({
-    required this.totalUsage,
-    required this.changePercent,
-    required this.hasUsageAccess,
-    required this.isRefreshing,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final usage = totalUsage;
-
-    String subtitle;
-    if (!hasUsageAccess) {
-      subtitle = 'Connect Android Usage Access to measure real app usage.';
-    } else if (isRefreshing && usage == null) {
-      subtitle = 'Refreshing real app usage…';
-    } else if (usage == null) {
-      subtitle = 'Usage Access is connected. Tap to refresh data.';
-    } else {
-      final change = changePercent;
-      final comparison = change == null
-          ? 'no yesterday baseline yet'
-          : change > 0
-              ? '${change.abs().round()}% more than yesterday'
-              : change < 0
-                  ? '${change.abs().round()}% less than yesterday'
-                  : 'same as yesterday';
-      subtitle = '${_formatUsageDuration(usage)} today • $comparison';
-    }
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.phone_android_rounded,
-                  color: AppTheme.primaryBlue,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'Digital balance',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        if (isRefreshing) ...[
-                          const SizedBox(width: 8),
-                          const SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.55),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
+class _StatusMetric extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
-  final Color iconColor;
+  final Color accent;
 
-  const _SummaryCard({
+  const _StatusMetric({
     required this.icon,
     required this.value,
     required this.label,
-    required this.iconColor,
+    required this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: iconColor, size: 28),
-          const SizedBox(height: 14),
+          Icon(icon, color: accent, size: 23),
+          const SizedBox(height: 5),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.55),
-                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -520,201 +262,110 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
+class _StatusDivider extends StatelessWidget {
   final Color color;
-
-  const _SectionTitle({
-    required this.title,
-    required this.color,
-  });
+  const _StatusDivider({required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+    return Container(width: 1, height: 48, color: color);
+  }
+}
+
+class _ProgressPill extends StatelessWidget {
+  final int completed;
+  final int total;
+
+  const _ProgressPill({required this.completed, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        total == 0 ? 'Clear day' : '$completed / $total done',
+        style: TextStyle(
+          color: scheme.onPrimaryContainer,
+          fontWeight: FontWeight.w800,
         ),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-      ],
+      ),
     );
   }
 }
 
-class _TaskTile extends StatelessWidget {
-  final Task task;
-  final Color color;
-
-  const _TaskTile({
-    required this.task,
-    required this.color,
-  });
+class _NoPlanTimeline extends StatelessWidget {
+  const _NoPlanTimeline();
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 4,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          const SizedBox(width: 14),
-          InkWell(
-            onTap: () async {
-              try {
-                await context.read<TaskProvider>().setCompleted(task.id, true);
-              } catch (_) {
-                if (!context.mounted) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Could not update the task.')),
-                );
-              }
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: color, width: 2),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
+          SizedBox(
+            width: 54,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  task.title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  'NOW',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: scheme.primary,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _taskSubtitle(task),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.50),
+                const SizedBox(height: 10),
+                Container(
+                  width: 2,
+                  height: 146,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Edit task',
-            onPressed: () {
-              context.push('/task/edit/${Uri.encodeComponent(task.id)}');
-            },
-            icon: const Icon(Icons.chevron_right_rounded, size: 20),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NextTaskCard extends StatelessWidget {
-  final Task task;
-
-  const _NextTaskCard({required this.task});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _priorityColor(task.priority);
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.wb_sunny_outlined, size: 40, color: scheme.primary),
+                const SizedBox(height: 14),
+                Text(
+                  'No plan for today',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  task.priority.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: color,
+                const SizedBox(height: 7),
+                Text(
+                  'Your timeline is open. Add a scheduled task when you want to give part of the day a clear purpose.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.45,
                   ),
                 ),
-              ),
-              const Spacer(),
-              if (task.scheduledStart != null)
-                Text(
-                  DateFormat('h:mm a').format(task.scheduledStart!),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: () => context.push('/task/new'),
+                  icon: const Icon(Icons.add_task_rounded),
+                  label: const Text('Plan a task'),
                 ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            task.title,
-            style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            _taskSubtitle(task),
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-            ),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: () {
-                context.push(
-                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
-                );
-              },
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Start Focus'),
+              ],
             ),
           ),
         ],
@@ -723,262 +374,175 @@ class _NextTaskCard extends StatelessWidget {
   }
 }
 
-class _NoTasksCard extends StatelessWidget {
-  final VoidCallback onCreateTask;
-
-  const _NoTasksCard({required this.onCreateTask});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.task_alt_rounded,
-            size: 38,
-            color: AppTheme.primaryBlue,
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Nothing to work on yet',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: onCreateTask,
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Create Task'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScheduleCard extends StatelessWidget {
+class _TodayTimeline extends StatelessWidget {
   final List<TaskOccurrence> occurrences;
+  final DateTime now;
 
-  const _ScheduleCard({required this.occurrences});
+  const _TodayTimeline({required this.occurrences, required this.now});
 
   @override
   Widget build(BuildContext context) {
-    if (occurrences.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Text('No scheduled tasks today.'),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < occurrences.length; index++) ...[
-            _ScheduleOccurrence(occurrence: occurrences[index]),
-            if (index != occurrences.length - 1)
-              const SizedBox(height: 18),
-          ],
-        ],
-      ),
+    return Column(
+      children: List.generate(occurrences.length, (index) {
+        final occurrence = occurrences[index];
+        return _TimelineEntry(
+          occurrence: occurrence,
+          now: now,
+          isLast: index == occurrences.length - 1,
+        );
+      }),
     );
   }
 }
 
-class _ScheduleOccurrence extends StatelessWidget {
+class _TimelineEntry extends StatelessWidget {
   final TaskOccurrence occurrence;
+  final DateTime now;
+  final bool isLast;
 
-  const _ScheduleOccurrence({required this.occurrence});
+  const _TimelineEntry({
+    required this.occurrence,
+    required this.now,
+    required this.isLast,
+  });
 
   @override
   Widget build(BuildContext context) {
     final task = occurrence.task;
     final color = _priorityColor(task.priority);
+    final active =
+        !now.isBefore(occurrence.start) &&
+        now.isBefore(occurrence.end) &&
+        !occurrence.isCompleted;
 
-    return Row(
-      children: [
-        InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: () async {
-            try {
-              await context.read<TaskProvider>().setCompletedForDate(
-                    task.id,
-                    occurrence.start,
-                    !occurrence.isCompleted,
-                  );
-            } catch (_) {
-              if (!context.mounted) {
-                return;
-              }
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Could not update the task.'),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 58,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 15),
+              child: Text(
+                DateFormat('h:mm').format(occurrence.start),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: active
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              );
-            }
-          },
-          child: Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: occurrence.isCompleted ? color : Colors.transparent,
-              border: Border.all(
-                color: color,
-                width: 2,
               ),
             ),
-            child: occurrence.isCompleted
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 17,
-                    color: Colors.white,
-                  )
-                : null,
           ),
-        ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 72,
-          child: Text(
-            DateFormat('h:mm a').format(occurrence.start),
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              decoration: occurrence.isCompleted
-                  ? TextDecoration.lineThrough
-                  : null,
-            ),
-          ),
-        ),
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: InkWell(
-            onTap: () {
-              context.push(
-                '/task/edit/${Uri.encodeComponent(task.id)}',
-              );
-            },
+          SizedBox(
+            width: 26,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  task.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    decoration: occurrence.isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
+                const SizedBox(height: 17),
+                Container(
+                  width: active ? 12 : 10,
+                  height: active ? 12 : 10,
+                  decoration: BoxDecoration(
+                    color: occurrence.isCompleted
+                        ? AppTheme.success
+                        : active
+                        ? Theme.of(context).colorScheme.primary
+                        : color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      width: 2,
+                    ),
                   ),
                 ),
-                if (task.recurrence != TaskRecurrence.none)
-                  Text(
-                    task.recurrence.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.50),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: Theme.of(context).dividerColor,
                     ),
                   ),
               ],
             ),
           ),
-        ),
-        IconButton(
-          tooltip: occurrence.isCompleted ? 'Task completed' : 'Start focus',
-          onPressed: occurrence.isCompleted
-              ? null
-              : () {
-                  context.push(
-                    '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
-                  );
-                },
-          icon: Icon(
-            occurrence.isCompleted
-                ? Icons.check_circle_rounded
-                : Icons.play_arrow_rounded,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HabitsStatusCard extends StatelessWidget {
-  final VoidCallback onCreateHabit;
-
-  const _HabitsStatusCard({required this.onCreateHabit});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF8E67D4).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.check_circle_outline_rounded,
-              color: Color(0xFF8E67D4),
-            ),
-          ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Habit progress is not connected yet',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'No placeholder habit totals are shown on Today.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.55),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: active
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withOpacity(0.62)
+                    : Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(22),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(22),
+                  onTap: () => context.push(
+                    '/task/edit/${Uri.encodeComponent(task.id)}',
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                task.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  decoration: occurrence.isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _CompletionButton(occurrence: occurrence),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}'
+                          '${active ? '  •  In progress' : ''}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontWeight: active
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                        ),
+                        if (!occurrence.isCompleted) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => context.push(
+                                '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+                              ),
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 19,
+                              ),
+                              label: const Text('Start focus'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: onCreateHabit,
-            child: const Text('Add'),
           ),
         ],
       ),
@@ -986,112 +550,108 @@ class _HabitsStatusCard extends StatelessWidget {
   }
 }
 
-String _greetingFor(DateTime now) {
-  if (now.hour < 12) {
-    return 'Good morning';
+class _CompletionButton extends StatelessWidget {
+  final TaskOccurrence occurrence;
+
+  const _CompletionButton({required this.occurrence});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: occurrence.isCompleted ? 'Undo completion' : 'Complete task',
+      onPressed: () => context.read<TaskProvider>().setCompletedForDate(
+        occurrence.task.id,
+        occurrence.start,
+        !occurrence.isCompleted,
+      ),
+      icon: Icon(
+        occurrence.isCompleted
+            ? Icons.check_circle_rounded
+            : Icons.circle_outlined,
+        color: occurrence.isCompleted ? AppTheme.success : null,
+      ),
+    );
   }
-  if (now.hour < 17) {
-    return 'Good afternoon';
-  }
-  return 'Good evening';
 }
 
-String _formatFocusDuration(Duration duration) {
-  if (duration.inSeconds <= 0) {
-    return '0 min';
+class _AnytimeTaskRow extends StatelessWidget {
+  final Task task;
+  final DateTime date;
+
+  const _AnytimeTaskRow({required this.task, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final taskProvider = context.watch<TaskProvider>();
+    final completed = taskProvider.isTaskCompletedForDate(task, date);
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => context
+                    .read<TaskProvider>()
+                    .setCompletedForDate(task.id, date, !completed),
+                icon: Icon(
+                  completed
+                      ? Icons.check_circle_rounded
+                      : Icons.circle_outlined,
+                  color: completed ? AppTheme.success : null,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  task.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    decoration: completed ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+              if (!completed)
+                IconButton(
+                  tooltip: 'Start focus',
+                  onPressed: () => context.push(
+                    '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
-
-  if (duration.inSeconds < 60) {
-    return '<1 min';
-  }
-
-  final totalMinutes = duration.inMinutes;
-  final hours = totalMinutes ~/ 60;
-  final minutes = totalMinutes % 60;
-
-  if (hours == 0) {
-    return '$minutes min';
-  }
-
-  if (minutes == 0) {
-    return '${hours}h';
-  }
-
-  return '${hours}h ${minutes}m';
-}
-
-String _taskSubtitle(Task task) {
-  final parts = <String>[];
-
-  final scheduledMinutes = task.scheduledDurationMinutes;
-  if (scheduledMinutes != null) {
-    parts.add(_formatMinutes(scheduledMinutes));
-  }
-
-  if (task.recurrence != TaskRecurrence.none) {
-    parts.add(task.recurrence.label);
-  }
-
-  if (task.deadline != null) {
-    final today = DateTime.now();
-    if (_sameDate(task.deadline!, today)) {
-      parts.add('Due today');
-    } else {
-      parts.add('Due ${DateFormat('d MMM').format(task.deadline!)}');
-    }
-  }
-
-  if (parts.isEmpty) {
-    parts.add('Flexible task');
-  }
-
-  return parts.join(' • ');
-}
-
-String _formatMinutes(int minutes) {
-  if (minutes < 60) {
-    return '$minutes min';
-  }
-
-  final hours = minutes ~/ 60;
-  final remainder = minutes % 60;
-
-  if (remainder == 0) {
-    return hours == 1 ? '1 hour' : '$hours hours';
-  }
-
-  return '${hours}h ${remainder}m';
-}
-
-bool _sameDate(DateTime first, DateTime second) {
-  return first.year == second.year &&
-      first.month == second.month &&
-      first.day == second.day;
 }
 
 Color _priorityColor(TaskPriority priority) {
   switch (priority) {
     case TaskPriority.critical:
-      return const Color(0xFFFF6B5E);
+      return AppTheme.danger;
     case TaskPriority.important:
       return AppTheme.primaryBlue;
     case TaskPriority.growth:
-      return const Color(0xFF34B27B);
+      return AppTheme.success;
   }
 }
 
-String _formatUsageDuration(Duration duration) {
-  final totalMinutes = duration.inMinutes;
-  final hours = totalMinutes ~/ 60;
-  final minutes = totalMinutes % 60;
+String _formatDuration(Duration duration) {
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60);
 
-  if (hours == 0) {
-    return '${minutes}m';
+  if (hours > 0) {
+    return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   }
 
-  if (minutes == 0) {
-    return '${hours}h';
-  }
-
-  return '${hours}h ${minutes}m';
+  return '${duration.inMinutes}m';
 }

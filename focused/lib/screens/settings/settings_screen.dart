@@ -2,314 +2,509 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/usage_access_status.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/usage_provider.dart';
+import '../../providers/user_profile_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
+    final usageProvider = context.watch<UsageProvider>();
+    final profileProvider = context.watch<UserProfileProvider>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Settings',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        padding: const EdgeInsets.only(bottom: 36),
         children: [
-          _SettingsSection(
-            title: 'Account',
-            children: [
-              const _ProfileRow(),
-              const Divider(height: 1),
-              _NavigationSetting(
-                icon: Icons.logout_rounded,
-                title: 'Sign out',
-                subtitle: 'Return to login screen',
-                onTap: () {
-                  context.go('/login');
-                },
-              ),
-            ],
+          _ProfileHeader(
+            name: profileProvider.profile.displayName,
+            email: profileProvider.profile.email,
+            onTap: () => _editProfile(context),
           ),
-
-          const SizedBox(height: 20),
-
-          _SettingsSection(
-            title: 'Appearance',
-            children: [
-              _ThemeOption(
-                title: 'System',
-                subtitle: 'Use your device theme',
-                mode: ThemeMode.system,
-                currentMode: themeProvider.themeMode,
-              ),
-              _ThemeOption(
-                title: 'Light',
-                subtitle: 'Always use light mode',
-                mode: ThemeMode.light,
-                currentMode: themeProvider.themeMode,
-              ),
-              _ThemeOption(
-                title: 'Dark',
-                subtitle: 'Always use dark mode',
-                mode: ThemeMode.dark,
-                currentMode: themeProvider.themeMode,
-              ),
-            ],
+          const SizedBox(height: 14),
+          _SectionLabel('Permissions & access'),
+          _SettingsTile(
+            icon: Icons.query_stats_rounded,
+            title: 'App usage access',
+            subtitle: _usageStatusText(usageProvider.accessStatus),
+            trailing: _StatusDot(
+              active:
+                  usageProvider.accessStatus == UsageAccessStatus.granted,
+            ),
+            onTap: () => context.push('/wellbeing/permission'),
           ),
-
-          const SizedBox(height: 20),
-
-          const _SettingsSection(
-            title: 'Focus',
-            children: [
-              _SimpleSetting(
-                icon: Icons.timer_outlined,
-                title: 'Default focus block',
-                value: '50 min',
-              ),
-              _SimpleSetting(
-                icon: Icons.free_breakfast_outlined,
-                title: 'Default break',
-                value: '10 min',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          const _SettingsSection(
-            title: 'Calendar',
-            children: [
-              _SimpleSetting(
-                icon: Icons.calendar_month_outlined,
-                title: 'Google Calendar',
-                value: 'Not connected',
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          _SettingsSection(
+          _SettingsTile(
+            icon: Icons.notifications_none_rounded,
             title: 'Notifications',
-            children: [
-              _NavigationSetting(
-                icon: Icons.notifications_active_outlined,
-                title: 'Send test notification',
-                subtitle: 'Verify that Android can display Focused notifications',
-                onTap: () async {
-                  final success = await context
-                      .read<TaskProvider>()
-                      .sendTestNotification();
+            subtitle: 'Test notification permission and delivery',
+            onTap: () async {
+              final success = await context
+                  .read<TaskProvider>()
+                  .sendTestNotification();
 
-                  if (!context.mounted) {
-                    return;
-                  }
+              if (!context.mounted) {
+                return;
+              }
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        success
-                            ? 'Test notification sent.'
-                            : 'Notification permission is not available. Check Android notification settings.',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const Divider(height: 1),
-              _NavigationSetting(
-                icon: Icons.schedule_outlined,
-                title: 'Pending reminders',
-                subtitle: 'Check how many reminders Android currently has queued',
-                onTap: () async {
-                  final count = await context
-                      .read<TaskProvider>()
-                      .pendingReminderCount();
-
-                  if (!context.mounted) {
-                    return;
-                  }
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '$count pending reminder${count == 1 ? '' : 's'}.',
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    success
+                        ? 'Test notification sent.'
+                        : 'Notifications are unavailable. Check Android settings.',
+                  ),
+                ),
+              );
+            },
           ),
-
-          const SizedBox(height: 20),
-
-          _SettingsSection(
-            title: 'Devices',
-            children: [
-              _NavigationSetting(
-                icon: Icons.devices_outlined,
-                title: 'My Devices',
-                subtitle: 'Manage connected devices and DND',
-                onTap: () {
-                  context.push('/devices');
-                },
-              ),
-            ],
+          const _SectionDivider(),
+          _SectionLabel('Personal information'),
+          _SettingsTile(
+            icon: Icons.person_outline_rounded,
+            title: 'Profile',
+            subtitle: _profileSubtitle(
+              profileProvider.profile.displayName,
+              profileProvider.profile.email,
+            ),
+            onTap: () => _editProfile(context),
+          ),
+          const _SectionDivider(),
+          _SectionLabel('Personalization'),
+          _AppearanceTile(),
+          const _SectionDivider(),
+          _SectionLabel('Account'),
+          _SettingsTile(
+            icon: Icons.logout_rounded,
+            title: 'Sign out',
+            subtitle: 'Return to the sign-in screen',
+            onTap: () => context.go('/login'),
+          ),
+          const _DisabledAccountTile(
+            icon: Icons.pause_circle_outline_rounded,
+            title: 'Deactivate account',
+            subtitle: 'Available after cloud account sync is connected',
+          ),
+          const _DisabledAccountTile(
+            icon: Icons.delete_outline_rounded,
+            title: 'Delete account',
+            subtitle: 'Available after cloud account sync is connected',
+            destructive: true,
           ),
         ],
       ),
     );
   }
-}
 
-class _ProfileRow extends StatelessWidget {
-  const _ProfileRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(child: Icon(Icons.person_rounded)),
-      title: Text(
-        'Focused User',
-        style: TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: Text('Google account will appear here'),
-    );
+  static String _usageStatusText(UsageAccessStatus status) {
+    switch (status) {
+      case UsageAccessStatus.granted:
+        return 'Allowed';
+      case UsageAccessStatus.denied:
+        return 'Permission needed';
+      case UsageAccessStatus.unsupported:
+        return 'Android only';
+      case UsageAccessStatus.error:
+        return 'Could not read permission';
+      case UsageAccessStatus.checking:
+        return 'Checking…';
+      case UsageAccessStatus.unknown:
+        return 'Not checked yet';
+    }
   }
-}
 
-class _ThemeOption extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final ThemeMode mode;
-  final ThemeMode currentMode;
+  static String _profileSubtitle(String name, String email) {
+    final trimmedEmail = email.trim();
+    if (trimmedEmail.isNotEmpty) {
+      return trimmedEmail;
+    }
 
-  const _ThemeOption({
-    required this.title,
-    required this.subtitle,
-    required this.mode,
-    required this.currentMode,
-  });
+    final trimmedName = name.trim();
+    return trimmedName.isEmpty ? 'Local profile' : trimmedName;
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle),
-      trailing: Radio<ThemeMode>(
-        value: mode,
-        groupValue: currentMode,
-        onChanged: (value) {
-          if (value != null) {
-            context.read<ThemeProvider>().setThemeMode(value);
-          }
-        },
-      ),
-      onTap: () {
-        context.read<ThemeProvider>().setThemeMode(mode);
+  static Future<void> _editProfile(BuildContext context) async {
+    final provider = context.read<UserProfileProvider>();
+
+    final nameController = TextEditingController(
+      text: provider.profile.displayName,
+    );
+
+    final emailController = TextEditingController(
+      text: provider.profile.email,
+    );
+
+    final save = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            18,
+            2,
+            18,
+            20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Personal information',
+                style:
+                    Theme.of(sheetContext).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Display name',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  helperText:
+                      'Stored locally until account sync is implemented.',
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () =>
+                      Navigator.pop(sheetContext, true),
+                  child: const Text('Save'),
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
+
+    if (save == true) {
+      await provider.updateProfile(
+        displayName: nameController.text,
+        email: emailController.text,
+      );
+    }
+
+    nameController.dispose();
+    emailController.dispose();
   }
 }
 
-class _NavigationSetting extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
+class _ProfileHeader extends StatelessWidget {
+  final String name;
+  final String email;
   final VoidCallback onTap;
 
-  const _NavigationSetting({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
+  const _ProfileHeader({
+    required this.name,
+    required this.email,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
+    final displayName =
+        name.trim().isEmpty ? 'Focused user' : name.trim();
+    final subtitle =
+        email.trim().isEmpty ? 'Local profile' : email.trim();
+
+    return InkWell(
       onTap: onTap,
-      leading: Icon(icon),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right_rounded),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 34,
+              backgroundColor:
+                  Theme.of(context).colorScheme.primaryContainer,
+              child: Text(
+                displayName[0].toUpperCase(),
+                style: TextStyle(
+                  color:
+                      Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Edit profile',
+              onPressed: onTap,
+              icon: const Icon(Icons.edit_outlined),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _SimpleSetting extends StatelessWidget {
+class _SectionLabel extends StatelessWidget {
+  final String label;
+
+  const _SectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w900,
+            ),
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String value;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Widget? trailing;
 
-  const _SimpleSetting({
+  const _SettingsTile({
     required this.icon,
     required this.title,
-    required this.value,
+    required this.subtitle,
+    required this.onTap,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+      leading: SizedBox(
+        width: 38,
+        height: 38,
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      trailing:
+          trailing ?? const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
+    );
+  }
+}
+
+class _AppearanceTile extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ThemeProvider>();
+
+    return _SettingsTile(
+      icon: Icons.palette_outlined,
+      title: 'Appearance',
+      subtitle: _themeLabel(provider.themeMode),
+      onTap: () => _showAppearanceSheet(context),
+    );
+  }
+
+  static String _themeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return 'Follow system';
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+    }
+  }
+
+  static Future<void> _showAppearanceSheet(
+    BuildContext context,
+  ) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Appearance',
+                  style: Theme.of(sheetContext)
+                      .textTheme
+                      .headlineMedium,
+                ),
+                const SizedBox(height: 12),
+                ...ThemeMode.values.map(
+                  (mode) => RadioListTile<ThemeMode>(
+                    contentPadding: EdgeInsets.zero,
+                    value: mode,
+                    groupValue: sheetContext
+                        .watch<ThemeProvider>()
+                        .themeMode,
+                    title: Text(_themeLabel(mode)),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+
+                      sheetContext
+                          .read<ThemeProvider>()
+                          .setThemeMode(value);
+
+                      Navigator.pop(sheetContext);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  final bool active;
+
+  const _StatusDot({
+    required this.active,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 11,
+      height: 11,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: active
+            ? const Color(0xFF35B779)
+            : Theme.of(context).colorScheme.outline,
       ),
     );
   }
 }
 
-class _SettingsSection extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-
-  const _SettingsSection({required this.title, required this.children});
+class _SectionDivider extends StatelessWidget {
+  const _SectionDivider();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Divider(
+        height: 1,
+        color: Theme.of(context).dividerColor,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 4),
-          ...children,
-        ],
+    );
+  }
+}
+
+class _DisabledAccountTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool destructive;
+
+  const _DisabledAccountTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = destructive
+        ? Theme.of(context).colorScheme.error.withOpacity(0.62)
+        : Theme.of(context).disabledColor;
+
+    return ListTile(
+      enabled: false,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+      leading: SizedBox(
+        width: 38,
+        height: 38,
+        child: Icon(icon, color: color),
       ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
+      subtitle: Text(subtitle),
     );
   }
 }

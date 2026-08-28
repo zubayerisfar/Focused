@@ -1,7 +1,6 @@
 import 'package:go_router/go_router.dart';
 
 import '../screens/auth/login_screen.dart';
-import '../screens/calendar/event_edit_screen.dart';
 import '../screens/devices/devices_screen.dart';
 import '../screens/focus/focus_complete_screen.dart';
 import '../screens/focus/focus_session_screen.dart';
@@ -14,6 +13,7 @@ import '../screens/tasks/task_edit_screen.dart';
 import '../screens/wellbeing/app_usage_details_screen.dart';
 import '../screens/wellbeing/focus_interruption_details_screen.dart';
 import '../screens/wellbeing/usage_permission_screen.dart';
+import '../screens/wellbeing/wellbeing_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -31,6 +31,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(
+      path: '/wellbeing',
+      builder: (context, state) => const WellbeingScreen(),
+    ),
+    GoRoute(
       path: '/devices',
       builder: (context, state) => const DevicesScreen(),
     ),
@@ -45,24 +49,20 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/calendar/event/new',
-      builder: (context, state) => const EventEditScreen(),
-    ),
-    GoRoute(
-      path: '/calendar/event/edit',
-      builder: (context, state) => const EventEditScreen(isEditing: true),
-    ),
-    GoRoute(
       path: '/habit/new',
       builder: (context, state) => const HabitEditScreen(),
     ),
     GoRoute(
-      path: '/habit/details',
-      builder: (context, state) => const HabitDetailsScreen(),
+      path: '/habit/:habitId',
+      builder: (context, state) => HabitDetailsScreen(
+        habitId: state.pathParameters['habitId']!,
+      ),
     ),
     GoRoute(
-      path: '/habit/edit',
-      builder: (context, state) => const HabitEditScreen(isEditing: true),
+      path: '/habit/edit/:habitId',
+      builder: (context, state) => HabitEditScreen(
+        habitId: state.pathParameters['habitId'],
+      ),
     ),
     GoRoute(
       path: '/focus/setup',
