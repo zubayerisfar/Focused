@@ -12,6 +12,10 @@ import 'providers/theme_provider.dart';
 import 'providers/usage_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'services/android_usage_stats_service.dart';
+import 'services/app_metadata_platform_service.dart';
+import 'services/app_metadata_storage_service.dart';
+import 'services/app_category_storage_service.dart';
+import 'services/focus_analysis_storage_service.dart';
 import 'services/focus_session_storage_service.dart';
 import 'services/habit_storage_service.dart';
 import 'services/task_notification_service.dart';
@@ -28,14 +32,20 @@ Future<void> main() async {
   final taskStorageService = TaskStorageService();
   final occurrenceCompletionStorage = TaskOccurrenceCompletionStorageService();
   final focusSessionStorageService = FocusSessionStorageService();
+  final focusAnalysisStorageService = FocusAnalysisStorageService();
   final usageRecordStorageService = UsageRecordStorageService();
+  final appCategoryStorageService = AppCategoryStorageService();
+  final appMetadataStorageService = AppMetadataStorageService();
   final habitStorageService = HabitStorageService();
   final userProfileStorageService = UserProfileStorageService();
 
   await taskStorageService.init();
   await occurrenceCompletionStorage.init();
   await focusSessionStorageService.init();
+  await focusAnalysisStorageService.init();
   await usageRecordStorageService.init();
+  await appCategoryStorageService.init();
+  await appMetadataStorageService.init();
   await habitStorageService.init();
   await userProfileStorageService.init();
 
@@ -53,10 +63,19 @@ Future<void> main() async {
   );
   await focusProvider.loadStoredSessions();
 
+  final appMetadataPlatformService = AndroidAppMetadataService();
+
   final usageProvider = UsageProvider(
     usageStatsService: AndroidUsageStatsService(),
     storageService: usageRecordStorageService,
+    categoryStorageService: appCategoryStorageService,
+    focusAnalysisStorageService: focusAnalysisStorageService,
+    appMetadataService: appMetadataPlatformService,
+    appMetadataStorageService: appMetadataStorageService,
   );
+  await usageProvider.loadStoredCategories();
+  await usageProvider.loadStoredFocusAnalyses();
+  await usageProvider.loadStoredAppMetadata();
   await usageProvider.loadStoredUsage();
 
   final habitProvider = HabitProvider(storageService: habitStorageService);

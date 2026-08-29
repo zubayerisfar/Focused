@@ -1,15 +1,19 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/app_category.dart';
+import '../../models/app_usage_app_entry.dart';
 import '../../models/daily_usage_summary.dart';
 import '../../models/focus_analysis_result.dart';
 import '../../models/usage_access_status.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_icon.dart';
 
 class WellbeingScreen extends StatelessWidget {
   const WellbeingScreen({super.key});
@@ -22,6 +26,10 @@ class WellbeingScreen extends StatelessWidget {
     final analysis = usageProvider.focusAnalysisResult;
     final focusedToday =
         focusProvider.focusedDurationForDate(DateTime.now());
+    final productiveToday =
+        usageProvider.usageForCategoryToday(AppCategory.productive);
+    final distractingToday =
+        usageProvider.usageForCategoryToday(AppCategory.distracting);
 
     return Scaffold(
       appBar: AppBar(
@@ -69,13 +77,20 @@ class WellbeingScreen extends StatelessWidget {
             _WellbeingHero(
               summary: summary,
               comparisonPercent: usageProvider.todayVsYesterdayPercent,
+              provider: usageProvider,
             ),
             const SizedBox(height: 18),
             _MetricsGrid(
               usage: summary?.totalUsage,
               focused: focusedToday,
-              distraction: analysis?.distractedDuration,
+              productive: summary == null ? null : productiveToday,
+              distracting: summary == null ? null : distractingToday,
               quality: analysis?.focusQuality,
+              interruptions: analysis?.interruptionCount,
+            ),
+            const SizedBox(height: 16),
+            _AnalyticsEntryCard(
+              onTap: () => context.push('/wellbeing/analytics'),
             ),
             const SizedBox(height: 30),
             Row(
@@ -102,7 +117,7 @@ class WellbeingScreen extends StatelessWidget {
                     : () => context.push('/wellbeing/permission'),
               )
             else
-              _AppDistribution(summary: summary),
+              _AppDistribution(provider: usageProvider),
             const SizedBox(height: 30),
             Text(
               'Focus interruptions',
@@ -129,24 +144,81 @@ class WellbeingScreen extends StatelessWidget {
   }
 }
 
+class _AnalyticsEntryCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AnalyticsEntryCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: scheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(Icons.query_stats_rounded, color: scheme.primary),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '7-day intelligence',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Trends, previous-period comparisons, focus quality and data coverage.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.35,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WellbeingHero extends StatelessWidget {
   final DailyUsageSummary? summary;
   final double? comparisonPercent;
+  final UsageProvider provider;
 
   const _WellbeingHero({
     required this.summary,
     required this.comparisonPercent,
+    required this.provider,
   });
 
   @override
   Widget build(BuildContext context) {
     final total = summary?.totalUsage;
-    final entries = summary == null
-        ? <MapEntry<String, Duration>>[]
-        : (summary!.appUsage.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value)));
-
-    final top = entries.take(6).toList();
+    final top = summary == null
+        ? const <AppUsageAppEntry>[]
+        : provider.topAppEntriesToday(limit: 6);
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -225,7 +297,8 @@ class _WellbeingHero extends StatelessWidget {
                 return _LegendItem(
                   color: _ringColors(context)[
                       index % _ringColors(context).length],
-                  label: _cleanAppName(top[index].key),
+                  label: _cleanAppName(top[index].appName),
+                  iconBytes: top[index].iconBytes,
                 );
               }),
             ),
@@ -236,11 +309,11 @@ class _WellbeingHero extends StatelessWidget {
   }
 
   static List<double> _sharesFor(
-    List<MapEntry<String, Duration>> entries,
+    List<AppUsageAppEntry> entries,
   ) {
     final total = entries.fold<int>(
       0,
-      (sum, entry) => sum + entry.value.inMilliseconds,
+      (sum, entry) => sum + entry.duration.inMilliseconds,
     );
 
     if (total <= 0) {
@@ -248,7 +321,7 @@ class _WellbeingHero extends StatelessWidget {
     }
 
     return entries
-        .map((entry) => entry.value.inMilliseconds / total)
+        .map((entry) => entry.duration.inMilliseconds / total)
         .toList();
   }
 
@@ -341,10 +414,12 @@ class _UsageRingPainter extends CustomPainter {
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
+  final Uint8List? iconBytes;
 
   const _LegendItem({
     required this.color,
     required this.label,
+    required this.iconBytes,
   });
 
   @override
@@ -352,17 +427,36 @@ class _LegendItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AppIcon(
+              iconBytes: iconBytes,
+              appName: label,
+              size: 22,
+              borderRadius: 7,
+            ),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.surface,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: 7),
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 95),
+          constraints: const BoxConstraints(maxWidth: 90),
           child: Text(
             label,
             maxLines: 1,
@@ -378,14 +472,18 @@ class _LegendItem extends StatelessWidget {
 class _MetricsGrid extends StatelessWidget {
   final Duration? usage;
   final Duration focused;
-  final Duration? distraction;
+  final Duration? productive;
+  final Duration? distracting;
   final double? quality;
+  final int? interruptions;
 
   const _MetricsGrid({
     required this.usage,
     required this.focused,
-    required this.distraction,
+    required this.productive,
+    required this.distracting,
     required this.quality,
+    required this.interruptions,
   });
 
   @override
@@ -396,7 +494,7 @@ class _MetricsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
-      childAspectRatio: 1.55,
+      childAspectRatio: 1.5,
       children: [
         _MetricTile(
           icon: Icons.smartphone_rounded,
@@ -409,18 +507,30 @@ class _MetricsGrid extends StatelessWidget {
           value: _formatDuration(focused),
         ),
         _MetricTile(
-          icon: Icons.notifications_active_outlined,
-          label: 'Distracted',
-          value: distraction == null
+          icon: Icons.auto_awesome_rounded,
+          label: 'Productive apps',
+          value: productive == null
               ? '—'
-              : _formatDuration(distraction!),
+              : _formatDuration(productive!),
+        ),
+        _MetricTile(
+          icon: Icons.notifications_active_outlined,
+          label: 'Distracting apps',
+          value: distracting == null
+              ? '—'
+              : _formatDuration(distracting!),
         ),
         _MetricTile(
           icon: Icons.track_changes_rounded,
-          label: 'Focus quality',
+          label: 'Latest focus quality',
           value: quality == null
               ? '—'
-              : '${(quality! * 100).clamp(0, 100).round()}%',
+              : '${quality!.clamp(0, 100).round()}%',
+        ),
+        _MetricTile(
+          icon: Icons.bolt_rounded,
+          label: 'Latest interruptions',
+          value: interruptions == null ? '—' : '$interruptions',
         ),
       ],
     );
@@ -482,20 +592,19 @@ class _MetricTile extends StatelessWidget {
 }
 
 class _AppDistribution extends StatelessWidget {
-  final DailyUsageSummary summary;
+  final UsageProvider provider;
 
   const _AppDistribution({
-    required this.summary,
+    required this.provider,
   });
 
   @override
   Widget build(BuildContext context) {
-    final entries = summary.appUsage.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final entries = provider.topAppEntriesToday(limit: 8);
 
     final total = entries.fold<int>(
       0,
-      (sum, entry) => sum + entry.value.inMilliseconds,
+      (sum, entry) => sum + entry.duration.inMilliseconds,
     );
 
     if (entries.isEmpty || total <= 0) {
@@ -504,8 +613,6 @@ class _AppDistribution extends StatelessWidget {
         onTap: null,
       );
     }
-
-    final visible = entries.take(8).toList();
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -517,18 +624,22 @@ class _AppDistribution extends StatelessWidget {
         ),
       ),
       child: Column(
-        children: List.generate(visible.length, (index) {
-          final entry = visible[index];
-          final share = entry.value.inMilliseconds / total;
+        children: List.generate(entries.length, (index) {
+          final entry = entries[index];
+          final share = entry.duration.inMilliseconds / total;
+          final category = provider.getAppCategory(entry.appId);
 
           return Padding(
             padding: EdgeInsets.only(
-              bottom: index == visible.length - 1 ? 0 : 18,
+              bottom: index == entries.length - 1 ? 0 : 18,
             ),
             child: _AppUsageRow(
-              appName: _cleanAppName(entry.key),
-              duration: entry.value,
+              appId: entry.appId,
+              appName: _cleanAppName(entry.appName),
+              iconBytes: entry.iconBytes,
+              duration: entry.duration,
               share: share,
+              category: category,
             ),
           );
         }),
@@ -538,77 +649,104 @@ class _AppDistribution extends StatelessWidget {
 }
 
 class _AppUsageRow extends StatelessWidget {
+  final String appId;
   final String appName;
+  final Uint8List? iconBytes;
   final Duration duration;
   final double share;
+  final AppCategory category;
 
   const _AppUsageRow({
+    required this.appId,
     required this.appName,
+    required this.iconBytes,
     required this.duration,
     required this.share,
+    required this.category,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        final encodedId = Uri.encodeComponent(appId);
+        final encodedName = Uri.encodeQueryComponent(appName);
+        context.push('/wellbeing/app/$encodedId?name=$encodedName');
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                appName.isEmpty ? '?' : appName[0].toUpperCase(),
-                style: TextStyle(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w900,
+            Row(
+              children: [
+                AppIcon(
+                  iconBytes: iconBytes,
+                  appName: appName,
+                  size: 40,
+                  borderRadius: 12,
+                  fallbackBackground: scheme.primaryContainer,
+                  fallbackForeground: scheme.onPrimaryContainer,
                 ),
-              ),
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Text(
-                appName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Text(
-              '${(share * 100).round()}%',
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _formatDuration(duration),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _categoryLabel(category),
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
                   ),
+                ),
+                Text(
+                  '${(share * 100).round()}%',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _formatDuration(duration),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.chevron_right_rounded, size: 20),
+              ],
+            ),
+            const SizedBox(height: 9),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                value: share.clamp(0.0, 1.0).toDouble(),
+                minHeight: 8,
+                backgroundColor: scheme.surfaceContainerHighest,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 9),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: LinearProgressIndicator(
-            value: share.clamp(0.0, 1.0).toDouble(),
-            minHeight: 8,
-            backgroundColor: scheme.surfaceContainerHighest,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -862,14 +1000,25 @@ String _comparisonLabel(double? value) {
   }
 
   if (value > 0) {
-    return '↑ ${value.abs().round()}% vs yesterday';
+    return '↑ ${value.abs().round()}% vs same time yesterday';
   }
 
   if (value < 0) {
-    return '↓ ${value.abs().round()}% vs yesterday';
+    return '↓ ${value.abs().round()}% vs same time yesterday';
   }
 
-  return 'Same as yesterday';
+  return 'Same as this time yesterday';
+}
+
+String _categoryLabel(AppCategory category) {
+  switch (category) {
+    case AppCategory.productive:
+      return 'Productive';
+    case AppCategory.neutral:
+      return 'Neutral';
+    case AppCategory.distracting:
+      return 'Distracting';
+  }
 }
 
 String _formatDuration(Duration duration) {

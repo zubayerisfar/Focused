@@ -11,9 +11,11 @@ import '../screens/main/main_shell.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/tasks/task_edit_screen.dart';
 import '../screens/wellbeing/app_usage_details_screen.dart';
+import '../screens/wellbeing/app_usage_app_details_screen.dart';
 import '../screens/wellbeing/focus_interruption_details_screen.dart';
 import '../screens/wellbeing/usage_permission_screen.dart';
 import '../screens/wellbeing/wellbeing_screen.dart';
+import '../screens/wellbeing/weekly_wellbeing_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -79,8 +81,19 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const FocusCompleteScreen(),
     ),
     GoRoute(
+      path: '/wellbeing/analytics',
+      builder: (context, state) => const WeeklyWellbeingScreen(),
+    ),
+    GoRoute(
       path: '/wellbeing/app-usage',
       builder: (context, state) => const AppUsageDetailsScreen(),
+    ),
+    GoRoute(
+      path: '/wellbeing/app/:appId',
+      builder: (context, state) => AppUsageAppDetailsScreen(
+        appId: Uri.decodeComponent(state.pathParameters['appId']!),
+        initialAppName: state.uri.queryParameters['name'],
+      ),
     ),
     GoRoute(
       path: '/wellbeing/focus-interruptions',

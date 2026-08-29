@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/app_category.dart';
 import '../../models/daily_usage_summary.dart';
 import '../../models/hourly_usage_summary.dart';
 import '../../models/usage_access_status.dart';
 import '../../providers/usage_provider.dart';
+import '../../widgets/app_icon.dart';
+
 
 class AppUsageDetailsScreen extends StatelessWidget {
   const AppUsageDetailsScreen({super.key});
@@ -81,7 +85,6 @@ class AppUsageDetailsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _AppActivityList(
-                    summary: summary,
                     provider: provider,
                   ),
                 ],
@@ -216,18 +219,17 @@ class _HourlyChart extends StatelessWidget {
 }
 
 class _AppActivityList extends StatelessWidget {
-  final DailyUsageSummary summary;
   final UsageProvider provider;
 
   const _AppActivityList({
-    required this.summary,
     required this.provider,
   });
 
   @override
   Widget build(BuildContext context) {
-    final entries = summary.appUsage.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final entries = provider.topAppEntriesToday(
+      limit: provider.todayRecords.length,
+    );
 
     if (entries.isEmpty) {
       return const Center(
@@ -240,7 +242,7 @@ class _AppActivityList extends StatelessWidget {
 
     final total = entries.fold<int>(
       0,
-      (sum, entry) => sum + entry.value.inMilliseconds,
+      (sum, entry) => sum + entry.duration.inMilliseconds,
     );
 
     return Container(
@@ -254,31 +256,37 @@ class _AppActivityList extends StatelessWidget {
           final entry = entries[index];
           final share = total <= 0
               ? 0.0
-              : entry.value.inMilliseconds / total;
-          final change = provider.getAppChangePercent(entry.key);
+              : entry.duration.inMilliseconds / total;
+          final change = provider.getAppChangePercentById(entry.appId);
+          final category = provider.getAppCategory(entry.appId);
 
           return Column(
             children: [
               ListTile(
+                onTap: () {
+                  final encodedId = Uri.encodeComponent(entry.appId);
+                  final encodedName =
+                      Uri.encodeQueryComponent(entry.appName);
+                  context.push(
+                    '/wellbeing/app/$encodedId?name=$encodedName',
+                  );
+                },
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 7,
                 ),
-                leading: CircleAvatar(
-                  backgroundColor:
+                leading: AppIcon(
+                  iconBytes: entry.iconBytes,
+                  appName: _cleanAppName(entry.appName),
+                  size: 42,
+                  borderRadius: 13,
+                  fallbackBackground:
                       Theme.of(context).colorScheme.primaryContainer,
-                  child: Text(
-                    _cleanAppName(entry.key)[0].toUpperCase(),
-                    style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onPrimaryContainer,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                  fallbackForeground:
+                      Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
                 title: Text(
-                  _cleanAppName(entry.key),
+                  _cleanAppName(entry.appName),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -286,14 +294,21 @@ class _AppActivityList extends StatelessWidget {
                   ),
                 ),
                 subtitle: Text(
-                  '${(share * 100).round()}% of measured app usage'
+                  '${_categoryLabel(category)} • ${(share * 100).round()}% of measured app usage'
                   '${_changeSuffix(change)}',
                 ),
-                trailing: Text(
-                  _formatDuration(entry.value),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                  ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatDuration(entry.duration),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.chevron_right_rounded),
+                  ],
                 ),
               ),
               if (index != entries.length - 1)
@@ -390,18 +405,18 @@ class _UnavailableBody extends StatelessWidget {
 
 String _comparisonText(double? value) {
   if (value == null) {
-    return 'No yesterday comparison yet';
+    return 'No same-time comparison yet';
   }
 
   if (value > 0) {
-    return '${value.abs().round()}% more than yesterday';
+    return '${value.abs().round()}% more than the same time yesterday';
   }
 
   if (value < 0) {
-    return '${value.abs().round()}% less than yesterday';
+    return '${value.abs().round()}% less than the same time yesterday';
   }
 
-  return 'Same as yesterday';
+  return 'Same as this time yesterday';
 }
 
 String _changeSuffix(double? value) {
@@ -410,7 +425,19 @@ String _changeSuffix(double? value) {
   }
 
   final direction = value > 0 ? ' • ↑ ' : ' • ↓ ';
-  return '$direction${value.abs().round()}% vs yesterday';
+  return '$direction${value.abs().round()}% vs same time yesterday';
+}
+
+
+String _categoryLabel(AppCategory category) {
+  switch (category) {
+    case AppCategory.productive:
+      return 'Productive';
+    case AppCategory.neutral:
+      return 'Neutral';
+    case AppCategory.distracting:
+      return 'Distracting';
+  }
 }
 
 String _formatDuration(Duration duration) {

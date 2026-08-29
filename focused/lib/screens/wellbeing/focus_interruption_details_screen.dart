@@ -5,6 +5,7 @@ import '../../models/focus_analysis_result.dart';
 import '../../models/focus_interruption.dart';
 import '../../providers/usage_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_icon.dart';
 
 class FocusInterruptionDetailsScreen extends StatelessWidget {
   const FocusInterruptionDetailsScreen({super.key});
@@ -265,6 +266,7 @@ class _TopInterrupterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final usageProvider = context.watch<UsageProvider>();
     final appName = result.topInterrupterApp;
 
     if (appName == null) {
@@ -279,6 +281,19 @@ class _TopInterrupterCard extends StatelessWidget {
     }
 
     final duration = result.distractionByApp[appName] ?? Duration.zero;
+    String? appId;
+    for (final interruption in result.interruptions) {
+      if (interruption.appName == appName) {
+        appId = interruption.appId;
+        break;
+      }
+    }
+    appId ??= usageProvider.resolveAppIdForName(appName);
+    final displayName = appId == null
+        ? appName
+        : usageProvider.resolveDisplayName(appId, fallback: appName);
+    final iconBytes =
+        appId == null ? null : usageProvider.getAppMetadata(appId)?.iconBytes;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -288,17 +303,13 @@ class _TopInterrupterCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.orange,
-            ),
+          AppIcon(
+            iconBytes: iconBytes,
+            appName: displayName,
+            size: 48,
+            borderRadius: 14,
+            fallbackBackground: Colors.orange.withOpacity(0.12),
+            fallbackForeground: Colors.orange,
           ),
 
           const SizedBox(width: 14),
@@ -308,7 +319,7 @@ class _TopInterrupterCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  appName,
+                  displayName,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -342,6 +353,8 @@ class _InterruptionTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final usageProvider = context.watch<UsageProvider>();
+
     if (interruptions.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
@@ -367,16 +380,22 @@ class _InterruptionTimeline extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.primaryBlue,
+                  AppIcon(
+                    iconBytes: usageProvider
+                        .getAppMetadata(interruption.appId)
+                        ?.iconBytes,
+                    appName: usageProvider.resolveDisplayName(
+                      interruption.appId,
+                      fallback: interruption.appName,
                     ),
+                    size: 30,
+                    borderRadius: 9,
+                    fallbackBackground:
+                        AppTheme.primaryBlue.withOpacity(0.12),
+                    fallbackForeground: AppTheme.primaryBlue,
                   ),
 
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
 
                   SizedBox(
                     width: 72,
@@ -391,7 +410,12 @@ class _InterruptionTimeline extends StatelessWidget {
 
                   Expanded(
                     child: Text(
-                      interruption.appName,
+                      usageProvider.resolveDisplayName(
+                        interruption.appId,
+                        fallback: interruption.appName,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +12,7 @@ import '../../theme/app_theme.dart';
 
 import '../../models/focus_analysis_result.dart';
 import '../../providers/usage_provider.dart';
+import '../../widgets/app_icon.dart';
 
 class FocusCompleteScreen extends StatefulWidget {
   const FocusCompleteScreen({super.key});
@@ -564,7 +567,29 @@ class _FocusQualityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final usageProvider = context.watch<UsageProvider>();
     final quality = analysis.focusQuality.round();
+    final distractionEntries = analysis.distractionByApp.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    String appIdForName(String appName) {
+      for (final interruption in analysis.interruptions) {
+        if (interruption.appName == appName) {
+          return interruption.appId;
+        }
+      }
+      return usageProvider.resolveAppIdForName(appName) ?? appName;
+    }
+
+    final topInterrupterId = analysis.topInterrupterApp == null
+        ? null
+        : appIdForName(analysis.topInterrupterApp!);
+    final topInterrupterName = analysis.topInterrupterApp == null
+        ? null
+        : usageProvider.resolveDisplayName(
+            topInterrupterId!,
+            fallback: analysis.topInterrupterApp,
+          );
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -666,10 +691,91 @@ class _FocusQualityCard extends StatelessWidget {
 
           _AnalysisRow(
             label: 'Top interrupter',
-            value: analysis.topInterrupterApp ?? 'None',
+            value: topInterrupterName ?? 'None',
           ),
+
+          const SizedBox(height: 14),
+
+          _AnalysisRow(
+            label: 'Attention retained',
+            value: '${analysis.attentionRetention.round()}%',
+          ),
+
+          const SizedBox(height: 14),
+
+          _AnalysisRow(
+            label: 'Plan completion',
+            value: '${analysis.completionRate.round()}%',
+          ),
+
+          if (analysis.distractionByApp.isNotEmpty) ...[
+            const Divider(height: 32),
+            Text(
+              'Distracting apps',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            ...distractionEntries.take(5).map((entry) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _DistractionAppRow(
+                  appName: usageProvider.resolveDisplayName(
+                    appIdForName(entry.key),
+                    fallback: entry.key,
+                  ),
+                  iconBytes: usageProvider
+                      .getAppMetadata(appIdForName(entry.key))
+                      ?.iconBytes,
+                  duration: entry.value,
+                ),
+              );
+            }),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _DistractionAppRow extends StatelessWidget {
+  final String appName;
+  final Uint8List? iconBytes;
+  final Duration duration;
+
+  const _DistractionAppRow({
+    required this.appName,
+    required this.iconBytes,
+    required this.duration,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        AppIcon(
+          iconBytes: iconBytes,
+          appName: appName,
+          size: 36,
+          borderRadius: 11,
+          fallbackBackground: scheme.errorContainer.withOpacity(0.65),
+          fallbackForeground: scheme.onErrorContainer,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            appName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        Text(
+          _formatDuration(duration),
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ],
     );
   }
 }
