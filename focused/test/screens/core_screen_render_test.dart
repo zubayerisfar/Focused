@@ -38,7 +38,8 @@ void main() {
     await phone(tester);
     await tester.pumpWidget(app(const TodayScreen()));
     await tester.pumpAndSettle();
-    expect(find.text('Focused'), findsOneWidget);
+    expect(find.byType(TodayScreen), findsOneWidget);
+    expect(find.text('Today at a glance'), findsOneWidget);
   });
 
   testWidgets('Planner renders at phone size', (tester) async {
@@ -57,7 +58,8 @@ void main() {
 
     await tester.pumpWidget(app(const TodayScreen()));
     await tester.pumpAndSettle();
-    expect(find.text('Focused'), findsOneWidget);
+    expect(find.byType(TodayScreen), findsOneWidget);
+    expect(find.text('Today at a glance'), findsOneWidget);
   });
 
   testWidgets('Planner header fits a narrower phone width', (tester) async {

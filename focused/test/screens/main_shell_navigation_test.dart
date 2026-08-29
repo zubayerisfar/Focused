@@ -37,9 +37,8 @@ void main() {
     );
   }
 
-  testWidgets('main navigation contains only Today Planner Focus', (
-    tester,
-  ) async {
+  testWidgets('main navigation contains only Today Planner Focus',
+      (tester) async {
     await usePhoneViewport(tester);
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
@@ -56,9 +55,8 @@ void main() {
     expect(find.byKey(const ValueKey('nav-insights')), findsNothing);
   });
 
-  testWidgets('Planner exposes Tasks and Habits as internal sections', (
-    tester,
-  ) async {
+  testWidgets('Planner exposes Tasks and Habits as internal sections',
+      (tester) async {
     await usePhoneViewport(tester);
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
@@ -80,9 +78,8 @@ void main() {
     expect(find.byType(FloatingActionButton), findsOneWidget);
   });
 
-  testWidgets('Today Planner and Focus switch cleanly at phone viewport', (
-    tester,
-  ) async {
+  testWidgets('Today Planner and Focus switch cleanly at phone viewport',
+      (tester) async {
     await usePhoneViewport(tester);
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();

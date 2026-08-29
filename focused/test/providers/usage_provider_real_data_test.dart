@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focused/models/app_category.dart';
 import 'package:focused/models/app_usage_record.dart';
 import 'package:focused/models/focus_block.dart';
 import 'package:focused/models/focus_session.dart';
@@ -79,6 +80,62 @@ void main() {
     expect(await store.loadDay(DateTime(2026, 8, 28)), isNotNull);
     expect(await store.loadDay(DateTime(2026, 8, 27)), isNotNull);
     expect(service.queryCount, 2);
+  });
+
+  test('today helpers expose top apps and unique distracting usage', () async {
+    final now = DateTime(2026, 8, 28, 12);
+    final provider = UsageProvider(
+      usageStatsService: _FakeUsageStatsService(
+        granted: true,
+        resolver: (start, end) {
+          if (start.day != 28) {
+            return const [];
+          }
+
+          return [
+            AppUsageRecord(
+              appId: 'com.instagram.android',
+              appName: 'Instagram',
+              startTime: DateTime(2026, 8, 28, 9),
+              endTime: DateTime(2026, 8, 28, 10),
+            ),
+            AppUsageRecord(
+              appId: 'com.instagram.android',
+              appName: 'Instagram',
+              startTime: DateTime(2026, 8, 28, 9, 30),
+              endTime: DateTime(2026, 8, 28, 10, 30),
+            ),
+            AppUsageRecord(
+              appId: 'com.google.android.youtube',
+              appName: 'YouTube',
+              startTime: DateTime(2026, 8, 28, 11),
+              endTime: DateTime(2026, 8, 28, 11, 45),
+            ),
+            AppUsageRecord(
+              appId: 'com.android.chrome',
+              appName: 'Chrome',
+              startTime: DateTime(2026, 8, 28, 10, 30),
+              endTime: DateTime(2026, 8, 28, 11),
+            ),
+          ];
+        },
+      ),
+    );
+
+    await provider.refreshPermissionAndUsage(now: now, force: true);
+
+    final top = provider.topAppsToday(limit: 3);
+    expect(top.map((entry) => entry.key).toList(), [
+      'Instagram',
+      'YouTube',
+      'Chrome',
+    ]);
+    expect(top.first.value, const Duration(minutes: 90));
+    expect(
+      provider.usageForCategoryToday(AppCategory.distracting),
+      const Duration(hours: 2, minutes: 15),
+    );
+    expect(provider.topDistractingAppToday, 'Instagram');
   });
 
   test('unsupported platform reports unsupported instead of fake zero usage', () async {

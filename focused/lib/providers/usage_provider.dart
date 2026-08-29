@@ -391,6 +391,85 @@ class UsageProvider extends ChangeNotifier {
     return ((todaySeconds - yesterdaySeconds) / yesterdaySeconds) * 100;
   }
 
+  /// The most-used apps for today, ordered by attributed app time.
+  ///
+  /// DailyUsageSummary already unions duplicate intervals for the same app, so
+  /// this list is safe to use for ranking and display. Global screen time is
+  /// still represented by [DailyUsageSummary.totalUsage].
+  List<MapEntry<String, Duration>> topAppsToday({int limit = 5}) {
+    if (limit <= 0 || _todaySummary == null) {
+      return const <MapEntry<String, Duration>>[];
+    }
+
+    final entries = _todaySummary!.appUsage.entries.toList()
+      ..sort((first, second) => second.value.compareTo(first.value));
+
+    return List<MapEntry<String, Duration>>.unmodifiable(
+      entries.take(limit),
+    );
+  }
+
+  /// Unique usage time for one app category today.
+  ///
+  /// We filter raw normalized records and run them back through UsageAnalyzer
+  /// so overlapping apps in the same category cannot inflate the result.
+  Duration usageForCategoryToday(AppCategory category) {
+    final summary = _todaySummary;
+    if (summary == null || _todayRecords.isEmpty) {
+      return Duration.zero;
+    }
+
+    final filtered = _todayRecords.where((record) {
+      final byPackage = _appCategories[record.appId];
+      final resolved = byPackage ??
+          _appCategories[record.appName] ??
+          AppCategory.neutral;
+      return resolved == category;
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return Duration.zero;
+    }
+
+    return _usageAnalyzer
+        .buildDailySummary(summary.date, filtered)
+        .totalUsage;
+  }
+
+  String? get topDistractingAppToday {
+    final entries = topAppsToday(
+      limit: _todaySummary?.appUsage.length ?? 0,
+    );
+
+    for (final entry in entries) {
+      if (_categoryForTodayAppName(entry.key) == AppCategory.distracting) {
+        return entry.key;
+      }
+    }
+
+    return null;
+  }
+
+  AppCategory _categoryForTodayAppName(String appName) {
+    final direct = _appCategories[appName];
+    if (direct != null) {
+      return direct;
+    }
+
+    for (final record in _todayRecords) {
+      if (record.appName != appName) {
+        continue;
+      }
+
+      final packageCategory = _appCategories[record.appId];
+      if (packageCategory != null) {
+        return packageCategory;
+      }
+    }
+
+    return AppCategory.neutral;
+  }
+
   DateTime _startOfDay(DateTime value) {
     return DateTime(value.year, value.month, value.day);
   }
