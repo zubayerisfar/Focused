@@ -1,0 +1,119 @@
+import 'package:go_router/go_router.dart';
+
+import '../screens/auth/login_screen.dart';
+import '../screens/devices/devices_screen.dart';
+import '../screens/focus/focus_complete_screen.dart';
+import '../screens/focus/focus_session_screen.dart';
+import '../screens/focus/focus_setup_screen.dart';
+import '../screens/habits/habit_details_screen.dart';
+import '../screens/habits/habit_edit_screen.dart';
+import '../screens/main/main_shell.dart';
+import '../screens/settings/settings_screen.dart';
+import '../screens/tasks/task_edit_screen.dart';
+import '../screens/wellbeing/app_usage_details_screen.dart';
+import '../screens/wellbeing/app_usage_app_details_screen.dart';
+import '../screens/wellbeing/focus_interruption_details_screen.dart';
+import '../screens/wellbeing/usage_permission_screen.dart';
+import '../screens/wellbeing/wellbeing_screen.dart';
+import '../screens/wellbeing/weekly_wellbeing_screen.dart';
+
+final GoRouter appRouter = GoRouter(
+  initialLocation: '/',
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const MainShell(),
+    ),
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/wellbeing',
+      builder: (context, state) => const WellbeingScreen(),
+    ),
+    GoRoute(
+      path: '/devices',
+      builder: (context, state) => const DevicesScreen(),
+    ),
+    GoRoute(
+      path: '/task/new',
+      builder: (context, state) => const TaskEditScreen(),
+    ),
+    GoRoute(
+      path: '/task/edit/:taskId',
+      builder: (context, state) => TaskEditScreen(
+        taskId: state.pathParameters['taskId'],
+      ),
+    ),
+    GoRoute(
+      path: '/habit/new',
+      builder: (context, state) => const HabitEditScreen(),
+    ),
+    GoRoute(
+      path: '/habit/:habitId',
+      builder: (context, state) => HabitDetailsScreen(
+        habitId: state.pathParameters['habitId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/habit/edit/:habitId',
+      builder: (context, state) => HabitEditScreen(
+        habitId: state.pathParameters['habitId'],
+      ),
+    ),
+    GoRoute(
+      path: '/focus/setup',
+      builder: (context, state) => FocusSetupScreen(
+        initialTaskId: state.uri.queryParameters['taskId'],
+        initialOccurrenceDate: _parseDateOnly(
+          state.uri.queryParameters['occurrenceDate'],
+        ),
+      ),
+    ),
+    GoRoute(
+      path: '/focus/session',
+      builder: (context, state) => const FocusSessionScreen(),
+    ),
+    GoRoute(
+      path: '/focus/complete',
+      builder: (context, state) => const FocusCompleteScreen(),
+    ),
+    GoRoute(
+      path: '/wellbeing/analytics',
+      builder: (context, state) => const WeeklyWellbeingScreen(),
+    ),
+    GoRoute(
+      path: '/wellbeing/app-usage',
+      builder: (context, state) => const AppUsageDetailsScreen(),
+    ),
+    GoRoute(
+      path: '/wellbeing/app/:appId',
+      builder: (context, state) => AppUsageAppDetailsScreen(
+        appId: Uri.decodeComponent(state.pathParameters['appId']!),
+        initialAppName: state.uri.queryParameters['name'],
+      ),
+    ),
+    GoRoute(
+      path: '/wellbeing/focus-interruptions',
+      builder: (context, state) => const FocusInterruptionDetailsScreen(),
+    ),
+    GoRoute(
+      path: '/wellbeing/permission',
+      builder: (context, state) => const UsagePermissionScreen(),
+    ),
+  ],
+);
+
+
+DateTime? _parseDateOnly(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return null;
+  final local = parsed.isUtc ? parsed.toLocal() : parsed;
+  return DateTime(local.year, local.month, local.day);
+}

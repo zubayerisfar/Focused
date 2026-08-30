@@ -1,0 +1,32 @@
+import 'task.dart';
+
+class TaskOccurrence {
+  final Task task;
+  final DateTime start;
+  final DateTime end;
+  final bool isCompleted;
+  final DateTime? completedAt;
+
+  const TaskOccurrence({
+    required this.task,
+    required this.start,
+    required this.end,
+    this.isCompleted = false,
+    this.completedAt,
+  });
+
+  Duration get duration => end.difference(start);
+
+  TaskOccurrence withCompletion({
+    required bool isCompleted,
+    DateTime? completedAt,
+  }) {
+    return TaskOccurrence(
+      task: task,
+      start: start,
+      end: end,
+      isCompleted: isCompleted,
+      completedAt: completedAt,
+    );
+  }
+}

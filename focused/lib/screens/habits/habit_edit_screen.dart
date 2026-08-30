@@ -34,6 +34,8 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
   };
   int _iconCodePoint = Icons.check_rounded.codePoint;
   int _colorValue = const Color(0xFF4D7CFE).value;
+  bool _reminderEnabled = false;
+  int _reminderMinutesFromMidnight = 20 * 60;
   bool _initialized = false;
   bool _saving = false;
 
@@ -56,6 +58,9 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     _weekdays = Set<int>.from(habit.weekdays);
     _iconCodePoint = habit.iconCodePoint;
     _colorValue = habit.colorValue;
+    _reminderEnabled = habit.reminderMinutesFromMidnight != null;
+    _reminderMinutesFromMidnight =
+        habit.reminderMinutesFromMidnight ?? _reminderMinutesFromMidnight;
   }
 
   @override
@@ -182,6 +187,48 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
               },
             ),
             const SizedBox(height: 20),
+            const _SectionLabel('Reminder'),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Column(
+                children: [
+                  SwitchListTile.adaptive(
+                    value: _reminderEnabled,
+                    onChanged: (value) {
+                      setState(() => _reminderEnabled = value);
+                    },
+                    title: const Text(
+                      'Habit reminder',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    subtitle: Text(
+                      _reminderEnabled
+                          ? 'Only on the repeat days selected above.'
+                          : 'Off',
+                    ),
+                  ),
+                  if (_reminderEnabled) ...[
+                    Divider(height: 1, color: Theme.of(context).dividerColor),
+                    ListTile(
+                      leading: const Icon(Icons.schedule_rounded),
+                      title: const Text('Reminder time'),
+                      subtitle: const Text('Uses your device timezone'),
+                      trailing: Text(
+                        _reminderTime.format(context),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      onTap: _pickReminderTime,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             const _SectionLabel('Style'),
             const SizedBox(height: 8),
             _StylePicker(
@@ -218,6 +265,23 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     );
   }
 
+  TimeOfDay get _reminderTime => TimeOfDay(
+        hour: _reminderMinutesFromMidnight ~/ 60,
+        minute: _reminderMinutesFromMidnight % 60,
+      );
+
+  Future<void> _pickReminderTime() async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: _reminderTime,
+      helpText: 'Habit reminder time',
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _reminderMinutesFromMidnight = selected.hour * 60 + selected.minute;
+    });
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -241,6 +305,8 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
           weekdays: _weekdays,
           iconCodePoint: _iconCodePoint,
           colorValue: _colorValue,
+          reminderMinutesFromMidnight:
+              _reminderEnabled ? _reminderMinutesFromMidnight : null,
         );
       } else {
         final existing = provider.getHabitById(widget.habitId!);
@@ -256,11 +322,21 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
             weekdays: Set<int>.from(_weekdays),
             iconCodePoint: _iconCodePoint,
             colorValue: _colorValue,
+            reminderMinutesFromMidnight:
+                _reminderEnabled ? _reminderMinutesFromMidnight : null,
           ),
         );
       }
 
       if (!mounted) return;
+      final reminderResult = provider.lastReminderResult;
+      if (_reminderEnabled &&
+          reminderResult != null &&
+          !reminderResult.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(reminderResult.message)),
+        );
+      }
       Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focused/models/habit.dart';
 import 'package:focused/models/habit_progress.dart';
+import 'package:focused/models/habit_reminder_result.dart';
 import 'package:focused/providers/habit_provider.dart';
+import 'package:focused/services/habit_notification_service.dart';
 import 'package:focused/services/habit_storage_service.dart';
 
 class _MemoryHabitStore implements HabitStore {
@@ -39,6 +41,40 @@ class _MemoryHabitStore implements HabitStore {
   @override
   Future<void> deleteProgressForHabit(String habitId) async {
     progress.removeWhere((_, value) => value.habitId == habitId);
+  }
+}
+
+
+class _FakeHabitReminderScheduler implements HabitReminderScheduler {
+  final List<Habit> scheduled = [];
+  final List<String> cancelled = [];
+
+  @override
+  Future<HabitReminderScheduleResult> scheduleForHabit(Habit habit) async {
+    scheduled.add(habit);
+    if (!habit.hasReminder) {
+      return HabitReminderScheduleResult.noReminder(habit.id);
+    }
+    return HabitReminderScheduleResult(
+      habitId: habit.id,
+      status: HabitReminderScheduleStatus.scheduledExact,
+      message: 'scheduled',
+      notificationPermissionGranted: true,
+      exactAlarmPermissionGranted: true,
+      pendingRequestCount: habit.weekdays.length,
+    );
+  }
+
+  @override
+  Future<void> cancelForHabit(String habitId) async {
+    cancelled.add(habitId);
+  }
+
+  @override
+  Future<int> pendingReminderCountForHabit(String habitId) async {
+    final matching = scheduled.where((habit) => habit.id == habitId).toList();
+    if (matching.isEmpty || !matching.last.hasReminder) return 0;
+    return matching.last.weekdays.length;
   }
 }
 
@@ -151,4 +187,170 @@ void main() {
     expect(provider.getHabitById(habit.id), isNull);
     expect(store.progress, isEmpty);
   });
+
+  test('creating and editing a reminder reschedules the habit', () async {
+    final store = _MemoryHabitStore();
+    final reminders = _FakeHabitReminderScheduler();
+    final provider = HabitProvider(
+      storageService: store,
+      reminderScheduler: reminders,
+    );
+
+    final habit = await provider.createHabit(
+      title: 'Read',
+      goalType: HabitGoalType.checkIn,
+      targetValue: 1,
+      unit: 'done',
+      weekdays: const {DateTime.monday, DateTime.wednesday},
+      iconCodePoint: Icons.menu_book_rounded.codePoint,
+      colorValue: const Color(0xFF4D7CFE).value,
+      reminderMinutesFromMidnight: 20 * 60,
+      createdAt: DateTime(2026, 8, 31, 8),
+    );
+
+    expect(reminders.scheduled, hasLength(1));
+    expect(reminders.scheduled.single.reminderMinutesFromMidnight, 20 * 60);
+    expect(provider.lastReminderResult?.isSuccess, isTrue);
+
+    await provider.updateHabit(
+      habit.copyWith(reminderMinutesFromMidnight: 21 * 60 + 15),
+    );
+
+    expect(reminders.scheduled, hasLength(2));
+    expect(reminders.scheduled.last.reminderMinutesFromMidnight, 21 * 60 + 15);
+  });
+
+  test('turning a reminder off asks scheduler to clear existing notifications', () async {
+    final reminders = _FakeHabitReminderScheduler();
+    final provider = HabitProvider(reminderScheduler: reminders);
+
+    final habit = await provider.createHabit(
+      title: 'Stretch',
+      goalType: HabitGoalType.checkIn,
+      targetValue: 1,
+      unit: 'done',
+      weekdays: const {1, 2, 3, 4, 5, 6, 7},
+      iconCodePoint: Icons.self_improvement_rounded.codePoint,
+      colorValue: const Color(0xFF34B27B).value,
+      reminderMinutesFromMidnight: 8 * 60,
+      createdAt: DateTime(2026, 8, 29, 8),
+    );
+
+    await provider.updateHabit(
+      habit.copyWith(reminderMinutesFromMidnight: null),
+    );
+
+    // scheduleForHabit is intentionally called even when disabled; the real
+    // scheduler cancels old requests before returning noReminder.
+    expect(reminders.scheduled.last.hasReminder, isFalse);
+    expect(provider.lastReminderResult?.status,
+        HabitReminderScheduleStatus.noReminder);
+  });
+
+  test('deleting a habit cancels its reminder', () async {
+    final reminders = _FakeHabitReminderScheduler();
+    final provider = HabitProvider(reminderScheduler: reminders);
+    final habit = await provider.createHabit(
+      title: 'Meditate',
+      goalType: HabitGoalType.checkIn,
+      targetValue: 1,
+      unit: 'done',
+      weekdays: const {1, 2, 3, 4, 5, 6, 7},
+      iconCodePoint: Icons.self_improvement_rounded.codePoint,
+      colorValue: const Color(0xFF8E67D4).value,
+      reminderMinutesFromMidnight: 7 * 60,
+      createdAt: DateTime(2026, 8, 29, 8),
+    );
+
+    await provider.deleteHabit(habit.id);
+
+    expect(reminders.cancelled, contains(habit.id));
+  });
+
+  test('provider exposes habit analytics from stored progress', () async {
+    final provider = HabitProvider();
+    final habit = await provider.createHabit(
+      title: 'Read',
+      goalType: HabitGoalType.checkIn,
+      targetValue: 1,
+      unit: 'done',
+      weekdays: const {1, 2, 3, 4, 5, 6, 7},
+      iconCodePoint: Icons.menu_book_rounded.codePoint,
+      colorValue: const Color(0xFF4D7CFE).value,
+      createdAt: DateTime(2026, 8, 27, 8),
+    );
+
+    await provider.toggleCompleted(habit.id, DateTime(2026, 8, 27));
+    await provider.toggleCompleted(habit.id, DateTime(2026, 8, 28));
+    await provider.toggleCompleted(habit.id, DateTime(2026, 8, 29));
+
+    final analytics = provider.analyticsForHabit(
+      habit.id,
+      asOf: DateTime(2026, 8, 30, 12),
+    );
+
+    expect(analytics.currentStreak, 3);
+    expect(analytics.completedLast7Days, 3);
+  });
+
+
+  test('editing repeat days preserves historical schedule analytics', () async {
+    final provider = HabitProvider();
+    final habit = await provider.createHabit(
+      title: 'Exercise',
+      goalType: HabitGoalType.checkIn,
+      targetValue: 1,
+      unit: 'done',
+      weekdays: const {DateTime.monday, DateTime.wednesday},
+      iconCodePoint: Icons.fitness_center_rounded.codePoint,
+      colorValue: const Color(0xFF34B27B).value,
+      createdAt: DateTime(2026, 8, 24, 8), // Monday
+    );
+
+    await provider.toggleCompleted(habit.id, DateTime(2026, 8, 24));
+    await provider.toggleCompleted(habit.id, DateTime(2026, 8, 26));
+
+    await provider.updateHabit(
+      habit.copyWith(weekdays: const {1, 2, 3, 4, 5, 6, 7}),
+      updatedAt: DateTime(2026, 8, 27, 9),
+    );
+
+    final updated = provider.getHabitById(habit.id)!;
+    expect(updated.definitionHistory, hasLength(1));
+    expect(updated.occursOnDate(DateTime(2026, 8, 25)), isFalse);
+    expect(updated.occursOnDate(DateTime(2026, 8, 27)), isTrue);
+
+    final analytics = provider.analyticsForHabit(
+      habit.id,
+      asOf: DateTime(2026, 8, 27, 12),
+    );
+    expect(analytics.lifetimeScheduled, 3);
+    expect(analytics.lifetimeCompleted, 2);
+  });
+
+  test('editing target preserves historical completion threshold', () async {
+    final provider = HabitProvider();
+    final habit = await provider.createHabit(
+      title: 'Water',
+      goalType: HabitGoalType.count,
+      targetValue: 4,
+      unit: 'cups',
+      weekdays: const {1, 2, 3, 4, 5, 6, 7},
+      iconCodePoint: Icons.water_drop_rounded.codePoint,
+      colorValue: const Color(0xFF4D7CFE).value,
+      createdAt: DateTime(2026, 8, 27, 8),
+    );
+    await provider.setProgress(habit.id, DateTime(2026, 8, 27), 4);
+
+    await provider.updateHabit(
+      habit.copyWith(targetValue: 8),
+      updatedAt: DateTime(2026, 8, 28, 9),
+    );
+
+    final updated = provider.getHabitById(habit.id)!;
+    expect(updated.targetValueForDate(DateTime(2026, 8, 27)), 4);
+    expect(updated.targetValueForDate(DateTime(2026, 8, 28)), 8);
+    expect(provider.isCompletedForDate(updated, DateTime(2026, 8, 27)), isTrue);
+  });
+
 }

@@ -7,10 +7,12 @@ import 'package:provider/provider.dart';
 import '../../models/daily_usage_metrics.dart';
 import '../../models/focus_analysis_coverage.dart';
 import '../../models/focus_session.dart';
+import '../../models/habit_period_summary.dart';
 import '../../models/task_execution_period_summary.dart';
 import '../../models/usage_data_coverage.dart';
 import '../../models/usage_data_provenance.dart';
 import '../../providers/focus_provider.dart';
+import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../services/task_execution_analyzer.dart';
@@ -68,6 +70,7 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
     final focusProvider = context.watch<FocusProvider>();
+    final habitProvider = context.watch<HabitProvider>();
     final taskProvider = context.watch<TaskProvider>();
     final today = _dateOnly(DateTime.now());
 
@@ -166,6 +169,15 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
             sessions: focusProvider.sessionHistory,
             analysesBySessionId: usageProvider.storedFocusAnalyses,
           );
+          final currentHabits = habitProvider.analyticsForPeriod(
+            startDay: currentStart,
+            endDayExclusive: currentEndExclusive,
+            asOf: _sameDate(current.last.day, today) ? DateTime.now() : null,
+          );
+          final previousHabits = habitProvider.analyticsForPeriod(
+            startDay: previousStart,
+            endDayExclusive: previousEndExclusive,
+          );
 
           final atLatestRange = !_endDay.isBefore(today);
 
@@ -204,6 +216,11 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
                 _ScheduleExecutionCard(
                   current: currentExecution,
                   previous: previousExecution,
+                ),
+                const SizedBox(height: 26),
+                _HabitConsistencyCard(
+                  current: currentHabits,
+                  previous: previousHabits,
                 ),
                 const SizedBox(height: 26),
                 _DailyDataList(
@@ -1212,6 +1229,110 @@ String _formatDurationShort(Duration value) {
   final hours = minutes ~/ 60;
   final rest = minutes % 60;
   return rest == 0 ? '${hours}h' : '${hours}h ${rest}m';
+}
+
+class _HabitConsistencyCard extends StatelessWidget {
+  final HabitPeriodSummary current;
+  final HabitPeriodSummary previous;
+
+  const _HabitConsistencyCard({
+    required this.current,
+    required this.previous,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasCurrent = current.scheduledOccurrences > 0;
+    final hasPrevious = previous.scheduledOccurrences > 0;
+    final currentPercent = current.completionRate * 100;
+    final previousPercent = previous.completionRate * 100;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.repeat_rounded, color: scheme.secondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Habit consistency',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Completed scheduled habit occurrences',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _ExecutionTimeColumn(
+                  label: 'Consistency',
+                  value: hasCurrent ? '${currentPercent.round()}%' : '—',
+                ),
+              ),
+              Expanded(
+                child: _ExecutionTimeColumn(
+                  label: 'Completed',
+                  value: '${current.completedOccurrences}/${current.scheduledOccurrences}',
+                ),
+              ),
+              Expanded(
+                child: _ExecutionTimeColumn(
+                  label: 'Active habits',
+                  value: '${current.activeHabitCount}',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            hasCurrent
+                ? _percentagePointChange(
+                    currentPercent,
+                    previousPercent,
+                    available: hasPrevious,
+                  )
+                : 'No completed-day habit occurrences in this window yet.',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.35,
+                ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            'The still-open current day is excluded from this weekly trend so unfinished habits today are not counted as historical failures.',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.35,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _DailyDataList extends StatelessWidget {

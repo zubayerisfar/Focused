@@ -1383,6 +1383,7 @@ class _TodayHabitCard extends StatelessWidget {
     final progressLabel = habit.goalType == HabitGoalType.checkIn
         ? (completed ? 'Completed' : 'Check in')
         : '$progress / ${habit.targetValue} ${habit.unit}';
+    final streak = provider.analyticsFor(habit, asOf: date).currentStreak;
 
     return SizedBox(
       width: 174,
@@ -1418,6 +1419,14 @@ class _TodayHabitCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
+                    if (habit.hasReminder) ...[
+                      Icon(
+                        Icons.notifications_none_rounded,
+                        size: 18,
+                        color: habit.color,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     InkResponse(
                       radius: 22,
                       onTap: () => context
@@ -1445,14 +1454,29 @@ class _TodayHabitCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  progressLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        progressLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
+                    ),
+                    if (streak > 0) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '🔥 $streak',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 10),
                 ClipRRect(

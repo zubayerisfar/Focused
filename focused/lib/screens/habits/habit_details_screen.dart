@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/habit.dart';
+import '../../models/habit_analytics_summary.dart';
 import '../../providers/habit_provider.dart';
 
 class HabitDetailsScreen extends StatelessWidget {
@@ -30,20 +31,16 @@ class HabitDetailsScreen extends StatelessWidget {
     final scheduledToday = habit.occursOn(today);
     final progress = scheduledToday ? provider.progressForDate(habit.id, today) : 0;
     final completed = scheduledToday && provider.isCompletedForDate(habit, today);
-    final weekStart = _startOfWeek(today);
-    final weekDays = List<DateTime>.generate(7, (index) => weekStart.add(Duration(days: index)));
-    final completedThisWeek = weekDays
-        .where(habit.occursOn)
-        .where((date) => provider.isCompletedForDate(habit, date))
-        .length;
-    final scheduledThisWeek = weekDays.where(habit.occursOn).length;
+    final analytics = provider.analyticsFor(habit, asOf: today);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Habit'),
         actions: [
           TextButton(
-            onPressed: () => context.push('/habit/edit/${Uri.encodeComponent(habit.id)}'),
+            onPressed: () => context.push(
+              '/habit/edit/${Uri.encodeComponent(habit.id)}',
+            ),
             child: const Text('Edit'),
           ),
           const SizedBox(width: 6),
@@ -52,40 +49,7 @@ class HabitDetailsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          Row(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: habit.color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(habit.icon, color: habit.color, size: 28),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      habit.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _repeatText(habit),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          _HabitHeader(habit: habit),
           const SizedBox(height: 24),
           if (!scheduledToday)
             _InfoCard(
@@ -106,80 +70,15 @@ class HabitDetailsScreen extends StatelessWidget {
               onToggle: () => provider.toggleCompleted(habit.id, today),
             ),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Text(
-                'This week',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const Spacer(),
-              Text(
-                '$completedThisWeek / $scheduledThisWeek',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: weekDays.map((date) {
-                final scheduled = habit.occursOn(date);
-                final done = scheduled && provider.isCompletedForDate(habit, date);
-                return Column(
-                  children: [
-                    Text(
-                      DateFormat('E').format(date).substring(0, 1),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: done
-                            ? habit.color
-                            : scheduled
-                                ? habit.color.withOpacity(0.10)
-                                : Colors.transparent,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        done
-                            ? Icons.check_rounded
-                            : scheduled
-                                ? Icons.circle_outlined
-                                : Icons.remove_rounded,
-                        size: 16,
-                        color: done
-                            ? Colors.white
-                            : scheduled
-                                ? habit.color
-                                : Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
+          _ReminderCard(habit: habit),
+          const SizedBox(height: 24),
+          _AnalyticsSection(
+            habit: habit,
+            analytics: analytics,
           ),
         ],
       ),
     );
-  }
-
-  static DateTime _startOfWeek(DateTime date) {
-    final day = DateTime(date.year, date.month, date.day);
-    return day.subtract(Duration(days: day.weekday - DateTime.monday));
   }
 
   static String _repeatText(Habit habit) {
@@ -191,6 +90,427 @@ class HabitDetailsScreen extends StatelessWidget {
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final days = habit.weekdays.toList()..sort();
     return days.map((day) => labels[day - 1]).join(', ');
+  }
+}
+
+class _HabitHeader extends StatelessWidget {
+  final Habit habit;
+
+  const _HabitHeader({required this.habit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            color: habit.color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Icon(habit.icon, color: habit.color, size: 30),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                habit.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                HabitDetailsScreen._repeatText(habit),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReminderCard extends StatelessWidget {
+  final Habit habit;
+
+  const _ReminderCard({required this.habit});
+
+  @override
+  Widget build(BuildContext context) {
+    final reminder = habit.reminderTime;
+    final enabled = reminder != null;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer.withOpacity(0.42),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: scheme.surface.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              enabled ? Icons.notifications_active_rounded : Icons.notifications_off_outlined,
+              color: enabled ? habit.color : scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reminder',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  reminder != null
+                      ? '${reminder.format(context)} • ${HabitDetailsScreen._repeatText(habit)}'
+                      : 'No reminder scheduled',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push(
+              '/habit/edit/${Uri.encodeComponent(habit.id)}',
+            ),
+            child: Text(enabled ? 'Change' : 'Add'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyticsSection extends StatelessWidget {
+  final Habit habit;
+  final HabitAnalyticsSummary analytics;
+
+  const _AnalyticsSection({
+    required this.habit,
+    required this.analytics,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Habit analytics',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Consistency is measured only on the days this habit is scheduled.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = (constraints.maxWidth - 12) / 2;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _MetricCard(
+                  width: width,
+                  icon: Icons.local_fire_department_rounded,
+                  value: '${analytics.currentStreak}',
+                  label: 'Current streak',
+                  suffix: analytics.currentStreak == 1 ? 'occurrence' : 'occurrences',
+                ),
+                _MetricCard(
+                  width: width,
+                  icon: Icons.emoji_events_outlined,
+                  value: '${analytics.bestStreak}',
+                  label: 'Best streak',
+                  suffix: analytics.bestStreak == 1 ? 'occurrence' : 'occurrences',
+                ),
+                _MetricCard(
+                  width: width,
+                  icon: Icons.date_range_rounded,
+                  value: analytics.scheduledThisWeek == 0
+                      ? '—'
+                      : _percent(analytics.weeklyCompletionRate),
+                  label: 'This week',
+                  suffix: '${analytics.completedThisWeek}/${analytics.scheduledThisWeek} complete',
+                ),
+                _MetricCard(
+                  width: width,
+                  icon: Icons.calendar_month_outlined,
+                  value: analytics.scheduledThisMonth == 0
+                      ? '—'
+                      : _percent(analytics.monthCompletionRate),
+                  label: 'This month',
+                  suffix: '${analytics.completedThisMonth}/${analytics.scheduledThisMonth} complete',
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        _RateCard(
+          habit: habit,
+          analytics: analytics,
+        ),
+        const SizedBox(height: 20),
+        _HistoryGrid(
+          habit: habit,
+          days: analytics.historyLast30Days,
+        ),
+      ],
+    );
+  }
+
+  static String _percent(double value) => '${(value * 100).round()}%';
+}
+
+class _MetricCard extends StatelessWidget {
+  final double width;
+  final IconData icon;
+  final String value;
+  final String label;
+  final String suffix;
+
+  const _MetricCard({
+    required this.width,
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.suffix,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20, color: scheme.primary),
+            const SizedBox(height: 16),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              suffix,
+              maxLines: 2,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RateCard extends StatelessWidget {
+  final Habit habit;
+  final HabitAnalyticsSummary analytics;
+
+  const _RateCard({
+    required this.habit,
+    required this.analytics,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Consistency',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              Text(
+                analytics.scheduledLast30Days == 0
+                    ? '—'
+                    : '${(analytics.last30DaysCompletionRate * 100).round()}%',
+                style: TextStyle(
+                  color: habit.color,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: analytics.last30DaysCompletionRate,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(20),
+            color: habit.color,
+            backgroundColor: habit.color.withOpacity(0.10),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 14,
+            runSpacing: 6,
+            children: [
+              Text(
+                '7 days: ${analytics.completedLast7Days}/${analytics.scheduledLast7Days}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                '30 days: ${analytics.completedLast30Days}/${analytics.scheduledLast30Days}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                'Lifetime: ${analytics.lifetimeCompleted}/${analytics.lifetimeScheduled}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryGrid extends StatelessWidget {
+  final Habit habit;
+  final List<HabitHistoryDay> days;
+
+  const _HistoryGrid({
+    required this.habit,
+    required this.days,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Last 30 days',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Filled = completed • ring = scheduled • dash = rest day',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 14),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: days.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemBuilder: (context, index) {
+              final day = days[index];
+              return Tooltip(
+                message: '${DateFormat('MMM d').format(day.date)} • '
+                    '${day.scheduled ? (day.completed ? 'Completed' : 'Not completed') : 'Rest day'}',
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: day.completed
+                        ? habit.color
+                        : day.scheduled
+                            ? habit.color.withOpacity(0.10)
+                            : scheme.surfaceContainerHighest.withOpacity(0.55),
+                    shape: BoxShape.circle,
+                    border: day.scheduled && !day.completed
+                        ? Border.all(color: habit.color.withOpacity(0.55))
+                        : null,
+                  ),
+                  child: day.completed
+                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                      : Text(
+                          day.scheduled ? '${day.date.day}' : '–',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: day.scheduled
+                                    ? habit.color
+                                    : scheme.onSurfaceVariant,
+                              ),
+                        ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -217,7 +537,8 @@ class _TodayProgressCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +546,7 @@ class _TodayProgressCard extends StatelessWidget {
           Text(
             'Today',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                 ),
           ),
           const SizedBox(height: 4),
@@ -288,12 +609,13 @@ class _InfoCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
           Text(
             body,

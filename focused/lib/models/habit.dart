@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'habit_definition_revision.dart';
+
 enum HabitGoalType {
   checkIn,
   count,
@@ -7,6 +9,8 @@ enum HabitGoalType {
 }
 
 class Habit {
+  static const Object _unset = Object();
+
   final String id;
   final String title;
   final HabitGoalType goalType;
@@ -15,7 +19,13 @@ class Habit {
   final Set<int> weekdays;
   final int iconCodePoint;
   final int colorValue;
+  final int? reminderMinutesFromMidnight;
   final DateTime createdAt;
+
+  /// The local calendar day from which the current goal/repeat definition
+  /// applies. Older definitions are preserved in [definitionHistory].
+  final DateTime definitionEffectiveFromDay;
+  final List<HabitDefinitionRevision> definitionHistory;
 
   Habit({
     required this.id,
@@ -26,8 +36,18 @@ class Habit {
     required Set<int> weekdays,
     required this.iconCodePoint,
     required this.colorValue,
-    required this.createdAt,
-  }) : weekdays = Set<int>.unmodifiable(weekdays) {
+    this.reminderMinutesFromMidnight,
+    required DateTime createdAt,
+    DateTime? definitionEffectiveFromDay,
+    List<HabitDefinitionRevision> definitionHistory = const [],
+  })  : weekdays = Set<int>.unmodifiable(weekdays),
+        createdAt = createdAt,
+        definitionEffectiveFromDay = _dateOnly(
+          definitionEffectiveFromDay ?? createdAt,
+        ),
+        definitionHistory = List<HabitDefinitionRevision>.unmodifiable(
+          definitionHistory,
+        ) {
     if (id.trim().isEmpty) {
       throw ArgumentError('Habit id cannot be empty.');
     }
@@ -40,12 +60,59 @@ class Habit {
     if (this.weekdays.isEmpty) {
       throw ArgumentError('Habit must repeat on at least one weekday.');
     }
-    if (this.weekdays.any((day) => day < DateTime.monday || day > DateTime.sunday)) {
+    if (this.weekdays.any(
+      (day) => day < DateTime.monday || day > DateTime.sunday,
+    )) {
       throw ArgumentError('Habit weekdays must be between 1 and 7.');
+    }
+
+    final reminder = reminderMinutesFromMidnight;
+    if (reminder != null && (reminder < 0 || reminder >= 24 * 60)) {
+      throw ArgumentError('Habit reminder time must be within a single day.');
+    }
+
+    final createdDay = _dateOnly(createdAt);
+    if (this.definitionEffectiveFromDay.isBefore(createdDay)) {
+      throw ArgumentError(
+        'Habit definition cannot become effective before the habit was created.',
+      );
     }
   }
 
+  /// Current repeat definition. Use [occursOnDate] for historical analytics.
   bool occursOn(DateTime date) => weekdays.contains(date.weekday);
+
+  /// Returns whether this habit was scheduled on [date], respecting definition
+  /// changes that were made later.
+  bool occursOnDate(DateTime date) {
+    final day = _dateOnly(date);
+    if (day.isBefore(_dateOnly(createdAt))) return false;
+
+    for (final revision in definitionHistory) {
+      if (revision.appliesTo(day)) {
+        return revision.occursOn(day);
+      }
+    }
+
+    if (day.isBefore(definitionEffectiveFromDay)) return false;
+    return weekdays.contains(day.weekday);
+  }
+
+  /// Returns the completion target that applied on [date]. Null means the
+  /// habit did not yet have a valid definition on that date.
+  int? targetValueForDate(DateTime date) {
+    final day = _dateOnly(date);
+    if (day.isBefore(_dateOnly(createdAt))) return null;
+
+    for (final revision in definitionHistory) {
+      if (revision.appliesTo(day)) {
+        return revision.targetValue;
+      }
+    }
+
+    if (day.isBefore(definitionEffectiveFromDay)) return null;
+    return targetValue;
+  }
 
   IconData get icon => IconData(
         iconCodePoint,
@@ -53,6 +120,14 @@ class Habit {
       );
 
   Color get color => Color(colorValue);
+
+  bool get hasReminder => reminderMinutesFromMidnight != null;
+
+  TimeOfDay? get reminderTime {
+    final minutes = reminderMinutesFromMidnight;
+    if (minutes == null) return null;
+    return TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60);
+  }
 
   Habit copyWith({
     String? id,
@@ -63,7 +138,10 @@ class Habit {
     Set<int>? weekdays,
     int? iconCodePoint,
     int? colorValue,
+    Object? reminderMinutesFromMidnight = _unset,
     DateTime? createdAt,
+    DateTime? definitionEffectiveFromDay,
+    List<HabitDefinitionRevision>? definitionHistory,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -74,13 +152,19 @@ class Habit {
       weekdays: weekdays ?? this.weekdays,
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
       colorValue: colorValue ?? this.colorValue,
+      reminderMinutesFromMidnight: identical(reminderMinutesFromMidnight, _unset)
+          ? this.reminderMinutesFromMidnight
+          : reminderMinutesFromMidnight as int?,
       createdAt: createdAt ?? this.createdAt,
+      definitionEffectiveFromDay:
+          definitionEffectiveFromDay ?? this.definitionEffectiveFromDay,
+      definitionHistory: definitionHistory ?? this.definitionHistory,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'schemaVersion': 1,
+      'schemaVersion': 3,
       'id': id,
       'title': title,
       'goalType': goalType.name,
@@ -89,7 +173,10 @@ class Habit {
       'weekdays': weekdays.toList()..sort(),
       'iconCodePoint': iconCodePoint,
       'colorValue': colorValue,
+      'reminderMinutesFromMidnight': reminderMinutesFromMidnight,
       'createdAt': createdAt.toIso8601String(),
+      'definitionEffectiveFromDay': definitionEffectiveFromDay.toIso8601String(),
+      'definitionHistory': definitionHistory.map((item) => item.toMap()).toList(),
     };
   }
 
@@ -102,7 +189,10 @@ class Habit {
     final weekdaysRaw = map['weekdays'];
     final iconCodePoint = map['iconCodePoint'];
     final colorValue = map['colorValue'];
+    final reminderRaw = map['reminderMinutesFromMidnight'];
     final createdAtRaw = map['createdAt'];
+    final definitionEffectiveRaw = map['definitionEffectiveFromDay'];
+    final definitionHistoryRaw = map['definitionHistory'];
 
     if (id is! String || title is! String || goalTypeRaw is! String) {
       throw const FormatException('Invalid habit identity.');
@@ -116,12 +206,41 @@ class Habit {
     if (createdAtRaw is! String) {
       throw const FormatException('Invalid habit creation time.');
     }
+    if (reminderRaw != null && reminderRaw is! int) {
+      throw const FormatException('Invalid habit reminder time.');
+    }
+    if (definitionEffectiveRaw != null && definitionEffectiveRaw is! String) {
+      throw const FormatException('Invalid habit definition start.');
+    }
+    if (definitionHistoryRaw != null && definitionHistoryRaw is! List) {
+      throw const FormatException('Invalid habit definition history.');
+    }
 
-    final goalType = HabitGoalType.values.where((value) => value.name == goalTypeRaw).firstOrNull;
+    final goalType = HabitGoalType.values
+        .where((value) => value.name == goalTypeRaw)
+        .firstOrNull;
     final createdAt = DateTime.tryParse(createdAtRaw);
     final weekdays = weekdaysRaw.whereType<int>().toSet();
+    final definitionEffectiveFromDay = definitionEffectiveRaw is String
+        ? DateTime.tryParse(definitionEffectiveRaw)
+        : createdAt;
 
-    if (goalType == null || createdAt == null || weekdays.length != weekdaysRaw.length) {
+    final history = <HabitDefinitionRevision>[];
+    if (definitionHistoryRaw is List) {
+      for (final raw in definitionHistoryRaw) {
+        if (raw is! Map) {
+          throw const FormatException('Invalid habit definition history item.');
+        }
+        history.add(
+          HabitDefinitionRevision.fromMap(Map<dynamic, dynamic>.from(raw)),
+        );
+      }
+    }
+
+    if (goalType == null ||
+        createdAt == null ||
+        definitionEffectiveFromDay == null ||
+        weekdays.length != weekdaysRaw.length) {
       throw const FormatException('Invalid habit data.');
     }
 
@@ -134,17 +253,23 @@ class Habit {
       weekdays: weekdays,
       iconCodePoint: iconCodePoint,
       colorValue: colorValue,
+      reminderMinutesFromMidnight: reminderRaw as int?,
       createdAt: createdAt,
+      definitionEffectiveFromDay: definitionEffectiveFromDay,
+      definitionHistory: history,
     );
+  }
+
+  static DateTime _dateOnly(DateTime value) {
+    final local = value.isUtc ? value.toLocal() : value;
+    return DateTime(local.year, local.month, local.day);
   }
 }
 
 extension _FirstOrNull<E> on Iterable<E> {
   E? get firstOrNull {
     final iterator = this.iterator;
-    if (!iterator.moveNext()) {
-      return null;
-    }
+    if (!iterator.moveNext()) return null;
     return iterator.current;
   }
 }

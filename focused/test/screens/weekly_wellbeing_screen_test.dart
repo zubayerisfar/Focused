@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:focused/models/app_usage_record.dart';
 import 'package:focused/providers/focus_provider.dart';
+import 'package:focused/providers/habit_provider.dart';
 import 'package:focused/providers/task_provider.dart';
 import 'package:focused/providers/usage_provider.dart';
 import 'package:focused/screens/wellbeing/weekly_wellbeing_screen.dart';
@@ -49,6 +50,7 @@ void main() {
           ChangeNotifierProvider.value(value: usage),
           ChangeNotifierProvider.value(value: focus),
           ChangeNotifierProvider(create: (_) => TaskProvider()),
+          ChangeNotifierProvider(create: (_) => HabitProvider()),
         ],
         child: const MaterialApp(home: WeeklyWellbeingScreen()),
       ),

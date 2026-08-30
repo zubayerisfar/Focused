@@ -17,6 +17,7 @@ import 'services/app_metadata_storage_service.dart';
 import 'services/app_category_storage_service.dart';
 import 'services/focus_analysis_storage_service.dart';
 import 'services/focus_session_storage_service.dart';
+import 'services/habit_notification_service.dart';
 import 'services/habit_storage_service.dart';
 import 'services/task_notification_service.dart';
 import 'services/task_occurrence_completion_storage_service.dart';
@@ -50,6 +51,7 @@ Future<void> main() async {
   await userProfileStorageService.init();
 
   final taskNotificationService = TaskNotificationService();
+  final habitNotificationService = HabitNotificationService();
 
   final taskProvider = TaskProvider(
     storageService: taskStorageService,
@@ -78,7 +80,10 @@ Future<void> main() async {
   await usageProvider.loadStoredAppMetadata();
   await usageProvider.loadStoredUsage();
 
-  final habitProvider = HabitProvider(storageService: habitStorageService);
+  final habitProvider = HabitProvider(
+    storageService: habitStorageService,
+    reminderScheduler: habitNotificationService,
+  );
   await habitProvider.loadStoredHabits();
 
   final userProfileProvider = UserProfileProvider(

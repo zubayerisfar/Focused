@@ -22,24 +22,19 @@ class TaskExecutionPeriodSummary {
   Iterable<TaskExecutionSummary> get _startEligibleTasks {
     final cutoff = asOf;
     if (cutoff == null) return tasks;
-    return tasks.where(
-      (task) => task.hasStarted || !task.plannedStart.isAfter(cutoff),
-    );
+    return tasks.where((task) => task.hasStarted || !task.plannedStart.isAfter(cutoff));
   }
 
   Iterable<TaskExecutionSummary> get _completionEligibleTasks {
     final cutoff = asOf;
     if (cutoff == null) return tasks;
-    return tasks.where(
-      (task) => task.isCompleted || !task.plannedEnd.isAfter(cutoff),
-    );
+    return tasks.where((task) => task.isCompleted || !task.plannedEnd.isAfter(cutoff));
   }
 
   int get startEligibleCount => _startEligibleTasks.length;
   int get completionEligibleCount => _completionEligibleTasks.length;
 
-  int get startedCount =>
-      _startEligibleTasks.where((task) => task.hasStarted).length;
+  int get startedCount => _startEligibleTasks.where((task) => task.hasStarted).length;
   int get completedCount =>
       _completionEligibleTasks.where((task) => task.isCompleted).length;
   int get activeCount => tasks.where((task) => task.isActive).length;
@@ -48,8 +43,8 @@ class TaskExecutionPeriodSummary {
       .length;
 
   Duration get plannedDuration => tasks.fold(Duration.zero, (total, task) {
-    return total + task.plannedDuration;
-  });
+        return total + task.plannedDuration;
+      });
 
   Duration get elapsedPlannedDuration {
     final cutoff = asOf;
@@ -66,8 +61,8 @@ class TaskExecutionPeriodSummary {
   }
 
   Duration get activeFocusDuration => tasks.fold(Duration.zero, (total, task) {
-    return total + task.activeFocusDuration;
-  });
+        return total + task.activeFocusDuration;
+      });
 
   bool get effectiveFocusAvailable {
     final started = tasks.where((task) => task.hasStarted);
@@ -112,9 +107,7 @@ class TaskExecutionPeriodSummary {
   }
 
   Duration? get averageStartDelay {
-    final started = _startEligibleTasks
-        .where((task) => task.hasStarted)
-        .toList();
+    final started = _startEligibleTasks.where((task) => task.hasStarted).toList();
     if (started.isEmpty) return null;
 
     var totalMicroseconds = 0;
@@ -122,7 +115,9 @@ class TaskExecutionPeriodSummary {
       totalMicroseconds += (task.startDelay ?? Duration.zero).inMicroseconds;
     }
 
-    return Duration(microseconds: totalMicroseconds ~/ started.length);
+    return Duration(
+      microseconds: totalMicroseconds ~/ started.length,
+    );
   }
 
   double get planCoveragePercent {

@@ -35,6 +35,7 @@ void main() {
       weekdays: const {1, 3, 5},
       iconCodePoint: Icons.menu_book_rounded.codePoint,
       colorValue: const Color(0xFF4D7CFE).value,
+      reminderMinutesFromMidnight: 20 * 60,
       createdAt: DateTime(2026, 8, 29, 8),
     );
     final progress = HabitProgress(
@@ -48,6 +49,7 @@ void main() {
     await storage.saveProgress(progress);
 
     expect(storage.loadHabits().single.title, 'Read');
+    expect(storage.loadHabits().single.reminderMinutesFromMidnight, 20 * 60);
     expect(storage.loadProgress().single.value, 20);
   });
 
