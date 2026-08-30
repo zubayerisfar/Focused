@@ -4,16 +4,22 @@ import 'package:flutter/material.dart';
 
 import '../models/focus_block.dart';
 import '../models/focus_session.dart';
+import '../models/focus_guard_status.dart';
+import '../services/focus_guard_service.dart';
 import '../services/focus_session_storage_service.dart';
 
 class FocusProvider extends ChangeNotifier {
   final FocusSessionStorageService? _storageService;
+  final FocusGuardController _focusGuardController;
   final DateTime Function() _now;
 
   FocusProvider({
     FocusSessionStorageService? storageService,
+    FocusGuardController? focusGuardController,
     DateTime Function()? now,
   })  : _storageService = storageService,
+        _focusGuardController =
+            focusGuardController ?? const NoopFocusGuardController(),
         _now = now ?? DateTime.now;
 
   Timer? _ticker;
@@ -35,6 +41,7 @@ class FocusProvider extends ChangeNotifier {
   DateTime? _taskScheduledEnd;
 
   DateTime? _sessionStartedAt;
+  String? _activeSessionId;
   DateTime? _blockDeadline;
 
   DateTime? _currentFocusIntervalStart;
@@ -56,6 +63,11 @@ class FocusProvider extends ChangeNotifier {
   Future<void> _pendingPersistence = Future<void>.value();
   String? _lastPersistenceError;
   String? _lastPersistenceErrorSessionId;
+
+  FocusGuardStatus _focusGuardStatus =
+      const FocusGuardStatus.unsupported();
+  String? _focusGuardError;
+  DateTime? _lastFocusGuardStatusRefreshAt;
 
   // ---------------------------------------------------------
   // STORED HISTORY
@@ -329,6 +341,7 @@ class FocusProvider extends ChangeNotifier {
 
   String? get taskId => _taskId;
   String get taskName => _taskName;
+  String? get activeSessionId => _activeSessionId;
   DateTime? get taskOccurrenceDate => _taskOccurrenceDate;
   DateTime? get taskScheduledStart => _taskScheduledStart;
   DateTime? get taskScheduledEnd => _taskScheduledEnd;
@@ -337,6 +350,8 @@ class FocusProvider extends ChangeNotifier {
   bool get isRunning => _isRunning;
   bool get isPaused => _isPaused;
   bool get sessionFinished => _sessionFinished;
+  FocusGuardStatus get focusGuardStatus => _focusGuardStatus;
+  String? get focusGuardError => _focusGuardError;
 
   bool get isBreak {
     return currentBlock?.isBreak ?? false;
@@ -509,8 +524,11 @@ class FocusProvider extends ChangeNotifier {
     _lastSession = null;
     _lastPersistenceError = null;
     _lastPersistenceErrorSessionId = null;
+    _lastFocusGuardStatusRefreshAt = null;
 
     _sessionStartedAt = _now();
+    _activeSessionId =
+        _sessionStartedAt!.microsecondsSinceEpoch.toString();
 
     _plannedFocusDuration =
         Duration(minutes: totalFocusMinutes);
@@ -520,6 +538,7 @@ class FocusProvider extends ChangeNotifier {
     );
 
     _startTicker();
+    _startNativeFocusGuard();
 
     notifyListeners();
   }
@@ -624,6 +643,13 @@ class FocusProvider extends ChangeNotifier {
 
     final now = _now();
 
+    final lastGuardRefresh = _lastFocusGuardStatusRefreshAt;
+    if (lastGuardRefresh == null ||
+        now.difference(lastGuardRefresh) >= const Duration(seconds: 10)) {
+      _lastFocusGuardStatusRefreshAt = now;
+      unawaited(refreshFocusGuardStatus());
+    }
+
     while (_isRunning && !_isPaused) {
       final deadline = _blockDeadline;
 
@@ -706,6 +732,8 @@ class FocusProvider extends ChangeNotifier {
     _beginCurrentBlock(
       startAt: transitionTime,
     );
+
+    _syncNativeFocusGuardPhase();
   }
 
   // ---------------------------------------------------------
@@ -736,6 +764,13 @@ class FocusProvider extends ChangeNotifier {
     _isPaused = true;
     _blockDeadline = null;
 
+    _runGuardAction(
+      () => _focusGuardController.pauseFocusGuard(
+        currentBlockIndex: _currentBlockIndex,
+        remainingSeconds: _remainingSeconds,
+      ),
+    );
+
     notifyListeners();
   }
 
@@ -763,6 +798,14 @@ class FocusProvider extends ChangeNotifier {
     } else if (isBreak) {
       _currentBreakIntervalStart = now;
     }
+
+    _runGuardAction(
+      () => _focusGuardController.resumeFocusGuard(
+        currentBlockIndex: _currentBlockIndex,
+        isBreak: isBreak,
+        remainingSeconds: _remainingSeconds,
+      ),
+    );
 
     notifyListeners();
   }
@@ -797,6 +840,8 @@ class FocusProvider extends ChangeNotifier {
     _beginCurrentBlock(
       startAt: now,
     );
+
+    _syncNativeFocusGuardPhase();
 
     notifyListeners();
   }
@@ -909,7 +954,7 @@ class FocusProvider extends ChangeNotifier {
         _sessionStartedAt ?? endAt;
 
     final session = FocusSession(
-      id: startedAt.microsecondsSinceEpoch.toString(),
+      id: _activeSessionId ?? startedAt.microsecondsSinceEpoch.toString(),
       taskId: _taskId,
       taskName: _taskName,
       taskOccurrenceDate: _taskOccurrenceDate,
@@ -956,7 +1001,81 @@ class FocusProvider extends ChangeNotifier {
     _currentPauseIntervalStart = null;
     _currentBreakIntervalStart = null;
 
+    _runGuardAction(
+      _focusGuardController.stopFocusGuard,
+      refreshAfter: true,
+    );
+    _activeSessionId = null;
+    _lastFocusGuardStatusRefreshAt = null;
+
     notifyListeners();
+  }
+
+  void _startNativeFocusGuard() {
+    final sessionId = _activeSessionId;
+    final block = currentBlock;
+
+    if (sessionId == null || block == null) {
+      return;
+    }
+
+    _runGuardAction(
+      () => _focusGuardController.startFocusGuard(
+        sessionId: sessionId,
+        taskName: _taskName,
+        plan: List<FocusBlock>.unmodifiable(_plan),
+        currentBlockIndex: _currentBlockIndex,
+        remainingSeconds: _remainingSeconds,
+        originDevice: 'android',
+        warningThresholdSeconds: 30,
+      ),
+    );
+  }
+
+  void _syncNativeFocusGuardPhase() {
+    if (!_isRunning || _isPaused || currentBlock == null) {
+      return;
+    }
+
+    _runGuardAction(
+      () => _focusGuardController.syncFocusGuardPhase(
+        currentBlockIndex: _currentBlockIndex,
+        isBreak: isBreak,
+        remainingSeconds: _remainingSeconds,
+      ),
+    );
+  }
+
+  Future<void> refreshFocusGuardStatus() async {
+    try {
+      _focusGuardStatus = await _focusGuardController.getFocusGuardStatus();
+      _focusGuardError = null;
+    } catch (error) {
+      _focusGuardError = 'Focus Guard status could not be read: $error';
+    }
+
+    notifyListeners();
+  }
+
+  void _runGuardAction(
+    Future<void> Function() action, {
+    bool refreshAfter = true,
+  }) {
+    unawaited(() async {
+      try {
+        await action();
+        _focusGuardError = null;
+
+        if (refreshAfter) {
+          _focusGuardStatus =
+              await _focusGuardController.getFocusGuardStatus();
+        }
+      } catch (error) {
+        _focusGuardError = 'Focus Guard could not synchronize: $error';
+      }
+
+      notifyListeners();
+    }());
   }
 
   void _upsertHistory(

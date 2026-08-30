@@ -1291,6 +1291,7 @@ class _DayTimeGrid extends StatelessWidget {
 
   static const double _hourHeight = 68;
   static const double _timeWidth = 52;
+  static const double _topInset = 18;
 
   @override
   Widget build(BuildContext context) {
@@ -1298,7 +1299,7 @@ class _DayTimeGrid extends StatelessWidget {
     final startHour = range.$1;
     final endHour = range.$2;
     final hourCount = endHour - startHour;
-    final gridHeight = hourCount * _hourHeight;
+    final gridHeight = _topInset + hourCount * _hourHeight;
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -1320,7 +1321,7 @@ class _DayTimeGrid extends StatelessWidget {
                   children: List.generate(hourCount, (index) {
                     final hour = startHour + index;
                     return Positioned(
-                      top: index * _hourHeight - 7,
+                      top: _topInset + index * _hourHeight - 7,
                       left: 0,
                       right: 7,
                       child: Text(
@@ -1340,7 +1341,7 @@ class _DayTimeGrid extends StatelessWidget {
                   children: [
                     ...List.generate(hourCount + 1, (index) {
                       return Positioned(
-                        top: index * _hourHeight,
+                        top: _topInset + index * _hourHeight,
                         left: 0,
                         right: 0,
                         child: Divider(
@@ -1356,6 +1357,7 @@ class _DayTimeGrid extends StatelessWidget {
                         occurrence: occurrence,
                         startHour: startHour,
                         hourHeight: _hourHeight,
+                        topInset: _topInset,
                         left: 8,
                         right: 10,
                       );
@@ -1367,6 +1369,7 @@ class _DayTimeGrid extends StatelessWidget {
                         startHour: startHour,
                         endHour: endHour,
                         hourHeight: _hourHeight,
+                        topInset: _topInset,
                       ),
                     if (occurrences.isEmpty)
                       Center(
@@ -1409,6 +1412,7 @@ class _MultiDayTimeGrid extends StatelessWidget {
 
   static const double _hourHeight = 58;
   static const double _timeWidth = 48;
+  static const double _topInset = 18;
 
   @override
   Widget build(BuildContext context) {
@@ -1417,7 +1421,7 @@ class _MultiDayTimeGrid extends StatelessWidget {
     final startHour = range.$1;
     final endHour = range.$2;
     final hourCount = endHour - startHour;
-    final gridHeight = hourCount * _hourHeight;
+    final gridHeight = _topInset + hourCount * _hourHeight;
     final columnWidth = compact ? 150.0 : 184.0;
     final scheme = Theme.of(context).colorScheme;
 
@@ -1445,7 +1449,7 @@ class _MultiDayTimeGrid extends StatelessWidget {
                         children: List.generate(hourCount, (index) {
                           final hour = startHour + index;
                           return Positioned(
-                            top: index * _hourHeight - 7,
+                            top: _topInset + index * _hourHeight - 7,
                             left: 0,
                             right: 6,
                             child: Text(
@@ -1483,7 +1487,7 @@ class _MultiDayTimeGrid extends StatelessWidget {
                           children: [
                             ...List.generate(hourCount + 1, (index) {
                               return Positioned(
-                                top: index * _hourHeight,
+                                top: _topInset + index * _hourHeight,
                                 left: 0,
                                 right: 0,
                                 child: Divider(
@@ -1509,6 +1513,7 @@ class _MultiDayTimeGrid extends StatelessWidget {
                                 occurrence: occurrence,
                                 startHour: startHour,
                                 hourHeight: _hourHeight,
+                                topInset: _topInset,
                                 left: 7,
                                 right: 7,
                                 compact: true,
@@ -1521,6 +1526,7 @@ class _MultiDayTimeGrid extends StatelessWidget {
                                 startHour: startHour,
                                 endHour: endHour,
                                 hourHeight: _hourHeight,
+                                topInset: _topInset,
                               ),
                           ],
                         ),
@@ -1603,6 +1609,7 @@ Positioned _positionedGridTask(
   required TaskOccurrence occurrence,
   required int startHour,
   required double hourHeight,
+  required double topInset,
   required double left,
   required double right,
   bool compact = false,
@@ -1622,7 +1629,7 @@ Positioned _positionedGridTask(
   final height = rawHeight.clamp(compact ? 24.0 : 30.0, compact ? 118.0 : 170.0).toDouble();
 
   return Positioned(
-    top: rawTop.clamp(0.0, double.infinity).toDouble() + 3,
+    top: topInset + rawTop.clamp(0.0, double.infinity).toDouble() + 3,
     left: left,
     right: right,
     height: height,
@@ -1639,6 +1646,7 @@ Widget _currentTimeIndicator(
   required int startHour,
   required int endHour,
   required double hourHeight,
+  required double topInset,
 }) {
   final now = DateTime.now();
   if (!_sameDate(now, date)) {
@@ -1656,7 +1664,7 @@ Widget _currentTimeIndicator(
   final color = Theme.of(context).colorScheme.primary;
 
   return Positioned(
-    top: top,
+    top: topInset + top,
     left: 0,
     right: 0,
     child: Row(

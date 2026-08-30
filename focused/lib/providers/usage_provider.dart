@@ -21,6 +21,7 @@ import '../services/app_metadata_storage_service.dart';
 import '../services/app_category_storage_service.dart';
 import '../services/focus_analysis_storage_service.dart';
 import '../services/focus_interruption_analyzer.dart';
+import '../services/focus_guard_service.dart';
 import '../services/usage_analyzer.dart';
 import '../services/usage_record_storage_service.dart';
 import '../services/usage_stats_service.dart';
@@ -35,6 +36,7 @@ class UsageProvider extends ChangeNotifier {
     AppMetadataStore? appMetadataStorageService,
     UsageAnalyzer? usageAnalyzer,
     FocusInterruptionAnalyzer? focusInterruptionAnalyzer,
+    FocusGuardController? focusGuardController,
   })  : _usageStatsService = usageStatsService ?? AndroidUsageStatsService(),
         _storageService = storageService,
         _categoryStorageService = categoryStorageService,
@@ -44,7 +46,9 @@ class UsageProvider extends ChangeNotifier {
         _appMetadataStorageService = appMetadataStorageService,
         _usageAnalyzer = usageAnalyzer ?? UsageAnalyzer(),
         _focusInterruptionAnalyzer =
-            focusInterruptionAnalyzer ?? FocusInterruptionAnalyzer();
+            focusInterruptionAnalyzer ?? FocusInterruptionAnalyzer(),
+        _focusGuardController =
+            focusGuardController ?? const NoopFocusGuardController();
 
   final UsageStatsService _usageStatsService;
   final UsageRecordStore? _storageService;
@@ -54,6 +58,7 @@ class UsageProvider extends ChangeNotifier {
   final AppMetadataStore? _appMetadataStorageService;
   final UsageAnalyzer _usageAnalyzer;
   final FocusInterruptionAnalyzer _focusInterruptionAnalyzer;
+  final FocusGuardController _focusGuardController;
 
   // Package ids are the stable key for real Android data. A few legacy labels
   // are retained as aliases so existing analyzer tests/data remain meaningful.
@@ -310,6 +315,18 @@ class UsageProvider extends ChangeNotifier {
     });
   }
 
+  Set<String> get productivePackageIds {
+    return Set<String>.unmodifiable(
+      effectiveAppCategories.entries
+          .where(
+            (entry) =>
+                entry.value == AppCategory.productive &&
+                _looksLikeAndroidPackage(entry.key),
+          )
+          .map((entry) => entry.key),
+    );
+  }
+
   Future<void> loadStoredCategories() async {
     final store = _categoryStorageService;
     if (store == null) {
@@ -321,6 +338,8 @@ class UsageProvider extends ChangeNotifier {
       ..clear()
       ..addAll(stored);
     notifyListeners();
+
+    await _cacheFocusGuardAllowedPackages();
   }
 
   Future<void> setAppCategory(
@@ -335,6 +354,7 @@ class UsageProvider extends ChangeNotifier {
     final previous = _userAppCategories[normalized];
     _userAppCategories[normalized] = category;
     notifyListeners();
+    unawaited(_updateFocusGuardAllowedPackages());
 
     final store = _categoryStorageService;
     if (store == null) {
@@ -351,7 +371,32 @@ class UsageProvider extends ChangeNotifier {
       }
       _lastError = 'Could not save the app category: $error';
       notifyListeners();
+      unawaited(_updateFocusGuardAllowedPackages());
       rethrow;
+    }
+  }
+
+  Future<void> syncFocusGuardAllowedPackages() {
+    return _updateFocusGuardAllowedPackages();
+  }
+
+  Future<void> _cacheFocusGuardAllowedPackages() async {
+    try {
+      await _focusGuardController.cacheFocusGuardAllowedPackages(
+        productivePackageIds,
+      );
+    } catch (error) {
+      debugPrint('Could not cache Focus Guard packages: $error');
+    }
+  }
+
+  Future<void> _updateFocusGuardAllowedPackages() async {
+    try {
+      await _focusGuardController.updateFocusGuardAllowedPackages(
+        productivePackageIds,
+      );
+    } catch (error) {
+      debugPrint('Could not update Focus Guard packages: $error');
     }
   }
 
@@ -1577,3 +1622,11 @@ Duration _sumMergedRanges(List<_UsageTimeRange> ranges) {
   return total;
 }
 
+
+
+bool _looksLikeAndroidPackage(String value) {
+  final trimmed = value.trim();
+  return trimmed.contains('.') &&
+      !trimmed.contains(' ') &&
+      !trimmed.contains('/');
+}

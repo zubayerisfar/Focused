@@ -128,7 +128,11 @@ class FocusSessionScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 44),
+              const SizedBox(height: 14),
+
+              _FocusGuardStatusCard(focus: focus),
+
+              const SizedBox(height: 28),
 
               SizedBox(
                 width: 270,
@@ -336,6 +340,75 @@ class FocusSessionScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+
+class _FocusGuardStatusCard extends StatelessWidget {
+  final FocusProvider focus;
+
+  const _FocusGuardStatusCard({required this.focus});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final status = focus.focusGuardStatus;
+
+    IconData icon = Icons.shield_outlined;
+    String text;
+    Color foreground = scheme.primary;
+
+    if (focus.focusGuardError != null) {
+      icon = Icons.warning_amber_rounded;
+      foreground = scheme.error;
+      text = 'Focus Guard could not start. Focus timing still continues.';
+    } else if (focus.isPaused) {
+      icon = Icons.pause_circle_outline_rounded;
+      text = 'Focus Guard paused';
+    } else if (focus.isBreak) {
+      icon = Icons.free_breakfast_outlined;
+      text = 'Focus Guard rests during breaks • timer stays active';
+    } else if (status.serviceRunning && !status.usageAccessGranted) {
+      icon = Icons.warning_amber_rounded;
+      foreground = const Color(0xFFB26A00);
+      text = 'Usage Access is off • live app warnings are unavailable';
+    } else if (status.serviceRunning && !status.notificationsEnabled) {
+      icon = Icons.notifications_off_outlined;
+      foreground = const Color(0xFFB26A00);
+      text = 'Notifications are off • background warnings may be hidden';
+    } else if (status.serviceRunning) {
+      icon = Icons.shield_rounded;
+      text = 'Focus Guard active • ${status.warningThresholdSeconds}s outside-workspace warning';
+    } else {
+      text = 'Starting Focus Guard…';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: foreground.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: foreground.withOpacity(0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: foreground),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: foreground,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

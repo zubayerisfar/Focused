@@ -1,11 +1,13 @@
 package com.example.focused
 
+import android.Manifest
 import android.content.Context
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Process
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -16,6 +18,8 @@ import kotlin.math.min
 class MainActivity : FlutterActivity() {
     companion object {
         private const val APP_METADATA_CHANNEL = "focused/app_metadata"
+        private const val FOCUS_GUARD_CHANNEL = "focused/focus_guard"
+        private const val NOTIFICATION_PERMISSION_REQUEST = 4401
         private const val DEFAULT_ICON_SIZE = 96
         private const val MAX_BATCH_SIZE = 200
     }
@@ -57,6 +61,95 @@ class MainActivity : FlutterActivity() {
 
                 else -> result.notImplemented()
             }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            FOCUS_GUARD_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            val arguments = call.arguments as? Map<*, *> ?: emptyMap<Any?, Any?>()
+
+            try {
+                when (call.method) {
+                    "startFocusGuard" -> {
+                        requestNotificationPermissionIfNeeded()
+                        FocusGuardRuntime.start(this, arguments)
+                        result.success(null)
+                    }
+
+                    "pauseFocusGuard" -> {
+                        FocusGuardRuntime.pause(this, arguments)
+                        result.success(null)
+                    }
+
+                    "resumeFocusGuard" -> {
+                        FocusGuardRuntime.resume(this, arguments)
+                        result.success(null)
+                    }
+
+                    "syncFocusGuardPhase" -> {
+                        FocusGuardRuntime.sync(this, arguments)
+                        result.success(null)
+                    }
+
+                    "updateFocusGuardAllowedPackages" -> {
+                        FocusGuardRuntime.updateAllowedPackages(
+                            this,
+                            arguments,
+                            notifyService = true,
+                        )
+                        result.success(null)
+                    }
+
+                    "cacheFocusGuardAllowedPackages" -> {
+                        FocusGuardRuntime.updateAllowedPackages(
+                            this,
+                            arguments,
+                            notifyService = false,
+                        )
+                        result.success(null)
+                    }
+
+                    "stopFocusGuard" -> {
+                        FocusGuardRuntime.stop(this)
+                        result.success(null)
+                    }
+
+                    "getFocusGuardEvents" -> {
+                        result.success(FocusGuardRuntime.getEvents(this))
+                    }
+
+                    "clearFocusGuardEvents" -> {
+                        FocusGuardRuntime.clearEvents(this)
+                        result.success(null)
+                    }
+
+                    "getFocusGuardSnapshot" -> {
+                        result.success(FocusGuardRuntime.getSnapshot(this))
+                    }
+
+                    else -> result.notImplemented()
+                }
+            } catch (error: Throwable) {
+                result.error(
+                    "FOCUS_GUARD_FAILED",
+                    error.message ?: "Focus Guard operation failed.",
+                    null,
+                )
+            }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST,
+            )
         }
     }
 

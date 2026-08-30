@@ -16,6 +16,7 @@ import 'services/app_metadata_platform_service.dart';
 import 'services/app_metadata_storage_service.dart';
 import 'services/app_category_storage_service.dart';
 import 'services/focus_analysis_storage_service.dart';
+import 'services/focus_guard_platform_service.dart';
 import 'services/focus_session_storage_service.dart';
 import 'services/habit_notification_service.dart';
 import 'services/habit_storage_service.dart';
@@ -52,6 +53,7 @@ Future<void> main() async {
 
   final taskNotificationService = TaskNotificationService();
   final habitNotificationService = HabitNotificationService();
+  final focusGuardService = FocusGuardPlatformService();
 
   final taskProvider = TaskProvider(
     storageService: taskStorageService,
@@ -62,6 +64,7 @@ Future<void> main() async {
 
   final focusProvider = FocusProvider(
     storageService: focusSessionStorageService,
+    focusGuardController: focusGuardService,
   );
   await focusProvider.loadStoredSessions();
 
@@ -74,8 +77,10 @@ Future<void> main() async {
     focusAnalysisStorageService: focusAnalysisStorageService,
     appMetadataService: appMetadataPlatformService,
     appMetadataStorageService: appMetadataStorageService,
+    focusGuardController: focusGuardService,
   );
   await usageProvider.loadStoredCategories();
+  await usageProvider.syncFocusGuardAllowedPackages();
   await usageProvider.loadStoredFocusAnalyses();
   await usageProvider.loadStoredAppMetadata();
   await usageProvider.loadStoredUsage();
