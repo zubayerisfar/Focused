@@ -9,6 +9,7 @@ import '../../models/app_category.dart';
 import '../../models/app_usage_app_entry.dart';
 import '../../models/habit.dart';
 import '../../models/task.dart';
+import '../../models/task_execution_period_summary.dart';
 import '../../models/task_occurrence.dart';
 import '../../models/task_recurrence.dart';
 import '../../providers/focus_provider.dart';
@@ -16,6 +17,7 @@ import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../services/productivity_streak_service.dart';
+import '../../services/task_execution_analyzer.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_icon.dart';
 
@@ -23,6 +25,7 @@ class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
 
   static const _streakService = ProductivityStreakService();
+  static const _executionAnalyzer = TaskExecutionAnalyzer();
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +54,28 @@ class TodayScreen extends StatelessWidget {
     final distractingUsage =
         usageProvider.usageForCategoryToday(AppCategory.distracting);
     final topDistractingApp = usageProvider.topDistractingAppToday;
+
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final executionSummary = _executionAnalyzer.summarizePeriod(
+      startDay: now,
+      endDay: tomorrow,
+      occurrences: schedule,
+      sessions: focusProvider.sessionHistory,
+      analysesBySessionId: usageProvider.storedFocusAnalyses,
+      activeTaskId: focusProvider.isRunning ? focusProvider.taskId : null,
+      activeOccurrenceDate:
+          focusProvider.isRunning ? focusProvider.taskOccurrenceDate : null,
+      activeSessionStartedAt:
+          focusProvider.isRunning ? focusProvider.sessionStartedAt : null,
+      activeTaskScheduledStart:
+          focusProvider.isRunning ? focusProvider.taskScheduledStart : null,
+      activeTaskScheduledEnd:
+          focusProvider.isRunning ? focusProvider.taskScheduledEnd : null,
+      activeFocusIntervals: focusProvider.isRunning
+          ? focusProvider.currentFocusIntervalsSnapshot
+          : const [],
+      asOf: now,
+    );
 
     final activityDates = <DateTime>{
       ...taskProvider.completionActivityDates(),
@@ -107,6 +132,10 @@ class TodayScreen extends StatelessWidget {
                       occurrences: schedule,
                       anytime: unscheduled,
                     ),
+                    if (schedule.isNotEmpty) ...[
+                      const SizedBox(height: 22),
+                      _PlanExecutionCard(summary: executionSummary),
+                    ],
                     const SizedBox(height: 30),
                     _SectionHeader(
                       eyebrow: 'DAILY HABITS',
@@ -593,6 +622,205 @@ class _TopAppRow extends StatelessWidget {
   }
 }
 
+
+class _PlanExecutionCard extends StatelessWidget {
+  final TaskExecutionPeriodSummary summary;
+
+  const _PlanExecutionCard({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final delay = summary.averageStartDelay;
+    final effective = summary.effectiveFocusDuration;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer.withOpacity(0.34),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: scheme.secondary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(
+                  Icons.route_rounded,
+                  color: scheme.secondary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Plan execution',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Scheduled time vs what actually happened',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _ExecutionStat(
+                label: 'Started',
+                value: summary.startEligibleCount == 0
+                    ? 'Not due'
+                    : '${summary.startedCount}/${summary.startEligibleCount}',
+              ),
+              _ExecutionStat(
+                label: 'On time',
+                value: summary.startedCount == 0
+                    ? '—'
+                    : '${summary.onTimeStartedCount}/${summary.startedCount}',
+              ),
+              _ExecutionStat(
+                label: 'Completed',
+                value: summary.completionEligibleCount == 0
+                    ? 'Not due'
+                    : '${summary.completedCount}/${summary.completionEligibleCount}',
+              ),
+              _ExecutionStat(
+                label: 'Avg delay',
+                value: delay == null ? '—' : _formatCompactDuration(delay),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Divider(color: scheme.outlineVariant.withOpacity(0.65)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _ExecutionDurationMetric(
+                  label: 'Planned',
+                  value: _formatCompactDuration(summary.plannedDuration),
+                ),
+              ),
+              Expanded(
+                child: _ExecutionDurationMetric(
+                  label: 'Active focus',
+                  value: _formatCompactDuration(summary.activeFocusDuration),
+                ),
+              ),
+              Expanded(
+                child: _ExecutionDurationMetric(
+                  label: 'Effective',
+                  value: effective == null
+                      ? '—'
+                      : _formatCompactDuration(effective),
+                ),
+              ),
+            ],
+          ),
+          if (!summary.effectiveFocusAvailable && summary.startedCount > 0) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Effective focus appears after every linked focus session has a saved app-usage analysis.',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ExecutionStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ExecutionStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 112),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surface.withOpacity(0.78),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExecutionDurationMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ExecutionDurationMetric({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   final String eyebrow;
   final String title;
@@ -780,6 +1008,24 @@ class _ScheduledPlanRow extends StatelessWidget {
     final today = _dateOnly(DateTime.now());
     final canToggle = task.recurrence == TaskRecurrence.none ||
         !occurrenceDay.isAfter(today);
+    final focusProvider = context.watch<FocusProvider>();
+    final inFocus = focusProvider.isFocusingTaskOccurrence(
+      task.id,
+      occurrence.start,
+    );
+    final execution = const TaskExecutionAnalyzer().summarizeOccurrence(
+      occurrence: occurrence,
+      sessions: focusProvider.sessionHistory,
+      analysesBySessionId: const {},
+      activeTaskId: inFocus ? focusProvider.taskId : null,
+      activeOccurrenceDate: inFocus ? focusProvider.taskOccurrenceDate : null,
+      activeSessionStartedAt: inFocus ? focusProvider.sessionStartedAt : null,
+      activeTaskScheduledStart: inFocus ? focusProvider.taskScheduledStart : null,
+      activeTaskScheduledEnd: inFocus ? focusProvider.taskScheduledEnd : null,
+      activeFocusIntervals: inFocus
+          ? focusProvider.currentFocusIntervalsSnapshot
+          : const [],
+    );
 
     return InkWell(
       borderRadius: BorderRadius.circular(24),
@@ -836,21 +1082,78 @@ class _ScheduledPlanRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  if (inFocus)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          'IN FOCUS',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
                         ),
-                  ),
+                        if (execution.actualStart != null)
+                          Text(
+                            _todayStartTimingLabel(
+                              execution.actualStart!,
+                              execution.plannedStart,
+                            ),
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                      ],
+                    )
+                  else if (execution.hasStarted)
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 2,
+                      children: [
+                        Text(
+                          '${_formatCompactDuration(execution.activeFocusDuration)} focused',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        if (execution.actualStart != null)
+                          Text(
+                            _todayStartTimingLabel(
+                              execution.actualStart!,
+                              execution.plannedStart,
+                            ),
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                      ],
+                    )
+                  else
+                    Text(
+                      '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
                 ],
               ),
             ),
-            if (!occurrence.isCompleted)
+            if (!occurrence.isCompleted && !inFocus)
               IconButton(
                 tooltip: 'Start focus',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => context.push(
-                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(occurrence.start)}',
                 ),
                 icon: const Icon(Icons.play_arrow_rounded),
               ),
@@ -1316,3 +1619,29 @@ String _cleanAppName(String raw) {
 
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
+
+
+String _todayStartTimingLabel(DateTime actualStart, DateTime plannedStart) {
+  final offset = actualStart.difference(plannedStart);
+  if (offset.isNegative) {
+    return '${_formatCompactDuration(Duration(microseconds: -offset.inMicroseconds))} early';
+  }
+  if (offset.compareTo(const Duration(minutes: 5)) <= 0) return 'On time';
+  return '${_formatCompactDuration(offset)} late';
+}
+
+String _formatCompactDuration(Duration value) {
+  final totalMinutes = value.inMinutes.abs();
+  if (totalMinutes < 60) return '${totalMinutes}m';
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+  return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
+}
+
+String _dateQuery(DateTime value) {
+  final local = value.isUtc ? value.toLocal() : value;
+  final y = local.year.toString().padLeft(4, '0');
+  final m = local.month.toString().padLeft(2, '0');
+  final d = local.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
+}

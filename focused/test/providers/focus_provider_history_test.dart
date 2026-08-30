@@ -164,12 +164,27 @@ void main() {
     provider.startSession(
       taskId: 'task-1',
       taskName: 'Study Flutter',
+      taskOccurrenceDate: DateTime(2026, 8, 28),
+      taskScheduledStart: DateTime(2026, 8, 28, 8, 45),
+      taskScheduledEnd: DateTime(2026, 8, 28, 9, 45),
       totalFocusMinutes: 30,
       focusBlockMinutes: 30,
       breakMinutes: 5,
     );
 
     now = DateTime(2026, 8, 28, 9, 12);
+
+    expect(
+      provider.isFocusingTaskOccurrence(
+        'task-1',
+        DateTime(2026, 8, 28),
+      ),
+      isTrue,
+    );
+    expect(
+      provider.currentActiveFocusDuration,
+      const Duration(minutes: 12),
+    );
 
     provider.endSession();
 
@@ -180,6 +195,9 @@ void main() {
     expect(finished, isNotNull);
     expect(finished!.taskId, 'task-1');
     expect(finished.taskName, 'Study Flutter');
+    expect(finished.taskOccurrenceDate, DateTime(2026, 8, 28));
+    expect(finished.taskScheduledStart, DateTime(2026, 8, 28, 8, 45));
+    expect(finished.taskScheduledEnd, DateTime(2026, 8, 28, 9, 45));
     expect(
       finished.actualFocusDuration,
       const Duration(minutes: 12),

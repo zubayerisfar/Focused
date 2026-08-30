@@ -7,10 +7,13 @@ import 'package:provider/provider.dart';
 import '../../models/daily_usage_metrics.dart';
 import '../../models/focus_analysis_coverage.dart';
 import '../../models/focus_session.dart';
+import '../../models/task_execution_period_summary.dart';
 import '../../models/usage_data_coverage.dart';
 import '../../models/usage_data_provenance.dart';
 import '../../providers/focus_provider.dart';
+import '../../providers/task_provider.dart';
 import '../../providers/usage_provider.dart';
+import '../../services/task_execution_analyzer.dart';
 
 class WeeklyWellbeingScreen extends StatefulWidget {
   const WeeklyWellbeingScreen({super.key});
@@ -20,6 +23,8 @@ class WeeklyWellbeingScreen extends StatefulWidget {
 }
 
 class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
+  static const _executionAnalyzer = TaskExecutionAnalyzer();
+
   late DateTime _endDay;
   late Future<List<DailyUsageMetrics>> _future;
 
@@ -63,6 +68,7 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
     final focusProvider = context.watch<FocusProvider>();
+    final taskProvider = context.watch<TaskProvider>();
     final today = _dateOnly(DateTime.now());
 
     return Scaffold(
@@ -112,6 +118,55 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
             focusProvider: focusProvider,
           );
 
+          final currentStart = _dateOnly(current.first.day);
+          final currentEndExclusive = DateTime(
+            current.last.day.year,
+            current.last.day.month,
+            current.last.day.day + 1,
+          );
+          final previousStart = _dateOnly(previous.first.day);
+          final previousEndExclusive = DateTime(
+            previous.last.day.year,
+            previous.last.day.month,
+            previous.last.day.day + 1,
+          );
+
+          final currentExecution = _executionAnalyzer.summarizePeriod(
+            startDay: currentStart,
+            endDay: currentEndExclusive,
+            occurrences: taskProvider.scheduledOccurrencesBetween(
+              currentStart,
+              currentEndExclusive,
+            ),
+            sessions: focusProvider.sessionHistory,
+            analysesBySessionId: usageProvider.storedFocusAnalyses,
+            activeTaskId: focusProvider.isRunning ? focusProvider.taskId : null,
+            activeOccurrenceDate:
+                focusProvider.isRunning ? focusProvider.taskOccurrenceDate : null,
+            activeSessionStartedAt:
+                focusProvider.isRunning ? focusProvider.sessionStartedAt : null,
+            activeTaskScheduledStart:
+                focusProvider.isRunning ? focusProvider.taskScheduledStart : null,
+            activeTaskScheduledEnd:
+                focusProvider.isRunning ? focusProvider.taskScheduledEnd : null,
+            activeFocusIntervals: focusProvider.isRunning
+                ? focusProvider.currentFocusIntervalsSnapshot
+                : const [],
+            asOf: _sameDate(current.last.day, today)
+                ? DateTime.now()
+                : null,
+          );
+          final previousExecution = _executionAnalyzer.summarizePeriod(
+            startDay: previousStart,
+            endDay: previousEndExclusive,
+            occurrences: taskProvider.scheduledOccurrencesBetween(
+              previousStart,
+              previousEndExclusive,
+            ),
+            sessions: focusProvider.sessionHistory,
+            analysesBySessionId: usageProvider.storedFocusAnalyses,
+          );
+
           final atLatestRange = !_endDay.isBefore(today);
 
           return RefreshIndicator(
@@ -145,6 +200,11 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
                 _DailyTrendCard(days: current),
                 const SizedBox(height: 26),
                 _FocusQualityCard(analytics: analytics),
+                const SizedBox(height: 26),
+                _ScheduleExecutionCard(
+                  current: currentExecution,
+                  previous: previousExecution,
+                ),
                 const SizedBox(height: 26),
                 _DailyDataList(
                   days: current.reversed.toList(growable: false),
@@ -907,6 +967,253 @@ class _SmallFocusMetric extends StatelessWidget {
   }
 }
 
+
+class _ScheduleExecutionCard extends StatelessWidget {
+  final TaskExecutionPeriodSummary current;
+  final TaskExecutionPeriodSummary previous;
+
+  const _ScheduleExecutionCard({
+    required this.current,
+    required this.previous,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final delay = current.averageStartDelay;
+    final previousDelay = previous.averageStartDelay;
+    final effective = current.effectiveFocusDuration;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_month_rounded, color: scheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Schedule execution',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Calendar plans compared with real focus starts',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _ExecutionRateRow(
+            label: 'Scheduled tasks',
+            value: '${current.scheduledCount}',
+            supporting: '${current.startedCount}/${current.startEligibleCount} started • ${current.completedCount}/${current.completionEligibleCount} completed',
+          ),
+          const SizedBox(height: 12),
+          _ExecutionRateRow(
+            label: 'Started on time',
+            value: current.startedCount == 0
+                ? '—'
+                : '${current.onTimeRatePercent.round()}%',
+            supporting: _percentagePointChange(
+              current.onTimeRatePercent,
+              previous.onTimeRatePercent,
+              available: current.startedCount > 0 && previous.startedCount > 0,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _ExecutionRateRow(
+            label: 'Completed',
+            value: current.completionEligibleCount == 0
+                ? '—'
+                : '${current.completionRatePercent.round()}%',
+            supporting: _percentagePointChange(
+              current.completionRatePercent,
+              previous.completionRatePercent,
+              available: current.completionEligibleCount > 0 &&
+                  previous.completionEligibleCount > 0,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _ExecutionRateRow(
+            label: 'Average start delay',
+            value: delay == null ? '—' : _formatDurationShort(delay),
+            supporting: _delayComparison(delay, previousDelay),
+          ),
+          const SizedBox(height: 18),
+          Divider(color: scheme.outlineVariant),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _ExecutionTimeColumn(
+                  label: 'Planned',
+                  value: _formatDurationShort(current.plannedDuration),
+                ),
+              ),
+              Expanded(
+                child: _ExecutionTimeColumn(
+                  label: 'Active focus',
+                  value: _formatDurationShort(current.activeFocusDuration),
+                ),
+              ),
+              Expanded(
+                child: _ExecutionTimeColumn(
+                  label: 'Effective',
+                  value: effective == null
+                      ? '—'
+                      : _formatDurationShort(effective),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            current.scheduledCount == 0
+                ? 'No scheduled task occurrences in this window.'
+                : 'Plan coverage ${current.planCoveragePercent.round()}%${current.effectiveCoveragePercent == null ? '' : ' • effective coverage ${current.effectiveCoveragePercent!.round()}%'}.',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.35,
+                ),
+          ),
+          if (!current.effectiveFocusAvailable && current.startedCount > 0) ...[
+            const SizedBox(height: 7),
+            Text(
+              'Effective-focus totals are withheld until every linked completed focus session has a saved interruption analysis.',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ExecutionRateRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final String supporting;
+
+  const _ExecutionRateRow({
+    required this.label,
+    required this.value,
+    required this.supporting,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text(
+                supporting,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExecutionTimeColumn extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ExecutionTimeColumn({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+String _percentagePointChange(
+  double current,
+  double previous, {
+  required bool available,
+}) {
+  if (!available) return 'Previous comparison unavailable';
+  final change = current - previous;
+  if (change.abs() < 0.5) return 'Stable vs previous 7 days';
+  final direction = change > 0 ? 'up' : 'down';
+  return '${change.abs().round()} percentage points $direction';
+}
+
+String _delayComparison(Duration? current, Duration? previous) {
+  if (current == null || previous == null) {
+    return 'Previous comparison unavailable';
+  }
+  final delta = current - previous;
+  if (delta.inSeconds.abs() < 30) return 'Stable vs previous 7 days';
+  return delta.isNegative
+      ? '${_formatDurationShort(delta)} better than previous'
+      : '${_formatDurationShort(delta)} slower than previous';
+}
+
+String _formatDurationShort(Duration value) {
+  final minutes = value.inMinutes.abs();
+  if (minutes < 60) return '${minutes}m';
+  final hours = minutes ~/ 60;
+  final rest = minutes % 60;
+  return rest == 0 ? '${hours}h' : '${hours}h ${rest}m';
+}
+
 class _DailyDataList extends StatelessWidget {
   final List<DailyUsageMetrics> days;
   final FocusProvider focusProvider;
@@ -1060,3 +1367,9 @@ String _countComparisonLabel(int? current, int? previous) {
 }
 
 DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+
+bool _sameDate(DateTime first, DateTime second) {
+  return first.year == second.year &&
+      first.month == second.month &&
+      first.day == second.day;
+}

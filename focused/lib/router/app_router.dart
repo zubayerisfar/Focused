@@ -70,6 +70,9 @@ final GoRouter appRouter = GoRouter(
       path: '/focus/setup',
       builder: (context, state) => FocusSetupScreen(
         initialTaskId: state.uri.queryParameters['taskId'],
+        initialOccurrenceDate: _parseDateOnly(
+          state.uri.queryParameters['occurrenceDate'],
+        ),
       ),
     ),
     GoRoute(
@@ -105,3 +108,12 @@ final GoRouter appRouter = GoRouter(
     ),
   ],
 );
+
+
+DateTime? _parseDateOnly(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return null;
+  final local = parsed.isUtc ? parsed.toLocal() : parsed;
+  return DateTime(local.year, local.month, local.day);
+}

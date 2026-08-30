@@ -48,6 +48,17 @@ class FocusSession {
   /// Snapshot of the task title at session start.
   final String taskName;
 
+  /// Local calendar occurrence that this session belongs to.
+  ///
+  /// This is explicit for recurring tasks so a session can never be
+  /// accidentally attributed to a different occurrence later.
+  final DateTime? taskOccurrenceDate;
+
+  /// Snapshot of the planned calendar window at session start.
+  /// Historical schedule-adherence analytics therefore survive later edits.
+  final DateTime? taskScheduledStart;
+  final DateTime? taskScheduledEnd;
+
   final DateTime startedAt;
   final DateTime endedAt;
 
@@ -73,6 +84,9 @@ class FocusSession {
     required this.id,
     this.taskId,
     required this.taskName,
+    this.taskOccurrenceDate,
+    this.taskScheduledStart,
+    this.taskScheduledEnd,
     required this.startedAt,
     required this.endedAt,
     required this.plannedFocusDuration,
@@ -110,12 +124,37 @@ class FocusSession {
     return plan.where((block) => block.isFocus).length;
   }
 
+  DateTime? get linkedOccurrenceDate {
+    if (taskId == null) return null;
+    final explicit = taskOccurrenceDate;
+    if (explicit != null) {
+      final local = explicit.isUtc ? explicit.toLocal() : explicit;
+      return DateTime(local.year, local.month, local.day);
+    }
+
+    // Backward-compatible fallback for schema-v1 sessions that did not store
+    // an explicit task occurrence. Historical v1 recurring sessions are
+    // attributed to the local day on which that focus session started.
+    final localStart = startedAt.isUtc ? startedAt.toLocal() : startedAt;
+    return DateTime(localStart.year, localStart.month, localStart.day);
+  }
+
+  Duration? get taskPlannedDuration {
+    final start = taskScheduledStart;
+    final end = taskScheduledEnd;
+    if (start == null || end == null) return null;
+    return end.difference(start);
+  }
+
   Map<String, dynamic> toMap() {
     return {
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'id': id,
       'taskId': taskId,
       'taskName': taskName,
+      'taskOccurrenceDate': taskOccurrenceDate?.toIso8601String(),
+      'taskScheduledStart': taskScheduledStart?.toIso8601String(),
+      'taskScheduledEnd': taskScheduledEnd?.toIso8601String(),
       'startedAt': startedAt.toIso8601String(),
       'endedAt': endedAt.toIso8601String(),
       'plannedFocusSeconds': plannedFocusDuration.inSeconds,
@@ -144,11 +183,13 @@ class FocusSession {
   factory FocusSession.fromMap(Map<dynamic, dynamic> map) {
     final schemaVersion = map['schemaVersion'];
 
-    if (schemaVersion is! num || schemaVersion.toInt() != 1) {
+    if (schemaVersion is! num ||
+        (schemaVersion.toInt() != 1 && schemaVersion.toInt() != 2)) {
       throw const FormatException(
         'Unsupported focus session schema version.',
       );
     }
+    final version = schemaVersion.toInt();
 
     final startedAt = _requiredDate(map, 'startedAt');
     final endedAt = _requiredDate(map, 'endedAt');
@@ -225,10 +266,36 @@ class FocusSession {
       endedAt,
     );
 
+    final taskOccurrenceDate = version >= 2
+        ? _optionalDate(map['taskOccurrenceDate'])
+        : null;
+    final taskScheduledStart = version >= 2
+        ? _optionalDate(map['taskScheduledStart'])
+        : null;
+    final taskScheduledEnd = version >= 2
+        ? _optionalDate(map['taskScheduledEnd'])
+        : null;
+
+    if ((taskScheduledStart == null) != (taskScheduledEnd == null)) {
+      throw const FormatException(
+        'Task schedule snapshot start/end must exist together.',
+      );
+    }
+    if (taskScheduledStart != null &&
+        taskScheduledEnd != null &&
+        !taskScheduledEnd.isAfter(taskScheduledStart)) {
+      throw const FormatException(
+        'Task schedule snapshot end must be after start.',
+      );
+    }
+
     return FocusSession(
       id: _requiredString(map, 'id'),
       taskId: _optionalString(map['taskId']),
       taskName: _requiredString(map, 'taskName'),
+      taskOccurrenceDate: taskOccurrenceDate,
+      taskScheduledStart: taskScheduledStart,
+      taskScheduledEnd: taskScheduledEnd,
       startedAt: startedAt,
       endedAt: endedAt,
       plannedFocusDuration: Duration(seconds: plannedSeconds),
@@ -365,6 +432,15 @@ String _requiredString(Map<dynamic, dynamic> map, String key) {
   }
 
   return value;
+}
+
+DateTime? _optionalDate(dynamic value) {
+  if (value == null) return null;
+  if (value is! String) {
+    throw const FormatException('Invalid optional date value.');
+  }
+  return DateTime.tryParse(value) ??
+      (throw const FormatException('Invalid optional date value.'));
 }
 
 DateTime _requiredDate(Map<dynamic, dynamic> map, String key) {

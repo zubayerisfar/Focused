@@ -457,6 +457,44 @@ class TaskProvider extends ChangeNotifier {
     );
   }
 
+  TaskOccurrence? occurrenceForTaskOnDate(
+    Task task,
+    DateTime date,
+  ) {
+    final occurrence = _scheduleService.occurrenceForDate(task, date);
+    if (occurrence == null) return null;
+
+    return occurrence.withCompletion(
+      isCompleted: isTaskCompletedForDate(task, occurrence.start),
+      completedAt: completedAtForDate(task, occurrence.start),
+    );
+  }
+
+  List<TaskOccurrence> scheduledOccurrencesBetween(
+    DateTime startDay,
+    DateTime endDayExclusive, {
+    bool includeCompleted = true,
+  }) {
+    final start = _dateOnlyLocal(startDay);
+    final end = _dateOnlyLocal(endDayExclusive);
+    if (!end.isAfter(start)) return const [];
+
+    final result = <TaskOccurrence>[];
+    var day = start;
+    while (day.isBefore(end)) {
+      result.addAll(
+        scheduledOccurrencesForDate(
+          day,
+          includeCompleted: includeCompleted,
+        ),
+      );
+      day = DateTime(day.year, day.month, day.day + 1);
+    }
+
+    result.sort((a, b) => a.start.compareTo(b.start));
+    return List<TaskOccurrence>.unmodifiable(result);
+  }
+
   List<TaskOccurrence> completedRecurringOccurrences() {
     final result = <TaskOccurrence>[];
 

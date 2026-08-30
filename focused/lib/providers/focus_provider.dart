@@ -30,6 +30,9 @@ class FocusProvider extends ChangeNotifier {
 
   String? _taskId;
   String _taskName = '';
+  DateTime? _taskOccurrenceDate;
+  DateTime? _taskScheduledStart;
+  DateTime? _taskScheduledEnd;
 
   DateTime? _sessionStartedAt;
   DateTime? _blockDeadline;
@@ -326,6 +329,10 @@ class FocusProvider extends ChangeNotifier {
 
   String? get taskId => _taskId;
   String get taskName => _taskName;
+  DateTime? get taskOccurrenceDate => _taskOccurrenceDate;
+  DateTime? get taskScheduledStart => _taskScheduledStart;
+  DateTime? get taskScheduledEnd => _taskScheduledEnd;
+  DateTime? get sessionStartedAt => _sessionStartedAt;
 
   bool get isRunning => _isRunning;
   bool get isPaused => _isPaused;
@@ -378,6 +385,31 @@ class FocusProvider extends ChangeNotifier {
     return _lastSession;
   }
 
+  bool isFocusingTaskOccurrence(String taskId, DateTime occurrenceDate) {
+    if (!_isRunning || _taskId != taskId) return false;
+    final linked = _taskOccurrenceDate ?? _sessionStartedAt;
+    if (linked == null) return false;
+    return _sameDateLocal(linked, occurrenceDate);
+  }
+
+  List<FocusInterval> get currentFocusIntervalsSnapshot {
+    final intervals = <FocusInterval>[..._focusIntervals];
+    final openStart = _currentFocusIntervalStart;
+    if (_isRunning && !_isPaused && isFocus && openStart != null) {
+      final now = _now();
+      if (now.isAfter(openStart)) {
+        intervals.add(FocusInterval(startTime: openStart, endTime: now));
+      }
+    }
+    return List<FocusInterval>.unmodifiable(intervals);
+  }
+
+  Duration get currentActiveFocusDuration {
+    return currentFocusIntervalsSnapshot.fold(Duration.zero, (total, interval) {
+      return total + interval.duration;
+    });
+  }
+
   // ---------------------------------------------------------
   // START SESSION
   // ---------------------------------------------------------
@@ -385,6 +417,9 @@ class FocusProvider extends ChangeNotifier {
   void startSession({
     String? taskId,
     required String taskName,
+    DateTime? taskOccurrenceDate,
+    DateTime? taskScheduledStart,
+    DateTime? taskScheduledEnd,
     required int totalFocusMinutes,
     required int focusBlockMinutes,
     required int breakMinutes,
@@ -397,6 +432,23 @@ class FocusProvider extends ChangeNotifier {
 
     if (taskId != null && taskId.trim().isEmpty) {
       throw ArgumentError('Task id cannot be empty when provided.');
+    }
+
+    if ((taskScheduledStart == null) != (taskScheduledEnd == null)) {
+      throw ArgumentError(
+        'Task schedule snapshot start and end must exist together.',
+      );
+    }
+    if (taskScheduledStart != null &&
+        taskScheduledEnd != null &&
+        !taskScheduledEnd.isAfter(taskScheduledStart)) {
+      throw ArgumentError('Task schedule snapshot end must be after start.');
+    }
+    if (taskId == null &&
+        (taskOccurrenceDate != null || taskScheduledStart != null)) {
+      throw ArgumentError(
+        'Task occurrence metadata requires a linked task id.',
+      );
     }
 
     if (taskName.trim().isEmpty) {
@@ -423,6 +475,11 @@ class FocusProvider extends ChangeNotifier {
 
     _taskId = taskId;
     _taskName = taskName;
+    _taskOccurrenceDate = taskOccurrenceDate == null
+        ? null
+        : _dateOnlyLocal(taskOccurrenceDate);
+    _taskScheduledStart = taskScheduledStart;
+    _taskScheduledEnd = taskScheduledEnd;
 
     _plan = _buildPlan(
       totalFocusMinutes: totalFocusMinutes,
@@ -855,6 +912,9 @@ class FocusProvider extends ChangeNotifier {
       id: startedAt.microsecondsSinceEpoch.toString(),
       taskId: _taskId,
       taskName: _taskName,
+      taskOccurrenceDate: _taskOccurrenceDate,
+      taskScheduledStart: _taskScheduledStart,
+      taskScheduledEnd: _taskScheduledEnd,
       startedAt: startedAt,
       endedAt: endAt,
       plannedFocusDuration:
@@ -980,4 +1040,11 @@ class FocusProvider extends ChangeNotifier {
 DateTime _dateOnlyLocal(DateTime value) {
   final local = value.isUtc ? value.toLocal() : value;
   return DateTime(local.year, local.month, local.day);
+}
+
+
+bool _sameDateLocal(DateTime first, DateTime second) {
+  final a = _dateOnlyLocal(first);
+  final b = _dateOnlyLocal(second);
+  return a.year == b.year && a.month == b.month && a.day == b.day;
 }

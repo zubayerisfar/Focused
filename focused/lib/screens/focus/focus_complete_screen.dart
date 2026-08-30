@@ -73,10 +73,11 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
         ? null
         : taskProvider.getTaskById(session.taskId!);
 
+    final linkedDay = session.linkedOccurrenceDate ?? session.startedAt;
     final sessionDate = DateTime(
-      session.startedAt.year,
-      session.startedAt.month,
-      session.startedAt.day,
+      linkedDay.year,
+      linkedDay.month,
+      linkedDay.day,
     );
 
     final canManageLinkedTaskForSessionDate = linkedTask != null &&
@@ -146,6 +147,16 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
             const SizedBox(height: 38),
 
             _SessionResultsCard(session: session),
+
+            if (session.taskScheduledStart != null &&
+                session.taskScheduledEnd != null) ...[
+              const SizedBox(height: 24),
+              _ScheduleExecutionCard(
+                session: session,
+                analysis: analysis,
+                analysisPending: usageProvider.isAnalyzingFocus,
+              ),
+            ],
 
             const SizedBox(height: 24),
 
@@ -302,6 +313,164 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
       ),
     );
   }
+}
+
+
+class _ScheduleExecutionCard extends StatelessWidget {
+  final FocusSession session;
+  final FocusAnalysisResult? analysis;
+  final bool analysisPending;
+
+  const _ScheduleExecutionCard({
+    required this.session,
+    required this.analysis,
+    required this.analysisPending,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final start = session.taskScheduledStart!;
+    final end = session.taskScheduledEnd!;
+    final planned = end.difference(start);
+    final actualStart = session.focusIntervals.isEmpty
+        ? session.startedAt
+        : session.focusIntervals.first.startTime;
+    final offset = actualStart.difference(start);
+    final active = session.actualFocusDuration;
+    final effective = analysis?.effectiveFocusDuration;
+    final scheme = Theme.of(context).colorScheme;
+
+    double coverage(Duration duration) {
+      if (planned.inSeconds <= 0) return 0;
+      return duration.inSeconds / planned.inSeconds * 100;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer.withOpacity(0.34),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: scheme.secondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Schedule execution',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _ExecutionLine(
+            label: 'Planned',
+            value: '${_clock(start)} – ${_clock(end)}',
+          ),
+          const SizedBox(height: 9),
+          _ExecutionLine(
+            label: 'Started',
+            value: '${_clock(actualStart)} • ${_timingLabel(offset)}',
+          ),
+          const SizedBox(height: 9),
+          _ExecutionLine(
+            label: 'Last active focus',
+            value: session.focusIntervals.isEmpty
+                ? 'No active focus recorded'
+                : _clock(session.focusIntervals.last.endTime),
+          ),
+          const SizedBox(height: 9),
+          _ExecutionLine(
+            label: 'Calendar duration',
+            value: _durationShort(planned),
+          ),
+          const SizedBox(height: 9),
+          _ExecutionLine(
+            label: 'Active focus',
+            value: '${_durationShort(active)} • ${coverage(active).round()}% of plan',
+          ),
+          const SizedBox(height: 9),
+          _ExecutionLine(
+            label: 'Effective focus',
+            value: effective == null
+                ? (analysisPending ? 'Analyzing app usage…' : 'Unavailable')
+                : '${_durationShort(effective)} • ${coverage(effective).round()}% of plan',
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'The original calendar window is stored with this focus session, so later task edits do not rewrite this execution history.',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.35,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExecutionLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ExecutionLine({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 112,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _clock(DateTime value) {
+  final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+  final minute = value.minute.toString().padLeft(2, '0');
+  final period = value.hour < 12 ? 'AM' : 'PM';
+  return '$hour:$minute $period';
+}
+
+String _timingLabel(Duration offset) {
+  if (offset.isNegative) {
+    return '${_durationShort(Duration(microseconds: -offset.inMicroseconds))} early';
+  }
+  if (offset.compareTo(const Duration(minutes: 5)) <= 0) return 'On time';
+  return '${_durationShort(offset)} late';
+}
+
+String _durationShort(Duration value) {
+  final minutes = value.inMinutes.abs();
+  if (minutes < 60) return '${minutes}m';
+  final hours = minutes ~/ 60;
+  final rest = minutes % 60;
+  return rest == 0 ? '${hours}h' : '${hours}h ${rest}m';
 }
 
 class _LinkedTaskCompletionCard extends StatelessWidget {

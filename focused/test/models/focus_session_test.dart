@@ -11,6 +11,9 @@ void main() {
       id: 'session-1',
       taskId: 'task-1',
       taskName: 'Study Flutter',
+      taskOccurrenceDate: DateTime(2026, 8, 28),
+      taskScheduledStart: DateTime(2026, 8, 28, 9),
+      taskScheduledEnd: DateTime(2026, 8, 28, 10),
       startedAt: startedAt,
       endedAt: endedAt,
       plannedFocusDuration: const Duration(hours: 1),
@@ -91,6 +94,10 @@ void main() {
     expect(restored.id, original.id);
     expect(restored.taskId, original.taskId);
     expect(restored.taskName, original.taskName);
+    expect(restored.taskOccurrenceDate, DateTime(2026, 8, 28));
+    expect(restored.taskScheduledStart, DateTime(2026, 8, 28, 9));
+    expect(restored.taskScheduledEnd, DateTime(2026, 8, 28, 10));
+    expect(restored.linkedOccurrenceDate, DateTime(2026, 8, 28));
     expect(restored.startedAt, original.startedAt);
     expect(restored.endedAt, original.endedAt);
     expect(
@@ -112,6 +119,21 @@ void main() {
       restored.actualFocusDuration,
       const Duration(minutes: 55),
     );
+  });
+
+  test('schema-v1 history remains readable and falls back to session day', () {
+    final map = buildSession().toMap();
+    map['schemaVersion'] = 1;
+    map.remove('taskOccurrenceDate');
+    map.remove('taskScheduledStart');
+    map.remove('taskScheduledEnd');
+
+    final restored = FocusSession.fromMap(map);
+
+    expect(restored.taskOccurrenceDate, isNull);
+    expect(restored.taskScheduledStart, isNull);
+    expect(restored.taskScheduledEnd, isNull);
+    expect(restored.linkedOccurrenceDate, DateTime(2026, 8, 28));
   });
 
   test('rejects an interval whose end is not after its start', () {

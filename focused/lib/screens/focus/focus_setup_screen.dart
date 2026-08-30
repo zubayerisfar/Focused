@@ -9,8 +9,13 @@ import '../../theme/app_theme.dart';
 
 class FocusSetupScreen extends StatefulWidget {
   final String? initialTaskId;
+  final DateTime? initialOccurrenceDate;
 
-  const FocusSetupScreen({super.key, this.initialTaskId});
+  const FocusSetupScreen({
+    super.key,
+    this.initialTaskId,
+    this.initialOccurrenceDate,
+  });
 
   @override
   State<FocusSetupScreen> createState() => _FocusSetupScreenState();
@@ -18,6 +23,7 @@ class FocusSetupScreen extends StatefulWidget {
 
 class _FocusSetupScreenState extends State<FocusSetupScreen> {
   String? _selectedTaskId;
+  late DateTime _occurrenceDate;
 
   // Unscheduled tasks default to 60 minutes.
   // Scheduled tasks derive their default focus time from Start → End.
@@ -33,6 +39,8 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     super.initState();
 
     _selectedTaskId = widget.initialTaskId;
+    final initial = widget.initialOccurrenceDate ?? DateTime.now();
+    _occurrenceDate = DateTime(initial.year, initial.month, initial.day);
   }
 
   @override
@@ -57,17 +65,30 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       if (candidate != null &&
           !taskProvider.isTaskCompletedForDate(
             candidate,
-            DateTime.now(),
+            _occurrenceDate,
           )) {
         task = candidate;
       }
     }
 
     // Otherwise use TaskProvider's recommended next task.
+    if (task == null && widget.initialOccurrenceDate != null) {
+      final dateTasks = taskProvider.tasksForDate(
+        _occurrenceDate,
+        includeCompleted: false,
+      );
+      if (dateTasks.isNotEmpty) {
+        task = dateTasks.first;
+      }
+    }
+
     task ??= taskProvider.nextTask();
 
     if (task != null) {
       _selectedTaskId = task.id;
+      if (widget.initialOccurrenceDate == null) {
+        _occurrenceDate = _executionDateForTask(taskProvider, task);
+      }
 
       _totalMinutes = _focusMinutesForTask(task);
     }
@@ -85,14 +106,29 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       if (candidate != null &&
           !taskProvider.isTaskCompletedForDate(
             candidate,
-            DateTime.now(),
+            _occurrenceDate,
           )) {
         selectedTask = candidate;
       }
     }
 
+    if (selectedTask == null && widget.initialOccurrenceDate != null) {
+      final dateTasks = taskProvider.tasksForDate(
+        _occurrenceDate,
+        includeCompleted: false,
+      );
+      if (dateTasks.isNotEmpty) {
+        selectedTask = dateTasks.first;
+      }
+    }
     selectedTask ??= taskProvider.nextTask();
 
+    final selectedOccurrence = selectedTask == null
+        ? null
+        : taskProvider.occurrenceForTaskOnDate(
+            selectedTask,
+            _occurrenceDate,
+          );
     final sessionPlan = _buildSessionPlan();
 
     return Scaffold(
@@ -155,7 +191,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
               subtitle: Text(
                 selectedTask == null
                     ? 'Create a task before starting focus'
-                    : '${_taskDurationLabel(selectedTask)} • ${selectedTask.priority.label}',
+                    : '${_taskDurationLabel(selectedTask)} • ${selectedTask.priority.label}${selectedOccurrence == null ? '' : ' • ${_occurrenceLabel(selectedOccurrence.start, selectedOccurrence.end)}'}',
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
             ),
@@ -305,9 +341,19 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
               onPressed: selectedTask == null
                   ? null
                   : () {
+                      final occurrence = context
+                          .read<TaskProvider>()
+                          .occurrenceForTaskOnDate(
+                            selectedTask!,
+                            _occurrenceDate,
+                          );
+
                       context.read<FocusProvider>().startSession(
                         taskId: selectedTask!.id,
                         taskName: selectedTask.title,
+                        taskOccurrenceDate: _occurrenceDate,
+                        taskScheduledStart: occurrence?.start,
+                        taskScheduledEnd: occurrence?.end,
                         totalFocusMinutes: _totalMinutes,
                         focusBlockMinutes: _focusMinutes,
                         breakMinutes: _breakMinutes,
@@ -361,15 +407,19 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
   void _showTaskPicker() {
     final taskProvider = context.read<TaskProvider>();
-    final today = DateTime.now();
-    final tasks = taskProvider.incompleteTasks
-        .where(
-          (task) => !taskProvider.isTaskCompletedForDate(
-            task,
-            today,
-          ),
-        )
-        .toList();
+    final tasks = widget.initialOccurrenceDate != null
+        ? taskProvider.tasksForDate(
+            _occurrenceDate,
+            includeCompleted: false,
+          )
+        : taskProvider.incompleteTasks
+            .where(
+              (task) => !taskProvider.isTaskCompletedForDate(
+                task,
+                _occurrenceDate,
+              ),
+            )
+            .toList();
 
     if (tasks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -438,6 +488,12 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   onTap: () {
                     setState(() {
                       _selectedTaskId = task.id;
+                      if (widget.initialOccurrenceDate == null) {
+                        _occurrenceDate = _executionDateForTask(
+                          taskProvider,
+                          task,
+                        );
+                      }
 
                       _totalMinutes = _focusMinutesForTask(task);
                     });
@@ -548,6 +604,30 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   // HELPERS
   // =========================================================
 
+  DateTime _executionDateForTask(TaskProvider provider, Task task) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (provider.occurrenceForTaskOnDate(task, today) != null) {
+      return today;
+    }
+
+    final next = provider.nextOccurrenceStartForTask(
+      task,
+      now.subtract(const Duration(seconds: 1)),
+    );
+    if (next != null) {
+      return DateTime(next.year, next.month, next.day);
+    }
+
+    final planned = task.plannedDate;
+    if (planned != null) {
+      return DateTime(planned.year, planned.month, planned.day);
+    }
+
+    return today;
+  }
+
   int _focusMinutesForTask(Task task) {
     return task.defaultFocusMinutes;
   }
@@ -560,6 +640,18 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     }
 
     return _formatDuration(scheduledMinutes);
+  }
+
+  String _occurrenceLabel(DateTime start, DateTime end) {
+    final now = DateTime.now();
+    final day = DateTime(start.year, start.month, start.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final dayLabel = day == today
+        ? 'Today'
+        : '${day.month}/${day.day}';
+    final startText = TimeOfDay.fromDateTime(start).format(context);
+    final endText = TimeOfDay.fromDateTime(end).format(context);
+    return '$dayLabel $startText–$endText';
   }
 
   String _formatDuration(int minutes) {

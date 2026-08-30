@@ -7,8 +7,10 @@ import '../../models/habit.dart';
 import '../../models/task.dart';
 import '../../models/task_occurrence.dart';
 import '../../models/task_recurrence.dart';
+import '../../providers/focus_provider.dart';
 import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../services/task_execution_analyzer.dart';
 import '../../theme/app_theme.dart';
 
 enum PlannerCalendarMode {
@@ -887,6 +889,24 @@ class _PlannerTimelineTask extends StatelessWidget {
     final occurrenceDay = _dateOnly(occurrence.start);
     final canToggle = task.recurrence == TaskRecurrence.none ||
         !occurrenceDay.isAfter(today);
+    final focusProvider = context.watch<FocusProvider>();
+    final inFocus = focusProvider.isFocusingTaskOccurrence(
+      task.id,
+      occurrence.start,
+    );
+    final execution = const TaskExecutionAnalyzer().summarizeOccurrence(
+      occurrence: occurrence,
+      sessions: focusProvider.sessionHistory,
+      analysesBySessionId: const {},
+      activeTaskId: inFocus ? focusProvider.taskId : null,
+      activeOccurrenceDate: inFocus ? focusProvider.taskOccurrenceDate : null,
+      activeSessionStartedAt: inFocus ? focusProvider.sessionStartedAt : null,
+      activeTaskScheduledStart: inFocus ? focusProvider.taskScheduledStart : null,
+      activeTaskScheduledEnd: inFocus ? focusProvider.taskScheduledEnd : null,
+      activeFocusIntervals: inFocus
+          ? focusProvider.currentFocusIntervalsSnapshot
+          : const [],
+    );
 
     return IntrinsicHeight(
       child: Row(
@@ -971,25 +991,102 @@ class _PlannerTimelineTask extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 3),
-                              Text(
-                                '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
+                              if (inFocus)
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 3,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
-                              ),
+                                    Text(
+                                      'IN FOCUS',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: Theme.of(context).colorScheme.primary,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                    ),
+                                    if (execution.actualStart != null)
+                                      Text(
+                                        _startTimingLabel(
+                                          execution.actualStart!,
+                                          execution.plannedStart,
+                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                  ],
+                                )
+                              else if (execution.hasStarted)
+                                Wrap(
+                                  spacing: 7,
+                                  runSpacing: 2,
+                                  children: [
+                                    Text(
+                                      '${_shortDuration(execution.activeFocusDuration)} focused',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                    if (execution.actualStart != null)
+                                      Text(
+                                        _startTimingLabel(
+                                          execution.actualStart!,
+                                          execution.plannedStart,
+                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                      ),
+                                  ],
+                                )
+                              else
+                                Text(
+                                  '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
                             ],
                           ),
                         ),
-                        if (!occurrence.isCompleted)
+                        if (!occurrence.isCompleted && !inFocus)
                           IconButton(
                             tooltip: 'Start focus',
                             onPressed: () => context.push(
-                              '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}',
+                              '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(occurrence.start)}',
                             ),
                             icon: const Icon(Icons.play_arrow_rounded),
                           ),
@@ -1593,6 +1690,11 @@ class _GridTaskBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final task = occurrence.task;
     final color = _priorityColor(task.priority);
+    final focusProvider = context.watch<FocusProvider>();
+    final inFocus = focusProvider.isFocusingTaskOccurrence(
+      task.id,
+      occurrence.start,
+    );
 
     return Material(
       color: color.withOpacity(
@@ -1619,8 +1721,12 @@ class _GridTaskBlock extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: occurrence.isCompleted ? AppTheme.success : color,
-                    width: 3,
+                    color: occurrence.isCompleted
+                        ? AppTheme.success
+                        : inFocus
+                            ? Theme.of(context).colorScheme.primary
+                            : color,
+                    width: inFocus ? 4 : 3,
                   ),
                 ),
               ),
@@ -1641,7 +1747,20 @@ class _GridTaskBlock extends StatelessWidget {
                           : null,
                     ),
                   ),
-                  if (showTime) ...[
+                  if (inFocus && constraints.maxHeight >= 42) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'IN FOCUS',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w900,
+                            fontSize: compact ? 8.5 : null,
+                            height: 1.0,
+                          ),
+                    ),
+                  ] else if (showTime) ...[
                     const SizedBox(height: 2),
                     Text(
                       '${DateFormat('h:mm').format(occurrence.start)}–${DateFormat('h:mm a').format(occurrence.end)}',
@@ -2476,3 +2595,32 @@ bool _sameDate(DateTime first, DateTime second) =>
     first.day == second.day;
 
 bool _isToday(DateTime date) => _sameDate(date, DateTime.now());
+
+
+String _startTimingLabel(DateTime actualStart, DateTime plannedStart) {
+  final offset = actualStart.difference(plannedStart);
+  if (offset.compareTo(const Duration(minutes: 5)) <= 0 && !offset.isNegative) {
+    return 'On time';
+  }
+  if (offset.isNegative) {
+    final early = Duration(microseconds: -offset.inMicroseconds);
+    return '${_shortDuration(early)} early';
+  }
+  return '${_shortDuration(offset)} late';
+}
+
+String _shortDuration(Duration value) {
+  final minutes = value.inMinutes.abs();
+  if (minutes < 60) return '${minutes}m';
+  final hours = minutes ~/ 60;
+  final remainder = minutes % 60;
+  return remainder == 0 ? '${hours}h' : '${hours}h ${remainder}m';
+}
+
+String _dateQuery(DateTime value) {
+  final local = value.isUtc ? value.toLocal() : value;
+  final y = local.year.toString().padLeft(4, '0');
+  final m = local.month.toString().padLeft(2, '0');
+  final d = local.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
+}

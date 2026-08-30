@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:focused/models/task.dart';
+import 'package:focused/providers/focus_provider.dart';
 import 'package:focused/providers/habit_provider.dart';
 import 'package:focused/providers/task_provider.dart';
 import 'package:focused/screens/planner/planner_screen.dart';
@@ -19,6 +21,7 @@ void main() {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => FocusProvider()),
         ChangeNotifierProvider(create: (_) => HabitProvider()),
       ],
       child: MaterialApp(
@@ -90,6 +93,54 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('planner-month-next')));
       await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'active scheduled task is labelled IN FOCUS',
+    (tester) async {
+      await usePhoneViewport(tester);
+
+      final now = DateTime.now();
+      final day = DateTime(now.year, now.month, now.day);
+      final taskProvider = TaskProvider();
+      final task = await taskProvider.createTask(
+        title: 'Active research',
+        priority: TaskPriority.important,
+        scheduledStart: day.add(const Duration(hours: 8)),
+        scheduledEnd: day.add(const Duration(hours: 9)),
+        createdAt: day,
+      );
+      final focusProvider = FocusProvider();
+      focusProvider.startSession(
+        taskId: task.id,
+        taskName: task.title,
+        taskOccurrenceDate: day,
+        taskScheduledStart: task.scheduledStart,
+        taskScheduledEnd: task.scheduledEnd,
+        totalFocusMinutes: 30,
+        focusBlockMinutes: 30,
+        breakMinutes: 5,
+      );
+      addTearDown(focusProvider.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: taskProvider),
+            ChangeNotifierProvider.value(value: focusProvider),
+            ChangeNotifierProvider(create: (_) => HabitProvider()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme(),
+            home: const Scaffold(body: PlannerScreen()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Active research'), findsOneWidget);
+      expect(find.text('IN FOCUS'), findsOneWidget);
     },
   );
 

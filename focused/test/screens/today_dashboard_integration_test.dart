@@ -78,6 +78,17 @@ void main() {
       expect(find.text('Instagram'), findsOneWidget);
       expect(find.text('DAILY PLAN'), findsOneWidget);
       expect(find.text('Deep work block'), findsOneWidget);
+      expect(find.text('Plan execution'), findsOneWidget);
+
+      // Habits intentionally live below the calendar/execution section.
+      // Scroll the real Today viewport rather than depending on Sliver cache
+      // extent to decide whether those lazy children are mounted.
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, -620),
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('DAILY HABITS'), findsOneWidget);
       expect(find.text('Read'), findsOneWidget);
     },
