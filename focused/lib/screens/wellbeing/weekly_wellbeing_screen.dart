@@ -78,7 +78,7 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
       appBar: AppBar(
         title: const Text(
           '7-day intelligence',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
@@ -409,7 +409,7 @@ class _PeriodHeader extends StatelessWidget {
               Text(
                 'Last 7 days',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
               ),
               const SizedBox(height: 3),
@@ -475,7 +475,7 @@ class _CoverageCard extends StatelessWidget {
               ),
               Text(
                 '${current.measuredDays}/${current.totalDays} measured • ${current.completeDays} complete',
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -724,7 +724,7 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             value.value,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 3),
           Text(
@@ -733,7 +733,7 @@ class _MetricCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: 8),
@@ -888,7 +888,7 @@ class _FocusQualityCard extends StatelessWidget {
               Text(
                 '${analytics.currentFocusCoverage.analyzedSessions}/${analytics.currentFocusCoverage.totalSessions} analyzed',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
               ),
             ],
@@ -969,7 +969,7 @@ class _SmallFocusMetric extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w900),
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 3),
           Text(
@@ -1022,7 +1022,7 @@ class _ScheduleExecutionCard extends StatelessWidget {
                     Text(
                       'Schedule execution',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                           ),
                     ),
                     const SizedBox(height: 2),
@@ -1146,7 +1146,7 @@ class _ExecutionRateRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(
                 supporting,
@@ -1162,7 +1162,7 @@ class _ExecutionRateRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -1184,7 +1184,7 @@ class _ExecutionTimeColumn extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 3),
         Text(
@@ -1269,7 +1269,7 @@ class _HabitConsistencyCard extends StatelessWidget {
                     Text(
                       'Habit consistency',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                           ),
                     ),
                     const SizedBox(height: 2),
@@ -1370,14 +1370,14 @@ class _DailyDataList extends StatelessWidget {
                     leading: Icon(_provenanceIcon(day.provenance)),
                     title: Text(
                       DateFormat('EEEE, MMM d').format(day.day),
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     subtitle: Text(
                       '${day.provenance.label}${day.completeDay ? '' : ' • Partial day'} • Focus ${_formatDuration(focus)}',
                     ),
                     trailing: Text(
                       day.measured ? _formatDuration(day.totalUsage) : '—',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
                   if (index != days.length - 1)
@@ -1415,7 +1415,7 @@ class _AnalyticsError extends StatelessWidget {
             const SizedBox(height: 12),
             const Text(
               'Could not build analytics',
-              style: TextStyle(fontWeight: FontWeight.w900),
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(message, textAlign: TextAlign.center),

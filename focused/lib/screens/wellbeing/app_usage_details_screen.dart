@@ -1,92 +1,81 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_category.dart';
-import '../../models/daily_usage_summary.dart';
 import '../../models/hourly_usage_summary.dart';
 import '../../models/usage_access_status.dart';
 import '../../providers/usage_provider.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/app_icon.dart';
-
 
 class AppUsageDetailsScreen extends StatelessWidget {
   const AppUsageDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<UsageProvider>();
-    final summary = provider.todaySummary;
+    final usage = context.watch<UsageProvider>();
+    final summary = usage.todaySummary;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'App activity',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
+        title: const Text('App activity'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            onPressed: provider.isRefreshing
+            onPressed: usage.isRefreshing
                 ? null
-                : () => provider.refreshPermissionAndUsage(force: true),
-            icon: provider.isRefreshing
-                ? const SizedBox(
-                    width: 19,
-                    height: 19,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh_rounded),
+                : () => usage.refreshPermissionAndUsage(force: true),
+            icon: const Icon(Icons.refresh_rounded),
           ),
-          const SizedBox(width: 4),
         ],
       ),
-      body: summary == null
+      body: !usage.hasUsageAccess
           ? _UnavailableBody(
-              status: provider.accessStatus,
-              error: provider.lastError,
-              onAction: provider.hasUsageAccess
-                  ? () => provider.refreshPermissionAndUsage(force: true)
-                  : provider.requestUsageAccess,
+              status: usage.accessStatus,
+              onAction: () => context.push('/wellbeing/permission'),
             )
           : RefreshIndicator(
               onRefresh: () =>
-                  provider.refreshPermissionAndUsage(force: true),
+                  usage.refreshPermissionAndUsage(force: true),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
                 children: [
                   _UsageTotal(
-                    summary: summary,
-                    comparison: provider.todayVsYesterdayPercent,
+                    duration: summary?.totalUsage,
+                    change: usage.todayVsYesterdayPercent,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 26),
                   Text(
-                    'Hourly activity',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Foreground app usage reported by Android today.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
+                    'Usage through the day',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
                         ),
                   ),
-                  const SizedBox(height: 14),
-                  _HourlyChart(
-                    hourlyUsage: summary.hourlyUsage,
+                  const SizedBox(height: 4),
+                  Text(
+                    'See when your screen time builds up during the day.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 14),
+                  _HourlyLineChart(values: summary?.hourlyUsage ?? const []),
+                  const SizedBox(height: 28),
                   Text(
                     'Apps',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
-                  const SizedBox(height: 12),
-                  _AppActivityList(
-                    provider: provider,
-                  ),
+                  const SizedBox(height: 10),
+                  _AppActivityList(provider: usage),
                 ],
               ),
             ),
@@ -95,135 +84,180 @@ class AppUsageDetailsScreen extends StatelessWidget {
 }
 
 class _UsageTotal extends StatelessWidget {
-  final DailyUsageSummary summary;
-  final double? comparison;
+  final Duration? duration;
+  final double? change;
 
-  const _UsageTotal({
-    required this.summary,
-    required this.comparison,
-  });
+  const _UsageTotal({required this.duration, required this.change});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        Text(
-          _formatDuration(summary.totalUsage),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 42,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.2,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Today',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  duration == null ? '—' : _formatDuration(duration!),
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Today',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _comparisonText(comparison),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-      ],
+          _ChangeBadge(value: change, showNeutral: true),
+        ],
+      ),
     );
   }
 }
 
-class _HourlyChart extends StatelessWidget {
-  final List<HourlyUsageSummary> hourlyUsage;
+class _HourlyLineChart extends StatelessWidget {
+  final List<HourlyUsageSummary> values;
 
-  const _HourlyChart({
-    required this.hourlyUsage,
-  });
+  const _HourlyLineChart({required this.values});
 
   @override
   Widget build(BuildContext context) {
-    final visible = hourlyUsage
-        .where((item) => item.hourStart.hour % 2 == 0)
-        .toList();
-
-    final maxMinutes = visible.fold<int>(
-      1,
-      (maxValue, item) =>
-          item.totalUsage.inMinutes > maxValue
-              ? item.totalUsage.inMinutes
-              : maxValue,
-    );
+    final minutes = List<double>.filled(24, 0);
+    for (final item in values) {
+      final hour = item.hourStart.hour;
+      if (hour >= 0 && hour < 24) {
+        minutes[hour] = item.totalUsage.inSeconds / 60;
+      }
+    }
 
     return Container(
-      height: 230,
-      padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
+      height: 245,
+      padding: const EdgeInsets.fromLTRB(12, 18, 12, 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-        ),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: visible.map((item) {
-          final minutes = item.totalUsage.inMinutes;
-          final ratio = minutes / maxMinutes;
-
-          return Expanded(
-            child: Tooltip(
-              message:
-                  '${_hourLabel(item.hourStart.hour)} • ${minutes}m',
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: FractionallySizedBox(
-                        heightFactor: ratio.clamp(0.03, 1.0),
-                        child: Container(
-                          width: 16,
-                          decoration: BoxDecoration(
-                            color: minutes == 0
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest
-                                : Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _shortHour(item.hourStart.hour),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                  ),
-                ],
+      child: Column(
+        children: [
+          Expanded(
+            child: CustomPaint(
+              painter: _HourlyLinePainter(
+                values: minutes,
+                lineColor: Theme.of(context).colorScheme.primary,
+                gridColor: Theme.of(context).dividerColor,
+                fillColor:
+                    Theme.of(context).colorScheme.primary.withOpacity(0.10),
               ),
+              child: const SizedBox.expand(),
             ),
-          );
-        }).toList(),
+          ),
+          const SizedBox(height: 8),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('12a', style: TextStyle(fontSize: 10)),
+              Text('6a', style: TextStyle(fontSize: 10)),
+              Text('12p', style: TextStyle(fontSize: 10)),
+              Text('6p', style: TextStyle(fontSize: 10)),
+              Text('11p', style: TextStyle(fontSize: 10)),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
+
+class _HourlyLinePainter extends CustomPainter {
+  final List<double> values;
+  final Color lineColor;
+  final Color gridColor;
+  final Color fillColor;
+
+  const _HourlyLinePainter({
+    required this.values,
+    required this.lineColor,
+    required this.gridColor,
+    required this.fillColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = gridColor.withOpacity(0.72)
+      ..strokeWidth = 1;
+    for (var i = 0; i <= 3; i++) {
+      final y = size.height * i / 3;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+
+    if (values.isEmpty) return;
+    final maxValue = math.max(1.0, values.reduce(math.max));
+    final points = <Offset>[];
+    for (var index = 0; index < values.length; index++) {
+      final x = values.length == 1
+          ? 0.0
+          : size.width * index / (values.length - 1);
+      final y = size.height - (values[index] / maxValue) * size.height * 0.9;
+      points.add(Offset(x, y));
+    }
+
+    final line = Path()..moveTo(points.first.dx, points.first.dy);
+    for (var index = 1; index < points.length; index++) {
+      final previous = points[index - 1];
+      final current = points[index];
+      final midX = (previous.dx + current.dx) / 2;
+      line.cubicTo(midX, previous.dy, midX, current.dy, current.dx, current.dy);
+    }
+
+    final fill = Path.from(line)
+      ..lineTo(points.last.dx, size.height)
+      ..lineTo(points.first.dx, size.height)
+      ..close();
+    canvas.drawPath(fill, Paint()..color = fillColor);
+
+    canvas.drawPath(
+      line,
+      Paint()
+        ..color = lineColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    final dotPaint = Paint()..color = lineColor;
+    for (var index = 0; index < points.length; index += 3) {
+      canvas.drawCircle(points[index], 2.7, dotPaint);
+    }
+    canvas.drawCircle(points.last, 2.7, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HourlyLinePainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.lineColor != lineColor;
 }
 
 class _AppActivityList extends StatelessWidget {
   final UsageProvider provider;
 
-  const _AppActivityList({
-    required this.provider,
-  });
+  const _AppActivityList({required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -232,18 +266,15 @@ class _AppActivityList extends StatelessWidget {
     );
 
     if (entries.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(28),
-          child: Text('No app activity measured today.'),
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(22),
         ),
+        child: const Text('No app activity measured today.'),
       );
     }
-
-    final total = entries.fold<int>(
-      0,
-      (sum, entry) => sum + entry.duration.inMilliseconds,
-    );
 
     return Container(
       decoration: BoxDecoration(
@@ -254,67 +285,80 @@ class _AppActivityList extends StatelessWidget {
       child: Column(
         children: List.generate(entries.length, (index) {
           final entry = entries[index];
-          final share = total <= 0
-              ? 0.0
-              : entry.duration.inMilliseconds / total;
           final change = provider.getAppChangePercentById(entry.appId);
           final category = provider.getAppCategory(entry.appId);
 
           return Column(
             children: [
-              ListTile(
+              InkWell(
                 onTap: () {
-                  final encodedId = Uri.encodeComponent(entry.appId);
-                  final encodedName =
-                      Uri.encodeQueryComponent(entry.appName);
-                  context.push(
-                    '/wellbeing/app/$encodedId?name=$encodedName',
-                  );
+                  final id = Uri.encodeComponent(entry.appId);
+                  final name = Uri.encodeQueryComponent(entry.appName);
+                  context.push('/wellbeing/app/$id?name=$name');
                 },
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 7,
-                ),
-                leading: AppIcon(
-                  iconBytes: entry.iconBytes,
-                  appName: _cleanAppName(entry.appName),
-                  size: 42,
-                  borderRadius: 13,
-                  fallbackBackground:
-                      Theme.of(context).colorScheme.primaryContainer,
-                  fallbackForeground:
-                      Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-                title: Text(
-                  _cleanAppName(entry.appName),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                subtitle: Text(
-                  '${_categoryLabel(category)} • ${(share * 100).round()}% of measured app usage'
-                  '${_changeSuffix(change)}',
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatDuration(entry.duration),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
+                  child: Row(
+                    children: [
+                      AppIcon(
+                        iconBytes: entry.iconBytes,
+                        appName: entry.appName,
+                        size: 38,
+                        borderRadius: 12,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.chevron_right_rounded),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    entry.appName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (change != null) ...[
+                                  const SizedBox(width: 7),
+                                  _ChangeBadge(value: change),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _categoryLabel(category),
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        _formatDuration(entry.duration),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               if (index != entries.length - 1)
                 Divider(
                   height: 1,
-                  indent: 72,
+                  indent: 66,
                   color: Theme.of(context).dividerColor,
                 ),
             ],
@@ -325,26 +369,73 @@ class _AppActivityList extends StatelessWidget {
   }
 }
 
+class _ChangeBadge extends StatelessWidget {
+  final double? value;
+  final bool showNeutral;
+
+  const _ChangeBadge({required this.value, this.showNeutral = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final change = value;
+    if (change == null) {
+      if (!showNeutral) return const SizedBox.shrink();
+      return Text(
+        'No comparison',
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w300,
+        ),
+      );
+    }
+
+    final up = change > 0;
+    final down = change < 0;
+    final color = up
+        ? AppTheme.danger
+        : down
+            ? AppTheme.success
+            : Theme.of(context).colorScheme.onSurfaceVariant;
+    final icon = up
+        ? Icons.arrow_upward_rounded
+        : down
+            ? Icons.arrow_downward_rounded
+            : Icons.remove_rounded;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 2),
+          Text(
+            '${change.abs().round()}%',
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _UnavailableBody extends StatelessWidget {
   final UsageAccessStatus status;
-  final String? error;
-  final Future<void> Function() onAction;
+  final VoidCallback onAction;
 
-  const _UnavailableBody({
-    required this.status,
-    required this.error,
-    required this.onAction,
-  });
+  const _UnavailableBody({required this.status, required this.onAction});
 
   @override
   Widget build(BuildContext context) {
     final unsupported = status == UsageAccessStatus.unsupported;
-    final checking = status == UsageAccessStatus.checking;
-
-    if (checking) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -361,38 +452,26 @@ class _UnavailableBody extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               unsupported
-                  ? 'Android app activity is not available here'
-                  : 'App activity needs Usage Access',
+                  ? 'App activity is unavailable here'
+                  : 'Allow app usage access',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
               unsupported
-                  ? 'Windows will use a separate foreground-app collector later.'
-                  : 'Focused uses Android UsageStats to build this view from real foreground-app activity.',
+                  ? 'This screen currently uses Android app-usage data.'
+                  : 'Focused needs Android Usage Access to show your app activity.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant,
-                    height: 1.4,
-                  ),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w300,
               ),
-            ],
+            ),
             if (!unsupported) ...[
               const SizedBox(height: 18),
               FilledButton(
-                onPressed: () => onAction(),
+                onPressed: onAction,
                 child: const Text('Continue'),
               ),
             ],
@@ -403,34 +482,8 @@ class _UnavailableBody extends StatelessWidget {
   }
 }
 
-String _comparisonText(double? value) {
-  if (value == null) {
-    return 'No same-time comparison yet';
-  }
-
-  if (value > 0) {
-    return '${value.abs().round()}% more than the same time yesterday';
-  }
-
-  if (value < 0) {
-    return '${value.abs().round()}% less than the same time yesterday';
-  }
-
-  return 'Same as this time yesterday';
-}
-
-String _changeSuffix(double? value) {
-  if (value == null || value == 0) {
-    return '';
-  }
-
-  final direction = value > 0 ? ' • ↑ ' : ' • ↓ ';
-  return '$direction${value.abs().round()}% vs same time yesterday';
-}
-
-
-String _categoryLabel(AppCategory category) {
-  switch (category) {
+String _categoryLabel(AppCategory value) {
+  switch (value) {
     case AppCategory.productive:
       return 'Productive';
     case AppCategory.neutral:
@@ -443,56 +496,8 @@ String _categoryLabel(AppCategory category) {
 String _formatDuration(Duration duration) {
   final hours = duration.inHours;
   final minutes = duration.inMinutes.remainder(60);
-
   if (hours > 0) {
     return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   }
-
   return '${duration.inMinutes}m';
-}
-
-String _cleanAppName(String value) {
-  if (!value.contains('.')) {
-    return value.isEmpty ? 'Unknown app' : value;
-  }
-
-  final parts =
-      value.split('.').where((part) => part.isNotEmpty).toList();
-
-  if (parts.isEmpty) {
-    return 'Unknown app';
-  }
-
-  final last = parts.last;
-  if (last.isEmpty) {
-    return 'Unknown app';
-  }
-
-  return '${last[0].toUpperCase()}${last.substring(1)}';
-}
-
-String _shortHour(int hour) {
-  if (hour == 0) {
-    return '12a';
-  }
-  if (hour == 12) {
-    return '12p';
-  }
-  if (hour < 12) {
-    return '${hour}a';
-  }
-  return '${hour - 12}p';
-}
-
-String _hourLabel(int hour) {
-  if (hour == 0) {
-    return '12 AM';
-  }
-  if (hour == 12) {
-    return '12 PM';
-  }
-  if (hour < 12) {
-    return '$hour AM';
-  }
-  return '${hour - 12} PM';
 }

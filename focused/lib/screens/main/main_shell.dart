@@ -2,27 +2,40 @@ import 'package:flutter/material.dart';
 
 import '../focus/focus_screen.dart';
 import '../planner/planner_screen.dart';
+import '../settings/settings_screen.dart';
 import '../today/today_screen.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final int initialIndex;
+
+  const MainShell({
+    super.key,
+    this.initialIndex = 0,
+  });
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  late int _currentIndex = _safeIndex(widget.initialIndex);
 
-  // Each destination owns its scrolling independently. Keeping the three
-  // pages in an IndexedStack preserves Planner/Focus state when switching tabs,
-  // while PrimaryScrollController.none prevents offstage scroll views from
-  // sharing the Scaffold's primary controller during layout/tests.
   final List<Widget> _screens = const [
     PrimaryScrollController.none(child: TodayScreen()),
     PrimaryScrollController.none(child: PlannerScreen()),
     PrimaryScrollController.none(child: FocusScreen()),
+    PrimaryScrollController.none(child: SettingsScreen(embedded: true)),
   ];
+
+  @override
+  void didUpdateWidget(covariant MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      setState(() {
+        _currentIndex = _safeIndex(widget.initialIndex);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +56,8 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
+int _safeIndex(int value) => value.clamp(0, 3).toInt();
+
 class _FocusedBottomNavigation extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onSelected;
@@ -54,7 +69,7 @@ class _FocusedBottomNavigation extends StatelessWidget {
 
   static const _items = <_NavItem>[
     _NavItem(
-      label: 'Today',
+      label: 'Home',
       icon: Icons.home_outlined,
       selectedIcon: Icons.home_rounded,
     ),
@@ -68,6 +83,11 @@ class _FocusedBottomNavigation extends StatelessWidget {
       icon: Icons.center_focus_strong_outlined,
       selectedIcon: Icons.center_focus_strong_rounded,
     ),
+    _NavItem(
+      label: 'Settings',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
+    ),
   ];
 
   @override
@@ -78,9 +98,7 @@ class _FocusedBottomNavigation extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         border: Border(
-          top: BorderSide(
-            color: Theme.of(context).dividerColor,
-          ),
+          top: BorderSide(color: Theme.of(context).dividerColor),
         ),
       ),
       child: SafeArea(
@@ -98,35 +116,28 @@ class _FocusedBottomNavigation extends StatelessWidget {
                   selected: selected,
                   label: item.label,
                   child: InkWell(
-                    key: ValueKey(
-                      'nav-${item.label.toLowerCase()}',
-                    ),
+                    key: ValueKey('nav-${item.label.toLowerCase()}'),
                     onTap: () => onSelected(index),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          width: 50,
-                          height: 38,
+                          width: 48,
+                          height: 36,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: selected
                                 ? scheme.primaryContainer
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(14),
-                            border: selected
-                                ? Border.all(
-                                    color: scheme.primary.withOpacity(0.28),
-                                  )
-                                : null,
                           ),
                           child: Icon(
                             selected ? item.selectedIcon : item.icon,
                             color: selected
                                 ? scheme.primary
                                 : scheme.onSurfaceVariant,
-                            size: 25,
+                            size: 24,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -135,7 +146,7 @@ class _FocusedBottomNavigation extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight:
-                                selected ? FontWeight.w800 : FontWeight.w600,
+                                selected ? FontWeight.w700 : FontWeight.w400,
                             color: selected
                                 ? scheme.primary
                                 : scheme.onSurfaceVariant,

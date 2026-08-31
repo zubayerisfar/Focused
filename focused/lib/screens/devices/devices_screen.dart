@@ -19,7 +19,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
       appBar: AppBar(
         title: const Text(
           'My Devices',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       body: ListView(
@@ -29,7 +29,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
             'Your devices',
             style: Theme.of(
               context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
 
           const SizedBox(height: 6),
@@ -47,7 +47,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
             'This device',
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
 
           const SizedBox(height: 12),
@@ -60,7 +60,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
             'Other devices',
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
 
           const SizedBox(height: 12),

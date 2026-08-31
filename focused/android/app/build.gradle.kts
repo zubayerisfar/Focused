@@ -2,6 +2,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
 
     // Flutter Gradle plugin must come after Android.
     id("dev.flutter.flutter-gradle-plugin")
@@ -10,7 +13,7 @@ plugins {
 android {
     namespace = "com.example.focused"
 
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

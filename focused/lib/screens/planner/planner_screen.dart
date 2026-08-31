@@ -55,7 +55,7 @@ extension PlannerCalendarModeLabel on PlannerCalendarMode {
 
 enum _PlannerArea { tasks, habits }
 
-enum _PlannerMenuAction { backlog, completed, settings }
+enum _PlannerMenuAction { backlog, completed }
 
 class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key});
@@ -71,9 +71,24 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Stack(
+    final baseTheme = Theme.of(context);
+    final accent = _area == _PlannerArea.tasks
+        ? AppTheme.primaryBlue
+        : AppTheme.lavender;
+    final plannerTheme = baseTheme.copyWith(
+      colorScheme: baseTheme.colorScheme.copyWith(
+        primary: accent,
+        primaryContainer: accent.withOpacity(
+          baseTheme.brightness == Brightness.dark ? 0.22 : 0.14,
+        ),
+      ),
+    );
+
+    return Theme(
+      data: plannerTheme,
+      child: SafeArea(
+        bottom: false,
+        child: Stack(
         children: [
           Column(
             children: [
@@ -157,7 +172,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -190,9 +206,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
         return;
       case _PlannerMenuAction.completed:
         _showCompletedSheet(context);
-        return;
-      case _PlannerMenuAction.settings:
-        context.push('/settings');
         return;
     }
   }
@@ -271,7 +284,7 @@ class _PlannerHeader extends StatelessWidget {
                 '${DateTime.now().day}',
                 style: const TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -298,7 +311,7 @@ class _PlannerHeader extends StatelessWidget {
                           mode.label,
                           style: TextStyle(
                             fontWeight: mode == calendarMode
-                                ? FontWeight.w900
+                                ? FontWeight.w700
                                 : FontWeight.w600,
                           ),
                         ),
@@ -323,7 +336,7 @@ class _PlannerHeader extends StatelessWidget {
                       calendarMode.label,
                       style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -353,14 +366,6 @@ class _PlannerHeader extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.done_all_rounded),
                   title: Text('Completed'),
-                ),
-              ),
-              PopupMenuItem(
-                value: _PlannerMenuAction.settings,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.settings_outlined),
-                  title: Text('Settings'),
                 ),
               ),
             ],
@@ -819,7 +824,7 @@ class _AgendaDaySection extends StatelessWidget {
                                         : Theme.of(context)
                                             .colorScheme
                                             .onSurfaceVariant,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
                                   ),
                         ),
                         Text(
@@ -919,7 +924,7 @@ class _PlannerTimelineTask extends StatelessWidget {
               child: Text(
                 DateFormat('h:mm a').format(occurrence.start),
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color:
                           Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -960,6 +965,9 @@ class _PlannerTimelineTask extends StatelessWidget {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(18),
                   onTap: () => context.push(
+                    '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(occurrence.start)}',
+                  ),
+                  onLongPress: () => context.push(
                     '/task/edit/${Uri.encodeComponent(task.id)}',
                   ),
                   child: Padding(
@@ -984,7 +992,7 @@ class _PlannerTimelineTask extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                   decoration: occurrence.isCompleted
                                       ? TextDecoration.lineThrough
                                       : null,
@@ -1012,7 +1020,7 @@ class _PlannerTimelineTask extends StatelessWidget {
                                           .labelSmall
                                           ?.copyWith(
                                             color: Theme.of(context).colorScheme.primary,
-                                            fontWeight: FontWeight.w900,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                     ),
                                     if (execution.actualStart != null)
@@ -1145,6 +1153,9 @@ class _AnytimePlannerTask extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: () => context.push(
+          '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(date)}',
+        ),
+        onLongPress: () => context.push(
           '/task/edit/${Uri.encodeComponent(task.id)}',
         ),
         child: Padding(
@@ -1159,7 +1170,7 @@ class _AnytimePlannerTask extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     decoration:
                         complete ? TextDecoration.lineThrough : null,
                   ),
@@ -1221,7 +1232,7 @@ class _AnytimeCalendarStrip extends StatelessWidget {
               Text(
                 'Anytime',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
               ),
             ],
@@ -1259,22 +1270,27 @@ class _AnytimeCalendarChip extends StatelessWidget {
     final provider = context.watch<TaskProvider>();
     final complete = provider.isTaskCompletedForDate(task, date);
 
-    return ActionChip(
-      avatar: Icon(
-        complete ? Icons.check_circle_rounded : Icons.task_alt_rounded,
-        size: 17,
-        color: complete ? AppTheme.success : null,
-      ),
-      label: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 190),
-        child: Text(
-          task.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      onPressed: () => context.push(
+    return GestureDetector(
+      onLongPress: () => context.push(
         '/task/edit/${Uri.encodeComponent(task.id)}',
+      ),
+      child: ActionChip(
+        avatar: Icon(
+          complete ? Icons.check_circle_rounded : Icons.task_alt_rounded,
+          size: 17,
+          color: complete ? AppTheme.success : null,
+        ),
+        label: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 190),
+          child: Text(
+            task.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        onPressed: () => context.push(
+          '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(date)}',
+        ),
       ),
     );
   }
@@ -1577,7 +1593,7 @@ class _MultiDayHeader extends StatelessWidget {
               DateFormat('EEE').format(date),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: _isToday(date) ? scheme.primary : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
             ),
             const SizedBox(height: 4),
@@ -1585,7 +1601,7 @@ class _MultiDayHeader extends StatelessWidget {
               '${date.day}',
               style: const TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const Spacer(),
@@ -1712,6 +1728,9 @@ class _GridTaskBlock extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => context.push(
+          '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(occurrence.start)}',
+        ),
+        onLongPress: () => context.push(
           '/task/edit/${Uri.encodeComponent(task.id)}',
         ),
         child: LayoutBuilder(
@@ -1749,7 +1768,7 @@ class _GridTaskBlock extends StatelessWidget {
                     style: TextStyle(
                       fontSize: compact ? 11.5 : 13,
                       height: 1.05,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       decoration: occurrence.isCompleted
                           ? TextDecoration.lineThrough
                           : null,
@@ -1763,7 +1782,7 @@ class _GridTaskBlock extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             fontSize: compact ? 8.5 : null,
                             height: 1.0,
                           ),
@@ -1875,14 +1894,14 @@ class _WeekDateStrip extends StatelessWidget {
                                 : Theme.of(context)
                                     .colorScheme
                                     .onSurfaceVariant,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                           ),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       '${date.day}',
                       style: const TextStyle(
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -1928,7 +1947,7 @@ class _WeekdayHeader extends StatelessWidget {
                         color: Theme.of(context)
                             .colorScheme
                             .onSurfaceVariant,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                 ),
               ),
@@ -1986,7 +2005,7 @@ class _MonthDayCell extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: selected || today
-                    ? FontWeight.w900
+                    ? FontWeight.w700
                     : FontWeight.w600,
                 color: inMonth
                     ? Theme.of(context).colorScheme.onSurface
@@ -2193,7 +2212,7 @@ class _WeekDateStripForHabits extends StatelessWidget {
                           .textTheme
                           .labelSmall
                           ?.copyWith(
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             color: selected
                                 ? Theme.of(context)
                                     .colorScheme
@@ -2207,7 +2226,7 @@ class _WeekDateStripForHabits extends StatelessWidget {
                     Text(
                       '${date.day}',
                       style:
-                          const TextStyle(fontWeight: FontWeight.w900),
+                          const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 5),
                     Icon(
@@ -2289,7 +2308,7 @@ class _HabitPlannerCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -2475,7 +2494,7 @@ Future<void> _showTaskCollectionSheet(
                               title: Text(
                                 task.title,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               subtitle: task.plannedDate == null
@@ -2488,6 +2507,12 @@ Future<void> _showTaskCollectionSheet(
                                 Icons.chevron_right_rounded,
                               ),
                               onTap: () {
+                                Navigator.pop(sheetContext);
+                                context.push(
+                                  '/task/${Uri.encodeComponent(task.id)}',
+                                );
+                              },
+                              onLongPress: () {
                                 Navigator.pop(sheetContext);
                                 context.push(
                                   '/task/edit/${Uri.encodeComponent(task.id)}',
@@ -2559,7 +2584,7 @@ Future<void> _showCompletedSheet(BuildContext context) {
                                 title: Text(
                                   task.title,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 subtitle: task.completedAt == null
@@ -2568,6 +2593,12 @@ Future<void> _showCompletedSheet(BuildContext context) {
                                         'Done ${DateFormat('MMM d, h:mm a').format(task.completedAt!)}',
                                       ),
                                 onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  context.push(
+                                    '/task/${Uri.encodeComponent(task.id)}',
+                                  );
+                                },
+                                onLongPress: () {
                                   Navigator.pop(sheetContext);
                                   context.push(
                                     '/task/edit/${Uri.encodeComponent(task.id)}',
@@ -2585,13 +2616,19 @@ Future<void> _showCompletedSheet(BuildContext context) {
                                 title: Text(
                                   occurrence.task.title,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 subtitle: Text(
                                   'Occurrence ${DateFormat('EEE, MMM d').format(occurrence.start)}',
                                 ),
                                 onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  context.push(
+                                    '/task/${Uri.encodeComponent(occurrence.task.id)}?date=${_dateQuery(occurrence.start)}',
+                                  );
+                                },
+                                onLongPress: () {
                                   Navigator.pop(sheetContext);
                                   context.push(
                                     '/task/edit/${Uri.encodeComponent(occurrence.task.id)}',

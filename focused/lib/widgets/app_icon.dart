@@ -38,7 +38,7 @@ class AppIcon extends StatelessWidget {
         style: TextStyle(
           color: fallbackForeground ?? scheme.onSurfaceVariant,
           fontSize: size * 0.38,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

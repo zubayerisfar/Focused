@@ -135,7 +135,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       appBar: AppBar(
         title: const Text(
           'Set Up Focus',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       body: ListView(
@@ -145,7 +145,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             'Plan your session',
             style: Theme.of(
               context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
 
           const SizedBox(height: 6),
@@ -451,7 +451,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   sheetContext,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
 
               const SizedBox(height: 12),
@@ -574,7 +574,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   title,
                   style: Theme.of(
                     sheetContext,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
 
                 const SizedBox(height: 12),
@@ -773,7 +773,7 @@ class _SectionTitle extends StatelessWidget {
       title,
       style: Theme.of(
         context,
-      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }

@@ -37,7 +37,7 @@ class FocusSessionScreen extends StatelessWidget {
 
                 const Text(
                   'No active focus session',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
 
                 const SizedBox(height: 20),
@@ -106,7 +106,7 @@ class FocusSessionScreen extends StatelessWidget {
                 isBreak ? 'Take a break' : focus.taskName,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
 
@@ -159,7 +159,7 @@ class FocusSessionScreen extends StatelessWidget {
                           _formatClock(focus.remainingSeconds),
                           style: const TextStyle(
                             fontSize: 48,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: -1,
                           ),
                         ),
@@ -297,7 +297,7 @@ class FocusSessionScreen extends StatelessWidget {
                   'End focus session?',
                   style: Theme.of(
                     context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
 
                 const SizedBox(height: 8),

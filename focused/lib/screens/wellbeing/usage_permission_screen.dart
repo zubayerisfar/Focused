@@ -52,7 +52,7 @@ class UsagePermissionScreen extends StatelessWidget {
                           : 'Understand your digital habits',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                           ),
                     ),
                     const SizedBox(height: 10),
@@ -143,7 +143,7 @@ class UsagePermissionScreen extends StatelessWidget {
                         ),
                   label: Text(
                     granted ? 'Refresh real usage' : 'Grant Usage Access',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -191,7 +191,7 @@ class _PermissionFeature extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 Text(
                   description,
@@ -235,7 +235,7 @@ class _PrivacyCard extends StatelessWidget {
               children: [
                 Text(
                   'Private by default',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: 4),
                 Text(
@@ -289,7 +289,7 @@ class _PermissionStateCard extends StatelessWidget {
               Text(
                 presentation.label,
                 style: TextStyle(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: presentation.color,
                 ),
               ),

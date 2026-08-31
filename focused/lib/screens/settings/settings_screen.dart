@@ -3,58 +3,70 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/usage_access_status.dart';
+import '../../providers/account_provider.dart';
+import '../../providers/private_sync_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_profile_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  final bool embedded;
+
+  const SettingsScreen({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
-    final profileProvider = context.watch<UserProfileProvider>();
+    final account = context.watch<AccountProvider>();
+    final privateSync =
+        context.watch<PrivateSyncProvider>();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Settings',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 36),
         children: [
           _ProfileHeader(
-            name: profileProvider.profile.displayName,
-            email: profileProvider.profile.email,
+            name: account.displayName,
+            email: account.email,
+            photoUrl: account.photoUrl,
+            providerText:
+                account.signedInWithGoogle
+                    ? 'Google account'
+                    : 'Email account',
             onTap: () => _editProfile(context),
           ),
           const SizedBox(height: 14),
-          _SectionLabel('Permissions & access'),
+          const _SectionLabel('Permissions & access'),
           _SettingsTile(
             icon: Icons.query_stats_rounded,
             title: 'App usage access',
-            subtitle: _usageStatusText(usageProvider.accessStatus),
+            subtitle:
+                _usageStatusText(usageProvider.accessStatus),
             trailing: _StatusDot(
-              active:
-                  usageProvider.accessStatus == UsageAccessStatus.granted,
+              active: usageProvider.accessStatus ==
+                  UsageAccessStatus.granted,
             ),
-            onTap: () => context.push('/wellbeing/permission'),
+            onTap: () =>
+                context.push('/wellbeing/permission'),
           ),
           _SettingsTile(
             icon: Icons.notifications_none_rounded,
             title: 'Notifications',
-            subtitle: 'Test notification permission and delivery',
+            subtitle:
+                'Test notification permission and delivery',
             onTap: () async {
               final success = await context
                   .read<TaskProvider>()
                   .sendTestNotification();
 
-              if (!context.mounted) {
-                return;
-              }
+              if (!context.mounted) return;
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -68,36 +80,65 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           const _SectionDivider(),
-          _SectionLabel('Personal information'),
+          const _SectionLabel('Account'),
           _SettingsTile(
-            icon: Icons.person_outline_rounded,
-            title: 'Profile',
-            subtitle: _profileSubtitle(
-              profileProvider.profile.displayName,
-              profileProvider.profile.email,
-            ),
+            icon: account.signedInWithGoogle
+                ? Icons.account_circle_outlined
+                : Icons.alternate_email_rounded,
+            title: account.displayName,
+            subtitle: account.email,
             onTap: () => _editProfile(context),
           ),
+          if (!account.signedInWithGoogle)
+            _SettingsTile(
+              icon: account.emailVerified
+                  ? Icons.verified_rounded
+                  : Icons.mark_email_unread_outlined,
+              title: 'Email verification',
+              subtitle: account.emailVerified
+                  ? 'Verified'
+                  : 'Not verified yet',
+              onTap: () =>
+                  _handleEmailVerification(context),
+            ),
           const _SectionDivider(),
-          _SectionLabel('Personalization'),
+          const _SectionLabel('Privacy & sync'),
+          _SettingsTile(
+            icon: privateSync.isReady
+                ? Icons.lock_rounded
+                : Icons.cloud_outlined,
+            title: 'Encrypted sync',
+            subtitle: privateSync.statusLabel,
+            trailing: _StatusDot(
+              active: privateSync.isReady,
+            ),
+            onTap: () =>
+                context.push('/settings/private-sync'),
+          ),
+          const _SectionDivider(),
+          const _SectionLabel('Personalization'),
           _AppearanceTile(),
           const _SectionDivider(),
-          _SectionLabel('Account'),
+          const _SectionLabel('Session'),
           _SettingsTile(
             icon: Icons.logout_rounded,
             title: 'Sign out',
-            subtitle: 'Return to the sign-in screen',
-            onTap: () => context.go('/login'),
+            subtitle: privateSync.cloudConfigured
+                ? 'Sign out and remove this device’s local private key'
+                : 'Sign out of Firebase on this device',
+            onTap: () => _signOut(context),
           ),
           const _DisabledAccountTile(
             icon: Icons.pause_circle_outline_rounded,
             title: 'Deactivate account',
-            subtitle: 'Available after cloud account sync is connected',
+            subtitle:
+                'Available after encrypted cloud sync is connected',
           ),
           const _DisabledAccountTile(
             icon: Icons.delete_outline_rounded,
             title: 'Delete account',
-            subtitle: 'Available after cloud account sync is connected',
+            subtitle:
+                'Available after encrypted cloud sync is connected',
             destructive: true,
           ),
         ],
@@ -105,7 +146,9 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  static String _usageStatusText(UsageAccessStatus status) {
+  static String _usageStatusText(
+    UsageAccessStatus status,
+  ) {
     switch (status) {
       case UsageAccessStatus.granted:
         return 'Allowed';
@@ -122,25 +165,44 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  static String _profileSubtitle(String name, String email) {
-    final trimmedEmail = email.trim();
-    if (trimmedEmail.isNotEmpty) {
-      return trimmedEmail;
+  static Future<void> _handleEmailVerification(
+    BuildContext context,
+  ) async {
+    final account = context.read<AccountProvider>();
+
+    if (account.emailVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your email is already verified.'),
+        ),
+      );
+      return;
     }
 
-    final trimmedName = name.trim();
-    return trimmedName.isEmpty ? 'Local profile' : trimmedName;
+    try {
+      await account.resendVerificationEmail();
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Verification email sent. After verifying, reopen Settings.',
+          ),
+        ),
+      );
+    } catch (_) {}
   }
 
-  static Future<void> _editProfile(BuildContext context) async {
-    final provider = context.read<UserProfileProvider>();
+  static Future<void> _editProfile(
+    BuildContext context,
+  ) async {
+    final account = context.read<AccountProvider>();
+    final localProfile =
+        context.read<UserProfileProvider>();
 
     final nameController = TextEditingController(
-      text: provider.profile.displayName,
-    );
-
-    final emailController = TextEditingController(
-      text: provider.profile.email,
+      text: account.displayName,
     );
 
     final save = await showModalBottomSheet<bool>(
@@ -153,34 +215,39 @@ class SettingsScreen extends StatelessWidget {
             18,
             2,
             18,
-            20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+            20 +
+                MediaQuery.viewInsetsOf(
+                  sheetContext,
+                ).bottom,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Text(
-                'Personal information',
-                style:
-                    Theme.of(sheetContext).textTheme.headlineMedium,
+                'Profile',
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .headlineMedium,
               ),
               const SizedBox(height: 18),
               TextField(
                 controller: nameController,
-                textCapitalization: TextCapitalization.words,
+                textCapitalization:
+                    TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Display name',
                 ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
+              InputDecorator(
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   helperText:
-                      'Stored locally until account sync is implemented.',
+                      'Managed by Firebase Authentication.',
                 ),
+                child: Text(account.email),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -188,7 +255,8 @@ class SettingsScreen extends StatelessWidget {
                 child: FilledButton(
                   onPressed: () =>
                       Navigator.pop(sheetContext, true),
-                  child: const Text('Save'),
+                  child:
+                      const Text('Save display name'),
                 ),
               ),
             ],
@@ -197,85 +265,157 @@ class SettingsScreen extends StatelessWidget {
       },
     );
 
-    if (save == true) {
-      await provider.updateProfile(
-        displayName: nameController.text,
-        email: emailController.text,
+    if (save == true &&
+        nameController.text.trim().isNotEmpty) {
+      await account.updateDisplayName(
+        nameController.text,
+      );
+
+      await localProfile.updateProfile(
+        displayName: account.displayName,
+        email: account.email,
       );
     }
 
     nameController.dispose();
-    emailController.dispose();
+  }
+
+  static Future<void> _signOut(
+    BuildContext context,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Sign out?'),
+          content: Text(
+            context.read<PrivateSyncProvider>().cloudConfigured
+                ? 'This signs you out and removes the Focused private key '
+                    'stored on this device. Your local productivity data is '
+                    'not deleted. Make sure you saved the private key before '
+                    'signing out.'
+                : 'This signs you out of your Focused account. '
+                    'Your existing local productivity data is not deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, true),
+              child: const Text('Sign out'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    await context
+        .read<PrivateSyncProvider>()
+        .forgetLocalKeyForSignOut();
+
+    if (!context.mounted) return;
+
+    await context.read<AccountProvider>().signOut();
   }
 }
 
 class _ProfileHeader extends StatelessWidget {
-  final String name;
-  final String email;
-  final VoidCallback onTap;
-
   const _ProfileHeader({
     required this.name,
     required this.email,
+    required this.photoUrl,
+    required this.providerText,
     required this.onTap,
   });
+
+  final String name;
+  final String email;
+  final String? photoUrl;
+  final String providerText;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final displayName =
         name.trim().isEmpty ? 'Focused user' : name.trim();
-    final subtitle =
-        email.trim().isEmpty ? 'Local profile' : email.trim();
 
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        padding:
+            const EdgeInsets.fromLTRB(18, 16, 18, 18),
         child: Row(
           children: [
             CircleAvatar(
               radius: 34,
-              backgroundColor:
-                  Theme.of(context).colorScheme.primaryContainer,
-              child: Text(
-                displayName[0].toUpperCase(),
-                style: TextStyle(
-                  color:
-                      Theme.of(context).colorScheme.onPrimaryContainer,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer,
+              backgroundImage:
+                  photoUrl == null
+                      ? null
+                      : NetworkImage(photoUrl!),
+              child: photoUrl == null
+                  ? Text(
+                      displayName[0].toUpperCase(),
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onPrimaryContainer,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     displayName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    subtitle,
+                    email,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                    style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    providerText,
+                    style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
             ),
             IconButton(
-              tooltip: 'Edit profile',
               onPressed: onTap,
               icon: const Icon(Icons.edit_outlined),
             ),
@@ -287,19 +427,24 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  final String label;
-
   const _SectionLabel(this.label);
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+      padding:
+          const EdgeInsets.fromLTRB(18, 14, 18, 6),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w900,
+        style: Theme.of(context)
+            .textTheme
+            .labelLarge
+            ?.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary,
+              fontWeight: FontWeight.w700,
             ),
       ),
     );
@@ -307,12 +452,6 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final Widget? trailing;
-
   const _SettingsTile({
     required this.icon,
     required this.title,
@@ -321,24 +460,34 @@ class _SettingsTile extends StatelessWidget {
     this.trailing,
   });
 
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 5,
+      ),
       leading: SizedBox(
         width: 38,
         height: 38,
         child: Icon(
           icon,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          color: Theme.of(context)
+              .colorScheme
+              .onSurfaceVariant,
         ),
       ),
       title: Text(
         title,
         style: const TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
         ),
       ),
       subtitle: Padding(
@@ -350,7 +499,8 @@ class _SettingsTile extends StatelessWidget {
         ),
       ),
       trailing:
-          trailing ?? const Icon(Icons.chevron_right_rounded),
+          trailing ??
+          const Icon(Icons.chevron_right_rounded),
       onTap: onTap,
     );
   }
@@ -359,7 +509,8 @@ class _SettingsTile extends StatelessWidget {
 class _AppearanceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ThemeProvider>();
+    final provider =
+        context.watch<ThemeProvider>();
 
     return _SettingsTile(
       icon: Icons.palette_outlined,
@@ -389,10 +540,17 @@ class _AppearanceTile extends StatelessWidget {
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+            padding:
+                const EdgeInsets.fromLTRB(
+                  18,
+                  0,
+                  18,
+                  20,
+                ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   'Appearance',
@@ -402,7 +560,8 @@ class _AppearanceTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 ...ThemeMode.values.map(
-                  (mode) => RadioListTile<ThemeMode>(
+                  (mode) =>
+                      RadioListTile<ThemeMode>(
                     contentPadding: EdgeInsets.zero,
                     value: mode,
                     groupValue: sheetContext
@@ -410,14 +569,10 @@ class _AppearanceTile extends StatelessWidget {
                         .themeMode,
                     title: Text(_themeLabel(mode)),
                     onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-
+                      if (value == null) return;
                       sheetContext
                           .read<ThemeProvider>()
                           .setThemeMode(value);
-
                       Navigator.pop(sheetContext);
                     },
                   ),
@@ -432,11 +587,8 @@ class _AppearanceTile extends StatelessWidget {
 }
 
 class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.active});
   final bool active;
-
-  const _StatusDot({
-    required this.active,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -447,7 +599,9 @@ class _StatusDot extends StatelessWidget {
         shape: BoxShape.circle,
         color: active
             ? const Color(0xFF35B779)
-            : Theme.of(context).colorScheme.outline,
+            : Theme.of(context)
+                .colorScheme
+                .outline,
       ),
     );
   }
@@ -459,7 +613,8 @@ class _SectionDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding:
+          const EdgeInsets.symmetric(vertical: 10),
       child: Divider(
         height: 1,
         color: Theme.of(context).dividerColor,
@@ -469,11 +624,6 @@ class _SectionDivider extends StatelessWidget {
 }
 
 class _DisabledAccountTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool destructive;
-
   const _DisabledAccountTile({
     required this.icon,
     required this.title,
@@ -481,16 +631,26 @@ class _DisabledAccountTile extends StatelessWidget {
     this.destructive = false,
   });
 
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool destructive;
+
   @override
   Widget build(BuildContext context) {
     final color = destructive
-        ? Theme.of(context).colorScheme.error.withOpacity(0.62)
+        ? Theme.of(context)
+            .colorScheme
+            .error
+            .withOpacity(0.62)
         : Theme.of(context).disabledColor;
 
     return ListTile(
       enabled: false,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 5,
+      ),
       leading: SizedBox(
         width: 38,
         height: 38,
@@ -500,7 +660,7 @@ class _DisabledAccountTile extends StatelessWidget {
         title,
         style: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           color: color,
         ),
       ),

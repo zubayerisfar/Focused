@@ -121,7 +121,7 @@ class _HabitHeader extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
               ),
               const SizedBox(height: 4),
@@ -179,7 +179,7 @@ class _ReminderCard extends StatelessWidget {
                 Text(
                   'Reminder',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                 ),
                 const SizedBox(height: 3),
@@ -225,7 +225,7 @@ class _AnalyticsSection extends StatelessWidget {
         Text(
           'Habit analytics',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
         ),
         const SizedBox(height: 4),
@@ -331,13 +331,13 @@ class _MetricCard extends StatelessWidget {
             Text(
               value,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
             ),
             const SizedBox(height: 3),
             Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 3),
             Text(
@@ -382,7 +382,7 @@ class _RateCard extends StatelessWidget {
                 child: Text(
                   'Consistency',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                 ),
               ),
@@ -392,7 +392,7 @@ class _RateCard extends StatelessWidget {
                     : '${(analytics.last30DaysCompletionRate * 100).round()}%',
                 style: TextStyle(
                   color: habit.color,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -455,7 +455,7 @@ class _HistoryGrid extends StatelessWidget {
           Text(
             'Last 30 days',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: 4),
@@ -498,7 +498,7 @@ class _HistoryGrid extends StatelessWidget {
                       : Text(
                           day.scheduled ? '${day.date.day}' : '–',
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w700,
                                 color: day.scheduled
                                     ? habit.color
                                     : scheme.onSurfaceVariant,
@@ -546,7 +546,7 @@ class _TodayProgressCard extends StatelessWidget {
           Text(
             'Today',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: 4),
@@ -615,7 +615,7 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text(
             body,

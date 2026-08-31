@@ -204,7 +204,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
                     },
                     title: const Text(
                       'Habit reminder',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     subtitle: Text(
                       _reminderEnabled
@@ -220,7 +220,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
                       subtitle: const Text('Uses your device timezone'),
                       trailing: Text(
                         _reminderTime.format(context),
-                        style: const TextStyle(fontWeight: FontWeight.w900),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       onTap: _pickReminderTime,
                     ),
@@ -394,7 +394,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
     );
   }

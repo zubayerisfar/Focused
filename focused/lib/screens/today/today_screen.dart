@@ -5,19 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/app_category.dart';
 import '../../models/app_usage_app_entry.dart';
 import '../../models/habit.dart';
 import '../../models/task.dart';
-import '../../models/task_execution_period_summary.dart';
 import '../../models/task_occurrence.dart';
-import '../../models/task_recurrence.dart';
+import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../services/productivity_streak_service.dart';
-import '../../services/task_execution_analyzer.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_icon.dart';
 
@@ -25,7 +22,6 @@ class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
 
   static const _streakService = ProductivityStreakService();
-  static const _executionAnalyzer = TaskExecutionAnalyzer();
 
   @override
   Widget build(BuildContext context) {
@@ -33,48 +29,18 @@ class TodayScreen extends StatelessWidget {
     final focusProvider = context.watch<FocusProvider>();
     final usageProvider = context.watch<UsageProvider>();
     final habitProvider = context.watch<HabitProvider>();
+    final account = context.watch<AccountProvider>();
 
     final now = DateTime.now();
     final schedule = taskProvider.scheduledOccurrencesForDate(now);
-    final allTodayTasks = taskProvider.tasksForDate(
-      now,
-      includeCompleted: true,
-    );
-    final unscheduled = allTodayTasks
-        .where((task) => task.scheduledStart == null)
-        .toList();
+    final todayTasks = taskProvider.tasksForDate(now, includeCompleted: false);
     final habits = habitProvider.habitsForDate(now);
 
-    final completedTasks = taskProvider.completedTaskCountForDate(now);
-    final taskCount = taskProvider.taskCountForDate(now);
-    final completedHabits = habitProvider.completedHabitCountForDate(now);
-    final focusedToday = focusProvider.focusedDurationForDate(now);
-    final usageToday = usageProvider.todaySummary?.totalUsage;
-    final topApps = usageProvider.topAppEntriesToday(limit: 3);
-    final distractingUsage =
-        usageProvider.usageForCategoryToday(AppCategory.distracting);
-    final topDistractingApp = usageProvider.topDistractingAppToday;
-
-    final tomorrow = DateTime(now.year, now.month, now.day + 1);
-    final executionSummary = _executionAnalyzer.summarizePeriod(
-      startDay: now,
-      endDay: tomorrow,
-      occurrences: schedule,
-      sessions: focusProvider.sessionHistory,
-      analysesBySessionId: usageProvider.storedFocusAnalyses,
-      activeTaskId: focusProvider.isRunning ? focusProvider.taskId : null,
-      activeOccurrenceDate:
-          focusProvider.isRunning ? focusProvider.taskOccurrenceDate : null,
-      activeSessionStartedAt:
-          focusProvider.isRunning ? focusProvider.sessionStartedAt : null,
-      activeTaskScheduledStart:
-          focusProvider.isRunning ? focusProvider.taskScheduledStart : null,
-      activeTaskScheduledEnd:
-          focusProvider.isRunning ? focusProvider.taskScheduledEnd : null,
-      activeFocusIntervals: focusProvider.isRunning
-          ? focusProvider.currentFocusIntervalsSnapshot
-          : const [],
-      asOf: now,
+    final next = _findNextTodayTask(
+      taskProvider: taskProvider,
+      schedule: schedule,
+      todayTasks: todayTasks,
+      now: now,
     );
 
     final activityDates = <DateTime>{
@@ -89,83 +55,34 @@ class TodayScreen extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
-        onRefresh: () =>
-            usageProvider.refreshPermissionAndUsage(force: true),
+        onRefresh: () => usageProvider.refreshPermissionAndUsage(force: true),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: _TodayHeader(
+              child: _HomeHeader(
                 date: now,
                 streak: streak,
+                photoUrl: account.photoUrl,
+                displayName: account.displayName,
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 110),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
               sliver: SliverList(
-                delegate: SliverChildListDelegate(
-                  [
-                    _DailyOverviewCard(
-                      focusedToday: focusedToday,
-                      usageToday: usageToday,
-                      usageConnected: usageProvider.hasUsageAccess,
-                      usageRefreshing: usageProvider.isRefreshing,
-                      comparisonPercent:
-                          usageProvider.todayVsYesterdayPercent,
-                      topApps: topApps,
-                    ),
-                    const SizedBox(height: 30),
-                    _SectionHeader(
-                      eyebrow: 'DAILY PLAN',
-                      title: 'Your schedule',
-                      subtitle: schedule.isEmpty && unscheduled.isEmpty
-                          ? 'Nothing is planned yet.'
-                          : '${_formatPlanCount(schedule.length, unscheduled.length)} for today',
-                      trailing: _CompletionPill(
-                        completed: completedTasks,
-                        total: taskCount,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _DailyPlanCard(
-                      date: now,
-                      occurrences: schedule,
-                      anytime: unscheduled,
-                    ),
-                    if (schedule.isNotEmpty) ...[
-                      const SizedBox(height: 22),
-                      _PlanExecutionCard(summary: executionSummary),
-                    ],
-                    const SizedBox(height: 30),
-                    _SectionHeader(
-                      eyebrow: 'DAILY HABITS',
-                      title: 'Keep the rhythm',
-                      subtitle: habits.isEmpty
-                          ? 'No habits are scheduled today.'
-                          : '$completedHabits of ${habits.length} complete',
-                    ),
-                    const SizedBox(height: 14),
-                    _HabitStrip(
-                      habits: habits,
-                      date: now,
-                    ),
-                    const SizedBox(height: 30),
-                    _SectionHeader(
-                      eyebrow: 'DIGITAL WELLBEING',
-                      title: 'Attention check',
-                      subtitle: usageProvider.hasUsageAccess
-                          ? 'See where your screen time went.'
-                          : 'Connect Android Usage Access for real app data.',
-                    ),
-                    const SizedBox(height: 14),
-                    _AttentionCard(
-                      hasUsageAccess: usageProvider.hasUsageAccess,
-                      totalUsage: usageToday,
-                      distractingUsage: distractingUsage,
-                      topDistractingApp: topDistractingApp,
-                    ),
-                  ],
-                ),
+                delegate: SliverChildListDelegate([
+                  _DailyOverviewCard(
+                    focusedToday: focusProvider.focusedDurationForDate(now),
+                    usageToday: usageProvider.todaySummary?.totalUsage,
+                    comparisonPercent: usageProvider.todayVsYesterdayPercent,
+                    topApps: usageProvider.topAppEntriesToday(limit: 3),
+                    usageConnected: usageProvider.hasUsageAccess,
+                  ),
+                  const SizedBox(height: 32),
+                  _DailyPlanSection(next: next, date: now),
+                  const SizedBox(height: 32),
+                  _HabitTrackerSection(habits: habits, date: now),
+                ]),
               ),
             ),
           ],
@@ -175,13 +92,17 @@ class TodayScreen extends StatelessWidget {
   }
 }
 
-class _TodayHeader extends StatelessWidget {
+class _HomeHeader extends StatelessWidget {
   final DateTime date;
   final int streak;
+  final String? photoUrl;
+  final String displayName;
 
-  const _TodayHeader({
+  const _HomeHeader({
     required this.date,
     required this.streak,
+    required this.photoUrl,
+    required this.displayName,
   });
 
   @override
@@ -190,68 +111,47 @@ class _TodayHeader extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Focused',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      DateFormat('EEEE, MMMM d').format(date),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton.filledTonal(
-                tooltip: 'Digital wellbeing',
-                onPressed: () => context.push('/wellbeing'),
-                icon: const Icon(Icons.insights_outlined),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: 'Settings',
-                onPressed: () => context.push('/settings'),
-                icon: const Icon(Icons.settings_outlined),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 10,
-            ),
-            decoration: BoxDecoration(
-              color: AppTheme.warning.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.local_fire_department_rounded,
-                  color: AppTheme.warning,
-                  size: 20,
-                ),
-                const SizedBox(width: 7),
                 Text(
-                  '$streak day streak',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
+                  '🔥 $streak',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  DateFormat('EEEE, MMMM d').format(date),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w300,
                   ),
                 ),
               ],
+            ),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => context.push('/profile'),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundImage: photoUrl == null
+                    ? null
+                    : NetworkImage(photoUrl!),
+                child: photoUrl == null
+                    ? Text(
+                        _initials(displayName),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      )
+                    : null,
+              ),
             ),
           ),
         ],
@@ -263,18 +163,16 @@ class _TodayHeader extends StatelessWidget {
 class _DailyOverviewCard extends StatelessWidget {
   final Duration focusedToday;
   final Duration? usageToday;
-  final bool usageConnected;
-  final bool usageRefreshing;
   final double? comparisonPercent;
   final List<AppUsageAppEntry> topApps;
+  final bool usageConnected;
 
   const _DailyOverviewCard({
     required this.focusedToday,
     required this.usageToday,
-    required this.usageConnected,
-    required this.usageRefreshing,
     required this.comparisonPercent,
     required this.topApps,
+    required this.usageConnected,
   });
 
   @override
@@ -285,139 +183,64 @@ class _DailyOverviewCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Theme.of(context).dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.025),
-            blurRadius: 22,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Today at a glance',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              if (usageRefreshing) ...[
-                const SizedBox(width: 12),
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ],
-            ],
+          Text(
+            'Today at a glance',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: 23,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _OverviewMetric(
-                  icon: Icons.center_focus_strong_rounded,
-                  iconColor: scheme.primary,
+                child: _OverviewMetricCard(
+                  title: 'Focused',
                   value: _formatDuration(focusedToday),
-                  label: 'Focused',
+                  icon: Icons.center_focus_strong_rounded,
+                  accent: scheme.primary,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
+                child: _OverviewMetricCard(
+                  title: 'App Usage',
+                  value: usageToday == null
+                      ? (usageConnected ? 'No data' : 'Connect')
+                      : _formatDuration(usageToday!),
+                  icon: Icons.smartphone_rounded,
+                  accent: AppTheme.mist,
+                  trendPercent: usageToday == null ? null : comparisonPercent,
                   onTap: () => context.push('/wellbeing'),
-                  child: _OverviewMetric(
-                    icon: Icons.smartphone_rounded,
-                    iconColor: AppTheme.mist,
-                    value: usageToday == null
-                        ? (usageConnected ? 'No data' : 'Connect')
-                        : _formatDuration(usageToday!),
-                    label: 'App usage',
-                    supporting: usageToday == null
-                        ? null
-                        : _comparisonLabel(comparisonPercent),
-                  ),
                 ),
               ),
             ],
           ),
           if (topApps.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            Divider(color: Theme.of(context).dividerColor, height: 1),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Most used apps',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () => context.push('/wellbeing/app-usage'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('Details'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            ...List.generate(topApps.length, (index) {
-              final entry = topApps[index];
-              return _TopAppRow(
-                rank: index + 1,
-                appId: entry.appId,
-                appName: _cleanAppName(entry.appName),
-                iconBytes: entry.iconBytes,
-                duration: entry.duration,
-                totalUsage: usageToday,
-              );
-            }),
-          ] else if (!usageConnected) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: scheme.secondaryContainer.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(18),
+            const SizedBox(height: 22),
+            Divider(height: 1, color: Theme.of(context).dividerColor),
+            const SizedBox(height: 16),
+            Text(
+              'Most used apps',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.shield_outlined,
-                    color: scheme.secondary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Enable Usage Access to show your real most-used apps here.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () =>
-                        context.push('/wellbeing/permission'),
-                    child: const Text('Connect'),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 8),
+            ...topApps.map(
+              (entry) => _MostUsedAppRow(
+                appId: entry.appId,
+                appName: entry.appName,
+                duration: entry.duration,
+                iconBytes: entry.iconBytes,
               ),
             ),
           ],
@@ -427,26 +250,30 @@ class _DailyOverviewCard extends StatelessWidget {
   }
 }
 
-class _OverviewMetric extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
+class _OverviewMetricCard extends StatelessWidget {
+  final String title;
   final String value;
-  final String label;
-  final String? supporting;
+  final IconData icon;
+  final Color accent;
+  final double? trendPercent;
+  final VoidCallback? onTap;
 
-  const _OverviewMetric({
-    required this.icon,
-    required this.iconColor,
+  const _OverviewMetricCard({
+    required this.title,
     required this.value,
-    required this.label,
-    this.supporting,
+    required this.icon,
+    required this.accent,
+    this.trendPercent,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final trend = trendPercent;
 
-    return Container(
+    final content = Container(
+      height: 132,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
@@ -455,166 +282,137 @@ class _OverviewMetric extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Icon(icon, size: 19, color: accent),
+            ],
           ),
-          const SizedBox(height: 14),
+          const Spacer(),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 21,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.3,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          if (supporting != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              supporting!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-            ),
+          if (trend != null) ...[
+            const SizedBox(height: 5),
+            _TrendText(value: trend),
           ],
         ],
       ),
     );
+
+    if (onTap == null) return content;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: content,
+    );
   }
 }
 
-class _TopAppRow extends StatelessWidget {
-  final int rank;
+class _TrendText extends StatelessWidget {
+  final double value;
+
+  const _TrendText({required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final down = value < 0;
+    final flat = value.abs() < 0.5;
+    final color = flat
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : down
+        ? AppTheme.success
+        : AppTheme.danger;
+    final icon = flat
+        ? Icons.remove_rounded
+        : down
+        ? Icons.south_east_rounded
+        : Icons.north_east_rounded;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 3),
+        Text(
+          flat ? '0%' : '${value.abs().round()}%',
+          style: TextStyle(
+            fontSize: 12,
+            color: color,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MostUsedAppRow extends StatelessWidget {
   final String appId;
   final String appName;
-  final Uint8List? iconBytes;
   final Duration duration;
-  final Duration? totalUsage;
+  final Uint8List? iconBytes;
 
-  const _TopAppRow({
-    required this.rank,
+  const _MostUsedAppRow({
     required this.appId,
     required this.appName,
-    required this.iconBytes,
     required this.duration,
-    required this.totalUsage,
+    required this.iconBytes,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final totalMs = totalUsage?.inMilliseconds ?? 0;
-    final ratio = totalMs <= 0
-        ? 0.0
-        : (duration.inMilliseconds / totalMs).clamp(0.0, 1.0).toDouble();
-
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       onTap: () {
-        final encodedId = Uri.encodeComponent(appId);
-        final encodedName = Uri.encodeQueryComponent(appName);
-        context.push('/wellbeing/app/$encodedId?name=$encodedName');
+        final id = Uri.encodeComponent(appId);
+        final name = Uri.encodeQueryComponent(appName);
+        context.push('/wellbeing/app/$id?name=$name');
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                AppIcon(
-                  iconBytes: iconBytes,
-                  appName: appName,
-                  size: 38,
-                  borderRadius: 11,
-                  fallbackBackground:
-                      scheme.primaryContainer.withOpacity(0.65),
-                  fallbackForeground: scheme.onPrimaryContainer,
-                ),
-                Positioned(
-                  right: -3,
-                  bottom: -3,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: scheme.surface,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: scheme.outlineVariant),
-                    ),
-                    child: Text(
-                      '$rank',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            AppIcon(
+              iconBytes: iconBytes,
+              appName: _cleanAppName(appName),
+              size: 30,
+              borderRadius: 9,
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        appName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      _formatDuration(duration),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                  ],
+            const SizedBox(width: 11),
+            Expanded(
+              child: Text(
+                _cleanAppName(appName),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(
-                    value: ratio,
-                    minHeight: 5,
-                    color: AppTheme.mist,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            Text(
+              _formatDuration(duration),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
       ),
@@ -622,41 +420,265 @@ class _TopAppRow extends StatelessWidget {
   }
 }
 
+class _DailyPlanSection extends StatelessWidget {
+  final _NextTodayTask? next;
+  final DateTime date;
 
-class _PlanExecutionCard extends StatelessWidget {
-  final TaskExecutionPeriodSummary summary;
-
-  const _PlanExecutionCard({required this.summary});
+  const _DailyPlanSection({required this.next, required this.date});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final delay = summary.averageStartDelay;
-    final effective = summary.effectiveFocusDuration;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Daily plan',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Next task',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go('/?tab=planner'),
+              child: const Text('View today'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (next == null)
+          _EmptyPlanCard(date: date)
+        else
+          _NextTaskCard(next: next!),
+      ],
+    );
+  }
+}
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: scheme.secondaryContainer.withOpacity(0.34),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+class _NextTaskCard extends StatelessWidget {
+  final _NextTodayTask next;
+
+  const _NextTaskCard({required this.next});
+
+  @override
+  Widget build(BuildContext context) {
+    final task = next.task;
+    final color = _priorityColor(task.priority);
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => context.push(
+          '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(next.date)}',
+        ),
+        onLongPress: () =>
+            context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
+        child: Padding(
+          padding: const EdgeInsets.all(17),
+          child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 5,
+                height: 58,
                 decoration: BoxDecoration(
-                  color: scheme.secondary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(13),
+                  color: color,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.route_rounded,
-                  color: scheme.secondary,
-                  size: 20,
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      next.occurrence == null
+                          ? 'Anytime today'
+                          : '${DateFormat('h:mm a').format(next.occurrence!.start)} – ${DateFormat('h:mm a').format(next.occurrence!.end)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Start focus',
+                onPressed: () => context.push(
+                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(next.date)}',
+                ),
+                icon: const Icon(Icons.play_arrow_rounded),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyPlanCard extends StatelessWidget {
+  final DateTime date;
+
+  const _EmptyPlanCard({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline_rounded),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No unfinished tasks for ${DateFormat('EEEE').format(date)}.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HabitTrackerSection extends StatelessWidget {
+  final List<Habit> habits;
+  final DateTime date;
+
+  const _HabitTrackerSection({required this.habits, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<HabitProvider>();
+    final completed = habits
+        .where((habit) => provider.isCompletedForDate(habit, date))
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.fact_check_outlined, size: 22, color: AppTheme.lavender),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Today's habit tracker",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (habits.isNotEmpty)
+              Text(
+                '$completed/${habits.length}',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (habits.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: Text(
+              'No habits scheduled today.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          )
+        else
+          ...habits.map(
+            (habit) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _HabitTrackerCard(habit: habit, date: date),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _HabitTrackerCard extends StatelessWidget {
+  final Habit habit;
+  final DateTime date;
+
+  const _HabitTrackerCard({required this.habit, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<HabitProvider>();
+    final complete = provider.isCompletedForDate(habit, date);
+    final progress = provider.progressForDate(habit.id, date);
+    final progressText = habit.goalType == HabitGoalType.checkIn
+        ? (complete ? 'Completed' : 'Tap to complete')
+        : '$progress / ${habit.targetValue} ${habit.unit}';
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => context.push('/habit/${Uri.encodeComponent(habit.id)}'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: habit.color.withOpacity(0.13),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(habit.icon, color: habit.color, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -664,932 +686,101 @@ class _PlanExecutionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Plan execution',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                      habit.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
-                      'Scheduled time vs what actually happened',
+                      progressText,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w300,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _ExecutionStat(
-                label: 'Started',
-                value: summary.startEligibleCount == 0
-                    ? 'Not due'
-                    : '${summary.startedCount}/${summary.startEligibleCount}',
-              ),
-              _ExecutionStat(
-                label: 'On time',
-                value: summary.startedCount == 0
-                    ? '—'
-                    : '${summary.onTimeStartedCount}/${summary.startedCount}',
-              ),
-              _ExecutionStat(
-                label: 'Completed',
-                value: summary.completionEligibleCount == 0
-                    ? 'Not due'
-                    : '${summary.completedCount}/${summary.completionEligibleCount}',
-              ),
-              _ExecutionStat(
-                label: 'Avg delay',
-                value: delay == null ? '—' : _formatCompactDuration(delay),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Divider(color: scheme.outlineVariant.withOpacity(0.65)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _ExecutionDurationMetric(
-                  label: 'Planned',
-                  value: _formatCompactDuration(summary.plannedDuration),
-                ),
-              ),
-              Expanded(
-                child: _ExecutionDurationMetric(
-                  label: 'Active focus',
-                  value: _formatCompactDuration(summary.activeFocusDuration),
-                ),
-              ),
-              Expanded(
-                child: _ExecutionDurationMetric(
-                  label: 'Effective',
-                  value: effective == null
-                      ? '—'
-                      : _formatCompactDuration(effective),
-                ),
-              ),
-            ],
-          ),
-          if (!summary.effectiveFocusAvailable && summary.startedCount > 0) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Effective focus appears after every linked focus session has a saved app-usage analysis.',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ExecutionStat extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ExecutionStat({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 112),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: scheme.surface.withOpacity(0.78),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ExecutionDurationMetric extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ExecutionDurationMetric({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String eyebrow;
-  final String title;
-  final String subtitle;
-  final Widget? trailing;
-
-  const _SectionHeader({
-    required this.eyebrow,
-    required this.title,
-    required this.subtitle,
-    this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eyebrow,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1,
-                    ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-              ),
-            ],
-          ),
-        ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
-      ],
-    );
-  }
-}
-
-class _CompletionPill extends StatelessWidget {
-  final int completed;
-  final int total;
-
-  const _CompletionPill({
-    required this.completed,
-    required this.total,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        '$completed/$total',
-        style: TextStyle(
-          color: scheme.onPrimaryContainer,
-          fontWeight: FontWeight.w900,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}
-
-class _DailyPlanCard extends StatelessWidget {
-  final DateTime date;
-  final List<TaskOccurrence> occurrences;
-  final List<Task> anytime;
-
-  const _DailyPlanCard({
-    required this.date,
-    required this.occurrences,
-    required this.anytime,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final hasItems = occurrences.isNotEmpty || anytime.isNotEmpty;
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: !hasItems
-          ? _PlanEmptyState(date: date)
-          : Column(
-              children: [
-                ...List.generate(occurrences.length, (index) {
-                  return Column(
-                    children: [
-                      _ScheduledPlanRow(
-                        occurrence: occurrences[index],
-                      ),
-                      if (index != occurrences.length - 1 || anytime.isNotEmpty)
-                        Divider(
-                          height: 1,
-                          indent: 18,
-                          endIndent: 18,
-                          color: Theme.of(context).dividerColor,
-                        ),
-                    ],
-                  );
-                }),
-                if (anytime.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.all_inclusive_rounded,
-                          size: 17,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 7),
-                        Text(
-                          'Flexible today',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ...List.generate(anytime.length, (index) {
-                    return Column(
-                      children: [
-                        _AnytimePlanRow(
-                          task: anytime[index],
-                          date: date,
-                        ),
-                        if (index != anytime.length - 1)
-                          Divider(
-                            height: 1,
-                            indent: 18,
-                            endIndent: 18,
-                            color: Theme.of(context).dividerColor,
-                          ),
-                      ],
-                    );
-                  }),
-                ],
-              ],
-            ),
-    );
-  }
-}
-
-class _ScheduledPlanRow extends StatelessWidget {
-  final TaskOccurrence occurrence;
-
-  const _ScheduledPlanRow({required this.occurrence});
-
-  @override
-  Widget build(BuildContext context) {
-    final task = occurrence.task;
-    final color = _priorityColor(task.priority);
-    final occurrenceDay = _dateOnly(occurrence.start);
-    final today = _dateOnly(DateTime.now());
-    final canToggle = task.recurrence == TaskRecurrence.none ||
-        !occurrenceDay.isAfter(today);
-    final focusProvider = context.watch<FocusProvider>();
-    final inFocus = focusProvider.isFocusingTaskOccurrence(
-      task.id,
-      occurrence.start,
-    );
-    final execution = const TaskExecutionAnalyzer().summarizeOccurrence(
-      occurrence: occurrence,
-      sessions: focusProvider.sessionHistory,
-      analysesBySessionId: const {},
-      activeTaskId: inFocus ? focusProvider.taskId : null,
-      activeOccurrenceDate: inFocus ? focusProvider.taskOccurrenceDate : null,
-      activeSessionStartedAt: inFocus ? focusProvider.sessionStartedAt : null,
-      activeTaskScheduledStart: inFocus ? focusProvider.taskScheduledStart : null,
-      activeTaskScheduledEnd: inFocus ? focusProvider.taskScheduledEnd : null,
-      activeFocusIntervals: inFocus
-          ? focusProvider.currentFocusIntervalsSnapshot
-          : const [],
-    );
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: () => context.push(
-        '/task/edit/${Uri.encodeComponent(task.id)}',
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 58,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    DateFormat('h:mm').format(occurrence.start),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    DateFormat('a').format(occurrence.start),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 4,
-              height: 52,
-              decoration: BoxDecoration(
-                color: occurrence.isCompleted ? AppTheme.success : color,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      decoration: occurrence.isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (inFocus)
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 2,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          'IN FOCUS',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        if (execution.actualStart != null)
-                          Text(
-                            _todayStartTimingLabel(
-                              execution.actualStart!,
-                              execution.plannedStart,
-                            ),
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                      ],
-                    )
-                  else if (execution.hasStarted)
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 2,
-                      children: [
-                        Text(
-                          '${_formatCompactDuration(execution.activeFocusDuration)} focused',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                        if (execution.actualStart != null)
-                          Text(
-                            _todayStartTimingLabel(
-                              execution.actualStart!,
-                              execution.plannedStart,
-                            ),
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                          ),
-                      ],
-                    )
-                  else
-                    Text(
-                      '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                ],
-              ),
-            ),
-            if (!occurrence.isCompleted && !inFocus)
               IconButton(
-                tooltip: 'Start focus',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => context.push(
-                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(occurrence.start)}',
+                tooltip: complete ? 'Undo' : 'Complete',
+                onPressed: () => provider.toggleCompleted(habit.id, date),
+                icon: Icon(
+                  complete ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: complete ? habit.color : null,
                 ),
-                icon: const Icon(Icons.play_arrow_rounded),
               ),
-            IconButton(
-              tooltip: occurrence.isCompleted ? 'Undo' : 'Complete',
-              visualDensity: VisualDensity.compact,
-              onPressed: canToggle
-                  ? () => context.read<TaskProvider>().setCompletedForDate(
-                        task.id,
-                        occurrence.start,
-                        !occurrence.isCompleted,
-                      )
-                  : null,
-              icon: Icon(
-                occurrence.isCompleted
-                    ? Icons.check_circle_rounded
-                    : Icons.circle_outlined,
-                color: occurrence.isCompleted ? AppTheme.success : null,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _AnytimePlanRow extends StatelessWidget {
+class _NextTodayTask {
   final Task task;
+  final TaskOccurrence? occurrence;
   final DateTime date;
 
-  const _AnytimePlanRow({
+  const _NextTodayTask({
     required this.task,
+    required this.occurrence,
     required this.date,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<TaskProvider>();
-    final complete = provider.isTaskCompletedForDate(task, date);
-
-    return InkWell(
-      onTap: () => context.push(
-        '/task/edit/${Uri.encodeComponent(task.id)}',
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 8, 12),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.task_alt_rounded, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                task.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  decoration: complete ? TextDecoration.lineThrough : null,
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: complete ? 'Undo' : 'Complete',
-              visualDensity: VisualDensity.compact,
-              onPressed: () => context.read<TaskProvider>().setCompletedForDate(
-                    task.id,
-                    date,
-                    !complete,
-                  ),
-              icon: Icon(
-                complete ? Icons.check_circle_rounded : Icons.circle_outlined,
-                color: complete ? AppTheme.success : null,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-class _PlanEmptyState extends StatelessWidget {
-  final DateTime date;
+_NextTodayTask? _findNextTodayTask({
+  required TaskProvider taskProvider,
+  required List<TaskOccurrence> schedule,
+  required List<Task> todayTasks,
+  required DateTime now,
+}) {
+  final day = DateTime(now.year, now.month, now.day);
 
-  const _PlanEmptyState({required this.date});
+  final scheduled =
+      schedule.where((occurrence) => !occurrence.isCompleted).toList()
+        ..sort((a, b) => a.start.compareTo(b.start));
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 26, 22, 24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer.withOpacity(0.7),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              Icons.event_available_outlined,
-              color: scheme.primary,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'No plan for today',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'Give part of the day a clear time block when you are ready.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: () => context.push('/task/new'),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Plan a task'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+  if (scheduled.isNotEmpty) {
+    final future = scheduled.where((occurrence) => occurrence.end.isAfter(now));
+    final occurrence = future.isNotEmpty ? future.first : scheduled.first;
+    return _NextTodayTask(
+      task: occurrence.task,
+      occurrence: occurrence,
+      date: day,
     );
   }
+
+  final unscheduled = todayTasks
+      .where((task) => task.scheduledStart == null)
+      .toList();
+  if (unscheduled.isEmpty) return null;
+
+  unscheduled.sort(
+    (a, b) => a.priority.sortOrder.compareTo(b.priority.sortOrder),
+  );
+  return _NextTodayTask(task: unscheduled.first, occurrence: null, date: day);
 }
 
-class _HabitStrip extends StatelessWidget {
-  final List<Habit> habits;
-  final DateTime date;
-
-  const _HabitStrip({
-    required this.habits,
-    required this.date,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (habits.isEmpty) {
-      final scheme = Theme.of(context).colorScheme;
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: scheme.secondaryContainer.withOpacity(0.42),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.repeat_rounded, color: scheme.secondary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Habits live separately from your schedule. Add one when you want a repeating routine.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.4,
-                    ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'New habit',
-              onPressed: () => context.push('/habit/new'),
-              icon: const Icon(Icons.add_rounded),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 176,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: habits.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          return _TodayHabitCard(
-            habit: habits[index],
-            date: date,
-          );
-        },
-      ),
-    );
+String _formatDuration(Duration duration) {
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60);
+  if (hours > 0) {
+    return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   }
+  return '${duration.inMinutes}m';
 }
 
-class _TodayHabitCard extends StatelessWidget {
-  final Habit habit;
-  final DateTime date;
-
-  const _TodayHabitCard({
-    required this.habit,
-    required this.date,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<HabitProvider>();
-    final progress = provider.progressForDate(habit.id, date);
-    final completed = provider.isCompletedForDate(habit, date);
-    final ratio =
-        (progress / habit.targetValue).clamp(0.0, 1.0).toDouble();
-    final progressLabel = habit.goalType == HabitGoalType.checkIn
-        ? (completed ? 'Completed' : 'Check in')
-        : '$progress / ${habit.targetValue} ${habit.unit}';
-    final streak = provider.analyticsFor(habit, asOf: date).currentStreak;
-
-    return SizedBox(
-      width: 174,
-      child: Material(
-        color: habit.color.withOpacity(
-          Theme.of(context).brightness == Brightness.dark ? 0.18 : 0.10,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () => context.push(
-            '/habit/${Uri.encodeComponent(habit.id)}',
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: habit.color.withOpacity(0.16),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        habit.icon,
-                        color: habit.color,
-                        size: 22,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (habit.hasReminder) ...[
-                      Icon(
-                        Icons.notifications_none_rounded,
-                        size: 18,
-                        color: habit.color,
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    InkResponse(
-                      radius: 22,
-                      onTap: () => context
-                          .read<HabitProvider>()
-                          .toggleCompleted(habit.id, date),
-                      child: Icon(
-                        completed
-                            ? Icons.check_circle_rounded
-                            : Icons.circle_outlined,
-                        color: completed
-                            ? habit.color
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  habit.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        progressLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ),
-                    if (streak > 0) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '🔥 $streak',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(
-                    value: ratio,
-                    minHeight: 6,
-                    color: habit.color,
-                    backgroundColor: habit.color.withOpacity(0.12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AttentionCard extends StatelessWidget {
-  final bool hasUsageAccess;
-  final Duration? totalUsage;
-  final Duration distractingUsage;
-  final String? topDistractingApp;
-
-  const _AttentionCard({
-    required this.hasUsageAccess,
-    required this.totalUsage,
-    required this.distractingUsage,
-    required this.topDistractingApp,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: () => context.push(
-        hasUsageAccess ? '/wellbeing' : '/wellbeing/permission',
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Theme.of(context).dividerColor),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppTheme.lavender.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: const Icon(
-                Icons.self_improvement_rounded,
-                color: AppTheme.lavender,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: hasUsageAccess
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          totalUsage == null
-                              ? 'Waiting for usage data'
-                              : '${_formatDuration(distractingUsage)} distracting',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          topDistractingApp == null
-                              ? 'No distracting app is leading today.'
-                              : 'Most distracting: ${_cleanAppName(topDistractingApp!)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Connect app usage',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Focused needs Android Usage Access to measure real screen time.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded),
-          ],
-        ),
-      ),
-    );
-  }
+String _cleanAppName(String value) {
+  if (!value.contains('.')) return value.isEmpty ? 'Unknown app' : value;
+  final parts = value.split('.').where((part) => part.isNotEmpty).toList();
+  if (parts.isEmpty) return 'Unknown app';
+  final last = parts.last;
+  return '${last[0].toUpperCase()}${last.substring(1)}';
 }
 
 Color _priorityColor(TaskPriority priority) {
@@ -1603,69 +794,18 @@ Color _priorityColor(TaskPriority priority) {
   }
 }
 
-String _formatPlanCount(int scheduled, int anytime) {
-  final total = scheduled + anytime;
-  if (total == 1) return '1 item';
-  return '$total items';
-}
+String _dateQuery(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
+    '${value.month.toString().padLeft(2, '0')}-'
+    '${value.day.toString().padLeft(2, '0')}';
 
-String _formatDuration(Duration duration) {
-  if (duration <= Duration.zero) return '0m';
-
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60);
-
-  if (hours == 0) return '${duration.inMinutes}m';
-  if (minutes == 0) return '${hours}h';
-  return '${hours}h ${minutes}m';
-}
-
-String _comparisonLabel(double? percent) {
-  if (percent == null) return 'No comparison yet';
-  if (percent.abs() < 0.5) return 'About the same as yesterday';
-
-  final rounded = percent.abs().round();
-  return percent < 0
-      ? '↓ $rounded% vs same time yesterday'
-      : '↑ $rounded% vs same time yesterday';
-}
-
-String _cleanAppName(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return 'Unknown app';
-  if (!trimmed.contains('.')) return trimmed;
-
-  final parts = trimmed.split('.');
-  final last = parts.isEmpty ? trimmed : parts.last;
-  if (last.isEmpty) return trimmed;
-  return '${last[0].toUpperCase()}${last.substring(1)}';
-}
-
-DateTime _dateOnly(DateTime value) =>
-    DateTime(value.year, value.month, value.day);
-
-
-String _todayStartTimingLabel(DateTime actualStart, DateTime plannedStart) {
-  final offset = actualStart.difference(plannedStart);
-  if (offset.isNegative) {
-    return '${_formatCompactDuration(Duration(microseconds: -offset.inMicroseconds))} early';
-  }
-  if (offset.compareTo(const Duration(minutes: 5)) <= 0) return 'On time';
-  return '${_formatCompactDuration(offset)} late';
-}
-
-String _formatCompactDuration(Duration value) {
-  final totalMinutes = value.inMinutes.abs();
-  if (totalMinutes < 60) return '${totalMinutes}m';
-  final hours = totalMinutes ~/ 60;
-  final minutes = totalMinutes % 60;
-  return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
-}
-
-String _dateQuery(DateTime value) {
-  final local = value.isUtc ? value.toLocal() : value;
-  final y = local.year.toString().padLeft(4, '0');
-  final m = local.month.toString().padLeft(2, '0');
-  final d = local.day.toString().padLeft(2, '0');
-  return '$y-$m-$d';
+String _initials(String name) {
+  final words = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList();
+  if (words.isEmpty) return 'F';
+  if (words.length == 1) return words.first[0].toUpperCase();
+  return '${words.first[0]}${words.last[0]}'.toUpperCase();
 }

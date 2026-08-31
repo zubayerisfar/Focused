@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/focus_session.dart';
-import '../../models/task_recurrence.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../theme/app_theme.dart';
@@ -25,7 +24,6 @@ class FocusCompleteScreen extends StatefulWidget {
 
 class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
   bool _analysisRequested = false;
-  bool _updatingTask = false;
 
   @override
   Widget build(BuildContext context) {
@@ -80,21 +78,9 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
       linkedDay.day,
     );
 
-    final canManageLinkedTaskForSessionDate = linkedTask != null &&
-        (linkedTask.recurrence == TaskRecurrence.none ||
-            taskProvider
-                .tasksForDate(
-                  sessionDate,
-                  includeCompleted: true,
-                )
-                .any((task) => task.id == linkedTask.id));
-
-    final linkedTaskCompleted = linkedTask != null &&
-        canManageLinkedTaskForSessionDate &&
-        taskProvider.isTaskCompletedForDate(
-          linkedTask,
-          sessionDate,
-        );
+    final linkedTaskCompleted =
+        linkedTask != null &&
+        taskProvider.isTaskCompletedForDate(linkedTask, sessionDate);
 
     return Scaffold(
       body: SafeArea(
@@ -128,7 +114,7 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
-              ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800),
+              ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
 
             const SizedBox(height: 8),
@@ -207,48 +193,6 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
               _LinkedTaskCompletionCard(
                 taskName: linkedTask.title,
                 isCompleted: linkedTaskCompleted,
-                canManageForSessionDate: canManageLinkedTaskForSessionDate,
-                isUpdating: _updatingTask,
-                onToggleCompleted: canManageLinkedTaskForSessionDate
-                    ? () async {
-                        if (_updatingTask) {
-                          return;
-                        }
-
-                        setState(() {
-                          _updatingTask = true;
-                        });
-
-                        try {
-                          await context
-                              .read<TaskProvider>()
-                              .setCompletedForDate(
-                                linkedTask.id,
-                                sessionDate,
-                                !linkedTaskCompleted,
-                                completedAt: linkedTaskCompleted
-                                    ? null
-                                    : DateTime.now(),
-                              );
-                        } catch (_) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Could not update the linked task.',
-                                ),
-                              ),
-                            );
-                          }
-                        } finally {
-                          if (mounted) {
-                            setState(() {
-                              _updatingTask = false;
-                            });
-                          }
-                        }
-                      }
-                    : null,
               ),
               const SizedBox(height: 24),
             ],
@@ -295,16 +239,9 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
 
                   context.go('/');
                 },
-                child: Text(
-                  linkedTask != null &&
-                          canManageLinkedTaskForSessionDate &&
-                          !linkedTaskCompleted
-                      ? 'Keep task open & Done'
-                      : 'Done',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: const Text(
+                  'Done',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -314,7 +251,6 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
     );
   }
 }
-
 
 class _ScheduleExecutionCard extends StatelessWidget {
   final FocusSession session;
@@ -362,8 +298,8 @@ class _ScheduleExecutionCard extends StatelessWidget {
                 child: Text(
                   'Schedule execution',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -393,7 +329,8 @@ class _ScheduleExecutionCard extends StatelessWidget {
           const SizedBox(height: 9),
           _ExecutionLine(
             label: 'Active focus',
-            value: '${_durationShort(active)} • ${coverage(active).round()}% of plan',
+            value:
+                '${_durationShort(active)} • ${coverage(active).round()}% of plan',
           ),
           const SizedBox(height: 9),
           _ExecutionLine(
@@ -406,9 +343,9 @@ class _ScheduleExecutionCard extends StatelessWidget {
           Text(
             'The original calendar window is stored with this focus session, so later task edits do not rewrite this execution history.',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.35,
-                ),
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
           ),
         ],
       ),
@@ -432,9 +369,9 @@ class _ExecutionLine extends StatelessWidget {
           child: Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -442,7 +379,7 @@ class _ExecutionLine extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
       ],
@@ -476,112 +413,58 @@ String _durationShort(Duration value) {
 class _LinkedTaskCompletionCard extends StatelessWidget {
   final String taskName;
   final bool isCompleted;
-  final bool canManageForSessionDate;
-  final bool isUpdating;
-  final Future<void> Function()? onToggleCompleted;
 
   const _LinkedTaskCompletionCard({
     required this.taskName,
     required this.isCompleted,
-    required this.canManageForSessionDate,
-    required this.isUpdating,
-    required this.onToggleCompleted,
   });
 
   @override
   Widget build(BuildContext context) {
     final color = isCompleted
-        ? const Color(0xFF34B27B)
-        : AppTheme.primaryBlue;
+        ? AppTheme.success
+        : Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withOpacity(0.10),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                isCompleted
-                    ? Icons.task_alt_rounded
-                    : Icons.assignment_outlined,
-                color: color,
-                size: 30,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isCompleted ? 'Task completed' : 'Task is still open',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      canManageForSessionDate
-                          ? isCompleted
-                              ? '“$taskName” is marked complete. Its reminder and Today/Planner state are updated.'
-                              : 'Finishing a focus timer records focused time, but it does not automatically mean the task itself is finished. Mark it complete here if the work is done.'
-                          : 'This session is linked to “$taskName”, but there is no recurring occurrence for this session date. Manage that occurrence from Planner or Calendar.',
-                      style: TextStyle(
-                        height: 1.35,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.62),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Icon(
+            isCompleted ? Icons.task_alt_rounded : Icons.sync_rounded,
+            color: color,
+            size: 30,
           ),
-          if (canManageForSessionDate) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: isCompleted
-                  ? OutlinedButton.icon(
-                      onPressed: isUpdating
-                          ? null
-                          : () {
-                              onToggleCompleted?.call();
-                            },
-                      icon: isUpdating
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.undo_rounded),
-                      label: const Text('Reopen task'),
-                    )
-                  : FilledButton.icon(
-                      onPressed: isUpdating
-                          ? null
-                          : () {
-                              onToggleCompleted?.call();
-                            },
-                      icon: isUpdating
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.check_rounded),
-                      label: const Text('Mark task complete'),
-                    ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCompleted ? 'Task completed' : 'Finishing task…',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  isCompleted
+                      ? '“$taskName” was completed when this focus session ended.'
+                      : 'Focused is updating “$taskName” as completed.',
+                  style: TextStyle(
+                    height: 1.35,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -665,7 +548,6 @@ class _SessionResultsCard extends StatelessWidget {
     );
   }
 }
-
 
 class _UsageAnalysisLoadingCard extends StatelessWidget {
   const _UsageAnalysisLoadingCard();
@@ -787,7 +669,7 @@ class _FocusQualityCard extends StatelessWidget {
                       '$quality%',
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -804,7 +686,7 @@ class _FocusQualityCard extends StatelessWidget {
                       'Focus quality',
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
 
@@ -937,12 +819,12 @@ class _DistractionAppRow extends StatelessWidget {
             appName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
         Text(
           _formatDuration(duration),
-          style: const TextStyle(fontWeight: FontWeight.w900),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -968,7 +850,7 @@ class _AnalysisRow extends StatelessWidget {
           ),
         ),
 
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
       ],
     );
   }
@@ -1012,7 +894,7 @@ class _ResultRow extends StatelessWidget {
 
         Text(
           value,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
       ],
     );

@@ -12,15 +12,18 @@ class FocusProvider extends ChangeNotifier {
   final FocusSessionStorageService? _storageService;
   final FocusGuardController _focusGuardController;
   final DateTime Function() _now;
+  final FutureOr<void> Function(FocusSession session)? _onSessionFinished;
 
   FocusProvider({
     FocusSessionStorageService? storageService,
     FocusGuardController? focusGuardController,
     DateTime Function()? now,
+    FutureOr<void> Function(FocusSession session)? onSessionFinished,
   })  : _storageService = storageService,
         _focusGuardController =
             focusGuardController ?? const NoopFocusGuardController(),
-        _now = now ?? DateTime.now;
+        _now = now ?? DateTime.now,
+        _onSessionFinished = onSessionFinished;
 
   Timer? _ticker;
 
@@ -989,6 +992,20 @@ class FocusProvider extends ChangeNotifier {
 
     _upsertHistory(session);
     _queuePersistence(session);
+
+    final onSessionFinished = _onSessionFinished;
+    if (onSessionFinished != null) {
+      unawaited(
+        Future<void>.sync(
+          () async => onSessionFinished(session),
+        ).catchError((Object error, StackTrace stackTrace) {
+          debugPrint(
+            'Could not finalize linked task after focus session: $error',
+          );
+          debugPrintStack(stackTrace: stackTrace);
+        }),
+      );
+    }
 
     _isRunning = false;
     _isPaused = false;

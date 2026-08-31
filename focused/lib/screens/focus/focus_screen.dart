@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/focus_session.dart';
+import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -13,6 +14,7 @@ class FocusScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FocusProvider>();
+    final account = context.watch<AccountProvider>();
     final now = DateTime.now();
     final focusedToday = provider.focusedDurationForDate(now);
     final sessionsToday = provider.sessionCountForDate(now);
@@ -31,10 +33,26 @@ class FocusScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const Spacer(),
-              IconButton.filledTonal(
-                tooltip: 'Settings',
-                onPressed: () => context.push('/settings'),
-                icon: const Icon(Icons.settings_outlined),
+              InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () => context.push('/profile'),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: CircleAvatar(
+                    radius: 21,
+                    backgroundImage: account.photoUrl == null
+                        ? null
+                        : NetworkImage(account.photoUrl!),
+                    child: account.photoUrl == null
+                        ? Text(
+                            _initials(account.displayName),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
               ),
             ],
           ),
@@ -175,7 +193,7 @@ class _FocusHero extends StatelessWidget {
                           ? (paused ? 'Paused' : 'In focus')
                           : 'Ready',
                       style: const TextStyle(
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -188,7 +206,7 @@ class _FocusHero extends StatelessWidget {
                     : '${_formatDuration(focusedToday)} today',
                 style: TextStyle(
                   color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -223,7 +241,7 @@ class _FocusHero extends StatelessWidget {
                       : _formatDuration(focusedToday),
                   style: const TextStyle(
                     fontSize: 25,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -322,7 +340,7 @@ class _FocusMetric extends StatelessWidget {
             value,
             style: const TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 2),
@@ -349,14 +367,21 @@ class _SessionHistoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: scheme.surface,
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Row(
+        onTap: () => context.push(
+          '/focus/history/${Uri.encodeComponent(session.id)}',
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          child: Row(
         children: [
           Container(
             width: 48,
@@ -382,7 +407,7 @@ class _SessionHistoryTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -395,9 +420,11 @@ class _SessionHistoryTile extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
       ),
+    ),
     );
   }
 }
@@ -467,4 +494,20 @@ String _formatClock(Duration duration) {
 
   return '${minutes.toString().padLeft(2, '0')}:'
       '${seconds.toString().padLeft(2, '0')}';
+}
+
+
+String _initials(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+
+  if (parts.isEmpty) return 'F';
+  if (parts.length == 1) {
+    return parts.first.substring(0, 1).toUpperCase();
+  }
+
+  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
 }

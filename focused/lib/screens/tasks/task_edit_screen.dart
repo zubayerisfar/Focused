@@ -116,7 +116,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
       appBar: AppBar(
         title: Text(
           widget.isEditing ? 'Edit Task' : 'New Task',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           TextButton(
@@ -135,7 +135,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           Text(
             widget.isEditing ? 'Update your task' : 'What needs to be done?',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: 18),
@@ -595,7 +595,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
               const ListTile(
                 title: Text(
                   'Plan task for',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               ListTile(
@@ -674,7 +674,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
               const ListTile(
                 title: Text(
                   'Deadline',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               ListTile(
@@ -819,7 +819,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
               const ListTile(
                 title: Text(
                   'Reminder',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               ...values.map(
@@ -860,7 +860,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
               ListTile(
                 title: Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               ...values.map(
@@ -950,7 +950,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
           ),
     );
   }

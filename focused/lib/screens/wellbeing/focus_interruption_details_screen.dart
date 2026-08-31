@@ -52,7 +52,7 @@ class _FocusAnalysisBody extends StatelessWidget {
           'Top interrupter',
           style: Theme.of(
             context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
 
         const SizedBox(height: 10),
@@ -65,7 +65,7 @@ class _FocusAnalysisBody extends StatelessWidget {
           'Interruption timeline',
           style: Theme.of(
             context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
 
         const SizedBox(height: 6),
@@ -118,7 +118,7 @@ class _QualityCard extends StatelessWidget {
                   '$quality%',
                   style: const TextStyle(
                     fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -133,7 +133,7 @@ class _QualityCard extends StatelessWidget {
               children: [
                 const Text(
                   'Focus quality',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
 
                 const SizedBox(height: 5),
@@ -174,7 +174,7 @@ class _SessionSummaryCard extends StatelessWidget {
         children: [
           const Text(
             'Focus session',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
 
           const SizedBox(height: 4),
@@ -242,7 +242,7 @@ class _Metric extends StatelessWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
 
         const SizedBox(height: 2),
@@ -322,7 +322,7 @@ class _TopInterrupterCard extends StatelessWidget {
                   displayName,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
 
