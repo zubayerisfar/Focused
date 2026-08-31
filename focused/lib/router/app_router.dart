@@ -15,6 +15,7 @@ import '../screens/main/main_shell.dart';
 import '../screens/onboarding/intro_sequence_screen.dart';
 import '../screens/profile/badges_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/settings/notification_permission_screen.dart';
 import '../screens/settings/private_sync_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import '../screens/streak/streak_screen.dart';
@@ -22,6 +23,7 @@ import '../screens/tasks/task_details_screen.dart';
 import '../screens/tasks/task_edit_screen.dart';
 import '../screens/wellbeing/app_usage_app_details_screen.dart';
 import '../screens/wellbeing/app_usage_details_screen.dart';
+import '../screens/wellbeing/daily_wellbeing_details_screen.dart';
 import '../screens/wellbeing/focus_interruption_details_screen.dart';
 import '../screens/wellbeing/usage_permission_screen.dart';
 import '../screens/wellbeing/wellbeing_screen.dart';
@@ -99,8 +101,24 @@ GoRouter createAppRouter({
             const PrivateSyncScreen(),
       ),
       GoRoute(
+        path: '/settings/notification-permission',
+        builder: (context, state) =>
+            const NotificationPermissionScreen(),
+      ),
+      GoRoute(
         path: '/wellbeing',
         builder: (context, state) => const WellbeingScreen(),
+      ),
+      GoRoute(
+        path: '/wellbeing/day',
+        builder: (context, state) {
+          final raw = state.uri.queryParameters['date'];
+          final parsed = DateTime.tryParse(raw ?? '');
+          final date = parsed == null
+              ? DateTime.now()
+              : DateTime(parsed.year, parsed.month, parsed.day);
+          return DailyWellbeingDetailsScreen(date: date);
+        },
       ),
       GoRoute(
         path: '/devices',

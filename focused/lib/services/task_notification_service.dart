@@ -507,6 +507,78 @@ class TaskNotificationService {
     );
   }
 
+
+  Future<bool> requestNotificationPermission() async {
+    await init();
+    return _requestNotificationPermission();
+  }
+
+  Future<bool?> notificationsEnabled() async {
+    await init();
+    final android = _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (android != null) {
+      return android.areNotificationsEnabled();
+    }
+    return null;
+  }
+
+  Future<bool> scheduleBirthdayNotification({
+    required DateTime birthday,
+    required String displayName,
+  }) async {
+    await init();
+    final permissionGranted = await _requestNotificationPermission();
+    if (!permissionGranted) return false;
+
+    await _notifications.cancel(_birthdayNotificationId);
+    final now = tz.TZDateTime.now(tz.local);
+    final next = _nextBirthdayOccurrence(birthday: birthday, now: now);
+
+    await _notifications.zonedSchedule(
+      _birthdayNotificationId,
+      'Happy birthday, ${displayName.trim().isEmpty ? 'Focused User' : displayName.trim()}! 🎉',
+      'Have a great day — and remember that rest counts too.',
+      next,
+      _birthdayDetails,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+      payload: 'birthday',
+    );
+    return true;
+  }
+
+  Future<void> cancelBirthdayNotification() async {
+    await init();
+    await _notifications.cancel(_birthdayNotificationId);
+  }
+
+  tz.TZDateTime _nextBirthdayOccurrence({
+    required DateTime birthday,
+    required tz.TZDateTime now,
+  }) {
+    tz.TZDateTime forYear(int year) {
+      var day = birthday.day;
+      if (birthday.month == DateTime.february &&
+          day == 29 &&
+          !_isLeapYear(year)) {
+        day = 28;
+      }
+      return tz.TZDateTime(tz.local, year, birthday.month, day, 9);
+    }
+
+    var candidate = forYear(now.year);
+    if (!candidate.isAfter(now)) {
+      candidate = forYear(now.year + 1);
+    }
+    return candidate;
+  }
+
+  bool _isLeapYear(int year) {
+    return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+  }
+
   Future<bool>
       _requestNotificationPermission() async {
     final android = _notifications
@@ -638,6 +710,29 @@ class TaskNotificationService {
             slot) &
         0x7fffffff;
   }
+
+
+  static const int _birthdayNotificationId = 904220;
+
+  static const NotificationDetails _birthdayDetails = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'birthday_reminders_v1',
+      'Birthday reminders',
+      channelDescription: 'Birthday reminders from your Focused profile',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    ),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+    ),
+    macOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+    ),
+  );
 
   static const NotificationDetails
       _details = NotificationDetails(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -489,7 +490,7 @@ class _ReadyActions extends StatelessWidget {
             Icons.visibility_outlined,
           ),
           label:
-              const Text('Reveal / Copy Private Key'),
+              const Text('Show & copy my private key'),
         ),
         const SizedBox(height: 10),
         FilledButton.icon(
@@ -536,7 +537,7 @@ class _ReadyActions extends StatelessWidget {
             Icons.autorenew_rounded,
           ),
           label:
-              const Text('Rotate Private Key'),
+              const Text('Change Private Key'),
         ),
         const SizedBox(height: 24),
         Text(
@@ -546,22 +547,18 @@ class _ReadyActions extends StatelessWidget {
               .titleMedium,
         ),
         const SizedBox(height: 8),
-        TextButton.icon(
-          style: TextButton.styleFrom(
-            foregroundColor:
-                Theme.of(context)
-                    .colorScheme
-                    .error,
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
+            minimumSize: const Size.fromHeight(50),
           ),
-          onPressed: sync.isBusy
-              ? null
-              : () =>
-                  _disable(context),
-          icon: const Icon(
-            Icons.cloud_off_outlined,
+          onPressed: sync.isBusy ? null : () => _disable(context),
+          icon: const FaIcon(FontAwesomeIcons.cloudArrowDown, size: 15),
+          label: const Text(
+            'Disable Cloud Sync',
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
-          label:
-              const Text('Disable Cloud Sync'),
         ),
       ],
     );
@@ -582,8 +579,8 @@ class _ReadyActions extends StatelessWidget {
         key: key,
         title: 'Focused Private Key',
         message:
-            'Anyone with this key and access to your Focused account can '
-            'unlock your encrypted cloud data.',
+            'This is the secret that authorizes another device to decrypt '
+            'your Focused cloud data. Keep it private and save a copy somewhere secure.',
       );
     } catch (_) {
       if (!context.mounted) return;
@@ -600,12 +597,12 @@ class _ReadyActions extends StatelessWidget {
       builder: (dialogContext) {
         return AlertDialog(
           title:
-              const Text('Rotate private key?'),
+              const Text('Change private key?'),
           content: const Text(
-            'A new Focused private key will replace the current one. '
-            'Other devices will stop syncing until you enter the new key there.\n\n'
-            'Focused uses envelope encryption, so the account data key is '
-            'safely re-wrapped instead of re-uploading every encrypted record.',
+            '• Focused creates a brand-new private key.\n'
+            '• Your current encrypted data remains protected during the change.\n'
+            '• The old private key stops working after the change succeeds.\n'
+            '• Windows and other devices will ask for the new key before syncing again.',
           ),
           actions: [
             TextButton(
@@ -623,7 +620,7 @@ class _ReadyActions extends StatelessWidget {
                     true,
                   ),
               child:
-                  const Text('Rotate key'),
+                  const Text('Create new key'),
             ),
           ],
         );
@@ -804,65 +801,102 @@ class _ErrorActions extends StatelessWidget {
   }
 }
 
-class _PrivacyExplanation
-    extends StatelessWidget {
+
+class _PrivacyExplanation extends StatelessWidget {
   const _PrivacyExplanation();
 
   @override
   Widget build(BuildContext context) {
-    final muted = Theme.of(context)
-        .colorScheme
-        .onSurfaceVariant;
-
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(17),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerLow,
-        borderRadius:
-            BorderRadius.circular(20),
+        color: scheme.primaryContainer.withOpacity(
+          Theme.of(context).brightness == Brightness.dark ? 0.32 : 0.58,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: scheme.primary.withOpacity(0.30)),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'What gets uploaded?',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium,
+          Row(
+            children: [
+              FaIcon(
+                FontAwesomeIcons.shieldHalved,
+                size: 17,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 9),
+              Text(
+                'What gets uploaded?',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Encrypted: tasks, recurring-task completion state, habits and '
-            'habit progress, focus-session history, focus analyses, your '
-            'app classifications and Focused profile state.',
-            style: TextStyle(
-              color: muted,
-              height: 1.4,
-            ),
+          const SizedBox(height: 14),
+          const _PrivacyBullet(
+            title: 'Encrypted before upload',
+            body:
+                'Tasks, recurring-task completions, habits, habit progress, focus-session history, focus analyses, app classifications, streak goal and profile state.',
           ),
-          const SizedBox(height: 9),
-          Text(
-            'Local only: raw Android UsageStats/app-usage event history.',
-            style: TextStyle(
-              color: muted,
-              height: 1.4,
-              fontWeight: FontWeight.w700,
-            ),
+          const SizedBox(height: 10),
+          const _PrivacyBullet(
+            title: 'Stays on this device',
+            body: 'Raw Android UsageStats and raw app-usage event history.',
           ),
-          const SizedBox(height: 9),
-          Text(
-            'Firebase stores ciphertext, encryption metadata and the '
-            'current key version. It never receives the raw FCS1 key.',
-            style: TextStyle(
-              color: muted,
-              height: 1.4,
-            ),
+          const SizedBox(height: 10),
+          const _PrivacyBullet(
+            title: 'Firebase cannot read the FCS1 key',
+            body:
+                'Firebase stores ciphertext, encrypted key metadata and the current key version — never your raw private key.',
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PrivacyBullet extends StatelessWidget {
+  const _PrivacyBullet({required this.title, required this.body});
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '$title — ',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                TextSpan(text: body),
+              ],
+            ),
+            style: TextStyle(color: scheme.onSurface, height: 1.4),
+          ),
+        ),
+      ],
     );
   }
 }

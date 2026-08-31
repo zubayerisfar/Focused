@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/focus_analysis_result.dart';
 import '../../models/focus_interruption.dart';
+import '../../providers/focus_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_icon.dart';
@@ -13,19 +14,77 @@ class FocusInterruptionDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
-
-    final result = usageProvider.focusAnalysisResult;
+    final focusProvider = context.watch<FocusProvider>();
+    final result = _latestSavedAnalysis(focusProvider, usageProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Focus Analysis',
+          'Focus analysis',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       body: result == null
-          ? const Center(child: CircularProgressIndicator())
+          ? _NoFocusAnalysis(
+              onRefresh: () async {
+                await usageProvider.refreshPermissionAndUsage(force: true);
+              },
+            )
           : _FocusAnalysisBody(result: result),
+    );
+  }
+}
+
+FocusAnalysisResult? _latestSavedAnalysis(
+  FocusProvider focus,
+  UsageProvider usage,
+) {
+  final live = usage.focusAnalysisResult;
+  if (live != null) return live;
+  for (final session in focus.sessionHistory) {
+    final saved = usage.storedFocusAnalyses[session.id];
+    if (saved != null) return saved;
+  }
+  return null;
+}
+
+class _NoFocusAnalysis extends StatelessWidget {
+  const _NoFocusAnalysis({required this.onRefresh});
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.center_focus_strong_rounded, size: 46),
+            const SizedBox(height: 16),
+            Text(
+              'No focus analysis yet',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Finish a focus session first. Focused will then show interruptions, effective focus and the top interrupter here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton(
+              onPressed: onRefresh,
+              child: const Text('Refresh'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

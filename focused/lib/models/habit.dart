@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'habit_definition_revision.dart';
 
-enum HabitGoalType {
-  checkIn,
-  count,
-  duration,
-}
+enum HabitGoalType { checkIn, count, duration }
 
 class Habit {
   static const Object _unset = Object();
@@ -40,14 +36,14 @@ class Habit {
     required DateTime createdAt,
     DateTime? definitionEffectiveFromDay,
     List<HabitDefinitionRevision> definitionHistory = const [],
-  })  : weekdays = Set<int>.unmodifiable(weekdays),
-        createdAt = createdAt,
-        definitionEffectiveFromDay = _dateOnly(
-          definitionEffectiveFromDay ?? createdAt,
-        ),
-        definitionHistory = List<HabitDefinitionRevision>.unmodifiable(
-          definitionHistory,
-        ) {
+  }) : weekdays = Set<int>.unmodifiable(weekdays),
+       createdAt = createdAt,
+       definitionEffectiveFromDay = _dateOnly(
+         definitionEffectiveFromDay ?? createdAt,
+       ),
+       definitionHistory = List<HabitDefinitionRevision>.unmodifiable(
+         definitionHistory,
+       ) {
     if (id.trim().isEmpty) {
       throw ArgumentError('Habit id cannot be empty.');
     }
@@ -114,10 +110,28 @@ class Habit {
     return targetValue;
   }
 
-  IconData get icon => IconData(
-        iconCodePoint,
-        fontFamily: 'MaterialIcons',
-      );
+  IconData get icon {
+    // Return only compile-time Material icon constants so release builds
+    // can tree-shake the MaterialIcons font safely.
+    if (iconCodePoint == Icons.menu_book_rounded.codePoint) {
+      return Icons.menu_book_rounded;
+    }
+    if (iconCodePoint == Icons.fitness_center_rounded.codePoint) {
+      return Icons.fitness_center_rounded;
+    }
+    if (iconCodePoint == Icons.water_drop_rounded.codePoint) {
+      return Icons.water_drop_rounded;
+    }
+    if (iconCodePoint == Icons.self_improvement_rounded.codePoint) {
+      return Icons.self_improvement_rounded;
+    }
+    if (iconCodePoint == Icons.bedtime_outlined.codePoint) {
+      return Icons.bedtime_outlined;
+    }
+
+    // Default + backward-compatible fallback.
+    return Icons.check_rounded;
+  }
 
   Color get color => Color(colorValue);
 
@@ -152,7 +166,8 @@ class Habit {
       weekdays: weekdays ?? this.weekdays,
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
       colorValue: colorValue ?? this.colorValue,
-      reminderMinutesFromMidnight: identical(reminderMinutesFromMidnight, _unset)
+      reminderMinutesFromMidnight:
+          identical(reminderMinutesFromMidnight, _unset)
           ? this.reminderMinutesFromMidnight
           : reminderMinutesFromMidnight as int?,
       createdAt: createdAt ?? this.createdAt,
@@ -175,8 +190,11 @@ class Habit {
       'colorValue': colorValue,
       'reminderMinutesFromMidnight': reminderMinutesFromMidnight,
       'createdAt': createdAt.toIso8601String(),
-      'definitionEffectiveFromDay': definitionEffectiveFromDay.toIso8601String(),
-      'definitionHistory': definitionHistory.map((item) => item.toMap()).toList(),
+      'definitionEffectiveFromDay': definitionEffectiveFromDay
+          .toIso8601String(),
+      'definitionHistory': definitionHistory
+          .map((item) => item.toMap())
+          .toList(),
     };
   }
 

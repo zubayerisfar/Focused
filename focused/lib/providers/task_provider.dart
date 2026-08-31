@@ -1185,6 +1185,31 @@ class TaskProvider extends ChangeNotifier {
     }
   }
 
+
+  Future<bool> requestNotificationPermission() async {
+    final service = _notificationService;
+    if (service == null) return false;
+    try {
+      return await service.requestNotificationPermission();
+    } catch (error, stackTrace) {
+      debugPrint('Could not request notification permission: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool?> notificationsEnabled() async {
+    final service = _notificationService;
+    if (service == null) return null;
+    try {
+      return await service.notificationsEnabled();
+    } catch (error, stackTrace) {
+      debugPrint('Could not read notification permission: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
+    }
+  }
+
   Future<bool> sendTestNotification() async {
     final service = _notificationService;
 

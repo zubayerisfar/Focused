@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -72,15 +73,24 @@ class _PlannerScreenState extends State<PlannerScreen> {
   @override
   Widget build(BuildContext context) {
     final baseTheme = Theme.of(context);
-    final accent = _area == _PlannerArea.tasks
-        ? AppTheme.primaryBlue
-        : AppTheme.lavender;
+    final isDark = baseTheme.brightness == Brightness.dark;
+    final taskAccent = isDark
+        ? const Color(0xFF6F9AFF)
+        : const Color(0xFF4169D8);
+    final habitAccent = isDark
+        ? const Color(0xFFC39BFF)
+        : const Color(0xFF7B55C7);
+    final accent = _area == _PlannerArea.tasks ? taskAccent : habitAccent;
+    final selectedBackground = isDark
+        ? accent.withOpacity(0.30)
+        : accent.withOpacity(0.14);
+    final pageTint = isDark
+        ? accent.withOpacity(0.035)
+        : accent.withOpacity(0.045);
     final plannerTheme = baseTheme.copyWith(
       colorScheme: baseTheme.colorScheme.copyWith(
         primary: accent,
-        primaryContainer: accent.withOpacity(
-          baseTheme.brightness == Brightness.dark ? 0.22 : 0.14,
-        ),
+        primaryContainer: selectedBackground,
       ),
     );
 
@@ -114,15 +124,40 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<_PlannerArea>(
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStateProperty.resolveWith((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return selectedBackground;
+                        }
+                        return baseTheme.colorScheme.surfaceContainer;
+                      }),
+                      foregroundColor: WidgetStateProperty.resolveWith((states) {
+                        return states.contains(WidgetState.selected)
+                            ? accent
+                            : baseTheme.colorScheme.onSurfaceVariant;
+                      }),
+                      side: WidgetStateProperty.resolveWith((states) {
+                        final selected = states.contains(WidgetState.selected);
+                        return BorderSide(
+                          width: selected ? 1.7 : 1,
+                          color: selected
+                              ? accent
+                              : baseTheme.colorScheme.outlineVariant,
+                        );
+                      }),
+                      textStyle: const WidgetStatePropertyAll(
+                        TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
                     segments: const [
                       ButtonSegment(
                         value: _PlannerArea.tasks,
-                        icon: Icon(Icons.checklist_rounded),
+                        icon: FaIcon(FontAwesomeIcons.listCheck, size: 15),
                         label: Text('Tasks'),
                       ),
                       ButtonSegment(
                         value: _PlannerArea.habits,
-                        icon: Icon(Icons.repeat_rounded),
+                        icon: FaIcon(FontAwesomeIcons.repeat, size: 15),
                         label: Text('Habits'),
                       ),
                     ],
@@ -137,7 +172,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
               ),
               Expanded(
-                child: _area == _PlannerArea.tasks
+                child: ColoredBox(
+                  color: pageTint,
+                  child: _area == _PlannerArea.tasks
                     ? _TaskCalendarBody(
                         mode: _calendarMode,
                         selectedDate: _selectedDate,
@@ -155,6 +192,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           });
                         },
                       ),
+                ),
               ),
             ],
           ),
@@ -163,12 +201,16 @@ class _PlannerScreenState extends State<PlannerScreen> {
             bottom: 18,
             child: FloatingActionButton.extended(
               heroTag: 'planner-create',
+              backgroundColor: accent,
+              foregroundColor: Colors.white,
+              elevation: isDark ? 4 : 2,
               onPressed: () => context.push(
                 _area == _PlannerArea.tasks ? '/task/new' : '/habit/new',
               ),
-              icon: const Icon(Icons.add_rounded),
+              icon: const FaIcon(FontAwesomeIcons.plus, size: 14),
               label: Text(
                 _area == _PlannerArea.tasks ? 'New task' : 'New habit',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ),

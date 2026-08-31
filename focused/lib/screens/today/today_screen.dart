@@ -14,7 +14,7 @@ import '../../providers/task_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/animated_app_usage_3d_chart.dart';
+import '../../widgets/app_icon.dart';
 
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
@@ -271,7 +271,7 @@ class _DailyOverviewCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Top 3 today',
+                  'Top apps today',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
@@ -281,9 +281,9 @@ class _DailyOverviewCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            AnimatedAppUsage3DChart(
-              entries: topApps,
-              onAppTap: (entry) {
+            _TopAppsCompactList(
+              entries: topApps.take(4).toList(growable: false),
+              onOpenApp: (entry) {
                 final id = Uri.encodeComponent(entry.appId);
                 final name = Uri.encodeQueryComponent(entry.appName);
                 context.push('/wellbeing/app/$id?name=$name');
@@ -407,6 +407,80 @@ class _TrendText extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+class _TopAppsCompactList extends StatelessWidget {
+  const _TopAppsCompactList({
+    required this.entries,
+    required this.onOpenApp,
+  });
+
+  final List<AppUsageAppEntry> entries;
+  final ValueChanged<AppUsageAppEntry> onOpenApp;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        children: List.generate(entries.length, (index) {
+          final entry = entries[index];
+          return Column(
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => onOpenApp(entry),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      AppIcon(
+                        iconBytes: entry.iconBytes,
+                        appName: entry.appName,
+                        size: 36,
+                        borderRadius: 10,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.appName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDuration(entry.duration),
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right_rounded, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              if (index != entries.length - 1)
+                Divider(
+                  height: 1,
+                  indent: 62,
+                  color: Theme.of(context).dividerColor,
+                ),
+            ],
+          );
+        }),
+      ),
     );
   }
 }

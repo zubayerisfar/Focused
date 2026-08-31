@@ -164,6 +164,7 @@ Future<void> main() async {
   final userProfileProvider =
       UserProfileProvider(
     storageService: userProfileStorageService,
+    notificationService: taskNotificationService,
   );
   await userProfileProvider.loadStoredProfile();
 

@@ -77,7 +77,7 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          '7-day intelligence',
+          '7-day summary',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -200,32 +200,21 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
                   onEarlier: _earlier,
                   onNewer: atLatestRange ? null : _newer,
                 ),
-                const SizedBox(height: 14),
-                _CoverageCard(
-                  current: analytics.currentCoverage,
-                  previous: analytics.previousCoverage,
-                  comparisonAllowed: analytics.usageComparisonAllowed,
-                ),
                 const SizedBox(height: 18),
                 _MetricGrid(analytics: analytics),
                 const SizedBox(height: 26),
                 _DailyTrendCard(days: current),
-                const SizedBox(height: 26),
-                _FocusQualityCard(analytics: analytics),
                 const SizedBox(height: 26),
                 _ScheduleExecutionCard(
                   current: currentExecution,
                   previous: previousExecution,
                 ),
                 const SizedBox(height: 26),
+                _FocusQualityCard(analytics: analytics),
+                const SizedBox(height: 26),
                 _HabitConsistencyCard(
                   current: currentHabits,
                   previous: previousHabits,
-                ),
-                const SizedBox(height: 26),
-                _DailyDataList(
-                  days: current.reversed.toList(growable: false),
-                  focusProvider: focusProvider,
                 ),
               ],
             ),
@@ -778,7 +767,7 @@ class _DailyTrendCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Missing days are left blank instead of being plotted as zero.',
+            'A simple view of your screen time across the week.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -881,15 +870,9 @@ class _FocusQualityCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Focus intelligence',
+                  'Focus summary',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-              ),
-              Text(
-                '${analytics.currentFocusCoverage.analyzedSessions}/${analytics.currentFocusCoverage.totalSessions} analyzed',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
               ),
             ],
           ),
@@ -934,8 +917,8 @@ class _FocusQualityCard extends StatelessWidget {
           ],
           Text(
             complete
-                ? 'Every stored focus session in this period has an interruption analysis, so effective-focus totals are exact for Focused\'s stored sessions. Previous period: ${analytics.previousFocusCoverage.analyzedSessions}/${analytics.previousFocusCoverage.totalSessions} analyzed.'
-                : 'Effective focus is hidden because ${analytics.currentFocusCoverage.missingSessions} focus session${analytics.currentFocusCoverage.missingSessions == 1 ? '' : 's'} in this period do not have a stored interruption analysis. Previous period: ${analytics.previousFocusCoverage.analyzedSessions}/${analytics.previousFocusCoverage.totalSessions} analyzed.',
+                ? 'Focus and interruption totals are available for this 7-day period.'
+                : 'Some focus sessions do not have interruption analysis yet, so effective-focus totals may be incomplete.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                   height: 1.4,

@@ -12,10 +12,7 @@ import '../../theme/app_theme.dart';
 class TaskEditScreen extends StatefulWidget {
   final String? taskId;
 
-  const TaskEditScreen({
-    super.key,
-    this.taskId,
-  });
+  const TaskEditScreen({super.key, this.taskId});
 
   bool get isEditing => taskId != null;
 
@@ -80,7 +77,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     _titleController.text = task.title;
     _descriptionController.text = task.description;
     _priority = task.priority;
-    _plannedDate = task.plannedDate == null ? null : _dateOnly(task.plannedDate!);
+    _plannedDate = task.plannedDate == null
+        ? null
+        : _dateOnly(task.plannedDate!);
     _deadlineDate = task.deadline == null ? null : _dateOnly(task.deadline!);
     _recurrence = task.recurrence;
     _customWeekdays = Set<int>.from(task.customWeekdays);
@@ -106,9 +105,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     if (_taskNotFound) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(
-          child: Text('This task no longer exists.'),
-        ),
+        body: const Center(child: Text('This task no longer exists.')),
       );
     }
 
@@ -134,9 +131,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         children: [
           Text(
             widget.isEditing ? 'Update your task' : 'What needs to be done?',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 18),
           TextField(
@@ -203,14 +200,18 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
               _SettingRow(
                 icon: Icons.event_note_outlined,
                 title: 'Plan for',
-                value: _plannedDate == null ? 'Backlog' : _dateLabel(_plannedDate!),
+                value: _plannedDate == null
+                    ? 'Backlog'
+                    : _dateLabel(_plannedDate!),
                 onTap: _showPlannedDateSheet,
               ),
               const Divider(height: 1),
               _SettingRow(
                 icon: Icons.flag_outlined,
                 title: 'Deadline',
-                value: _deadlineDate == null ? 'None' : _dateLabel(_deadlineDate!),
+                value: _deadlineDate == null
+                    ? 'None'
+                    : _dateLabel(_deadlineDate!),
                 onTap: _showDeadlineSheet,
               ),
             ],
@@ -279,7 +280,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 _SettingRow(
                   icon: Icons.timelapse_outlined,
                   title: 'End',
-                  value: _endTime.format(context),
+                  value: _endsNextDay
+                      ? '${_endTime.format(context)} • next day'
+                      : _endTime.format(context),
                   onTap: _pickEndTime,
                 ),
                 const Divider(height: 1),
@@ -319,9 +322,11 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        for (var weekday = DateTime.monday;
-                            weekday <= DateTime.sunday;
-                            weekday++)
+                        for (
+                          var weekday = DateTime.monday;
+                          weekday <= DateTime.sunday;
+                          weekday++
+                        )
                           FilterChip(
                             label: Text(_weekdayLabel(weekday)),
                             selected: _customWeekdays.contains(weekday),
@@ -387,7 +392,21 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
 
     if (_scheduleOnCalendar) {
       scheduledStart = _combineDateAndTime(_scheduledDate, _startTime);
-      scheduledEnd = _combineDateAndTime(_scheduledDate, _endTime);
+
+      if (_sameClockTime(_startTime, _endTime)) {
+        _showMessage('Start and end time cannot be the same.');
+        return;
+      }
+
+      final endDate = _endsNextDay
+          ? DateTime(
+              _scheduledDate.year,
+              _scheduledDate.month,
+              _scheduledDate.day + 1,
+            )
+          : _scheduledDate;
+
+      scheduledEnd = _combineDateAndTime(endDate, _endTime);
 
       if (!scheduledEnd.isAfter(scheduledStart)) {
         _showMessage('End time must be after start time.');
@@ -478,9 +497,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           reminderResult != null &&
           reminderResult.taskId == savedTaskId &&
           reminderResult.requiresUserAttention) {
-        await _showReminderResult(
-          reminderResult,
-        );
+        await _showReminderResult(reminderResult);
       }
 
       if (!mounted) {
@@ -559,16 +576,12 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     );
   }
 
-  Future<void> _showReminderResult(
-    TaskReminderScheduleResult result,
-  ) async {
+  Future<void> _showReminderResult(TaskReminderScheduleResult result) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(
-            'Task saved — reminder needs attention',
-          ),
+          title: const Text('Task saved — reminder needs attention'),
           content: Text(result.message),
           actions: [
             TextButton(
@@ -921,6 +934,18 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     return DateFormat('EEE, d MMM').format(date);
   }
 
+  bool get _endsNextDay {
+    return _minutesOfDay(_endTime) < _minutesOfDay(_startTime);
+  }
+
+  bool _sameClockTime(TimeOfDay first, TimeOfDay second) {
+    return _minutesOfDay(first) == _minutesOfDay(second);
+  }
+
+  int _minutesOfDay(TimeOfDay time) {
+    return time.hour * 60 + time.minute;
+  }
+
   DateTime _combineDateAndTime(DateTime date, TimeOfDay time) {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
@@ -934,9 +959,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -949,9 +974,9 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }
@@ -1038,10 +1063,7 @@ class _SettingRow extends StatelessWidget {
       onTap: onTap,
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

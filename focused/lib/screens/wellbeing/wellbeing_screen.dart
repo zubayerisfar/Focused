@@ -1,10 +1,13 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/app_usage_app_entry.dart';
+import '../../models/daily_usage_metrics.dart';
 import '../../models/focus_analysis_result.dart';
 import '../../models/usage_access_status.dart';
 import '../../providers/focus_provider.dart';
@@ -22,9 +25,7 @@ class WellbeingScreen extends StatelessWidget {
 
     if (usage.accessStatus == UsageAccessStatus.checking &&
         usage.todaySummary == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final supported = usage.accessStatus != UsageAccessStatus.unsupported;
@@ -46,7 +47,7 @@ class WellbeingScreen extends StatelessWidget {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.refresh_rounded),
+                : const FaIcon(FontAwesomeIcons.arrowsRotate, size: 17),
           ),
           const SizedBox(width: 6),
         ],
@@ -65,10 +66,10 @@ class WellbeingScreen extends StatelessWidget {
                     : null,
               ),
             if (!granted) const SizedBox(height: 18),
-            _InteractiveUsageHero(
+            _InteractiveUsagePie(
               totalUsage: usage.todaySummary?.totalUsage,
               comparisonPercent: usage.todayVsYesterdayPercent,
-              entries: usage.topAppEntriesToday(limit: 8),
+              entries: usage.topAppEntriesToday(limit: 5),
               onOpenApp: (entry) {
                 final id = Uri.encodeComponent(entry.appId);
                 final name = Uri.encodeQueryComponent(entry.appName);
@@ -80,7 +81,7 @@ class WellbeingScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: _EntryCard(
-                    icon: Icons.dashboard_outlined,
+                    icon: FontAwesomeIcons.chartPie,
                     title: 'Overall summary',
                     subtitle: 'Focus, screen time and distractions',
                     accent: AppTheme.lavender,
@@ -90,7 +91,7 @@ class WellbeingScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _EntryCard(
-                    icon: Icons.query_stats_rounded,
+                    icon: FontAwesomeIcons.chartColumn,
                     title: 'App usage stats',
                     subtitle: 'Apps, trends and hourly activity',
                     accent: Theme.of(context).colorScheme.primary,
@@ -106,21 +107,36 @@ class WellbeingScreen extends StatelessWidget {
                   child: Text(
                     'Focus interruptions',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                if (latestAnalysis != null)
-                  TextButton(
-                    onPressed: () =>
-                        context.push('/wellbeing/focus-interruptions'),
-                    child: const Text('Details'),
-                  ),
+                TextButton(
+                  onPressed: () =>
+                      context.push('/wellbeing/focus-interruptions'),
+                  child: const Text('Details'),
+                ),
               ],
             ),
             const SizedBox(height: 8),
             _FocusInterruptionCard(analysis: latestAnalysis),
+            const SizedBox(height: 28),
+            Text(
+              'Last 7 days',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tap a day to see its screen time, focus and interruption details.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const _LastSevenDaysCard(),
           ],
         ),
       ),
@@ -128,311 +144,300 @@ class WellbeingScreen extends StatelessWidget {
   }
 }
 
-class _InteractiveUsageHero extends StatelessWidget {
-  final Duration? totalUsage;
-  final double? comparisonPercent;
-  final List<AppUsageAppEntry> entries;
-  final ValueChanged<AppUsageAppEntry> onOpenApp;
-
-  const _InteractiveUsageHero({
+class _InteractiveUsagePie extends StatelessWidget {
+  const _InteractiveUsagePie({
     required this.totalUsage,
     required this.comparisonPercent,
     required this.entries,
     required this.onOpenApp,
   });
 
-  static const _size = 252.0;
-  static const _stroke = 30.0;
+  final Duration? totalUsage;
+  final double? comparisonPercent;
+  final List<AppUsageAppEntry> entries;
+  final ValueChanged<AppUsageAppEntry> onOpenApp;
 
   @override
   Widget build(BuildContext context) {
-    final colors = _ringColors(context);
-    final appTotal = entries.fold<int>(
+    final values = entries.take(4).toList(growable: false);
+    final colors = _pieColors(context);
+
+    final visibleTotal = values.fold<int>(
       0,
       (sum, entry) => sum + entry.duration.inMilliseconds,
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 22, 16, 18),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
           SizedBox(
-            width: _size,
-            height: _size,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapUp: appTotal <= 0
-                  ? null
-                  : (details) {
-                      final selected = _entryForTap(
-                        details.localPosition,
-                        entries,
-                        appTotal,
-                      );
-                      if (selected == null) return;
-                      _showAppSlice(context, selected);
-                    },
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size.square(_size),
-                    painter: _UsageRingPainter(
-                      entries: entries,
-                      total: appTotal,
-                      colors: colors,
-                      trackColor: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      strokeWidth: _stroke,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 154,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'TODAY',
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontSize: 11,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          totalUsage == null ? '—' : _duration(totalUsage!),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 31,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _RingTrend(value: comparisonPercent),
-                        const SizedBox(height: 2),
-                        Text(
-                          'vs yesterday',
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            entries.isEmpty
-                ? 'No app usage measured yet.'
-                : 'Tap a ring segment to see the app.',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w300,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  AppUsageAppEntry? _entryForTap(
-    Offset position,
-    List<AppUsageAppEntry> values,
-    int total,
-  ) {
-    const center = Offset(_size / 2, _size / 2);
-    final dx = position.dx - center.dx;
-    final dy = position.dy - center.dy;
-    final radius = math.sqrt(dx * dx + dy * dy);
-    final outerRadius = _size / 2;
-    final innerRadius = outerRadius - _stroke - 8;
-
-    if (radius < innerRadius || radius > outerRadius + 4) {
-      return null;
-    }
-
-    var angle = math.atan2(dy, dx) + math.pi / 2;
-    if (angle < 0) angle += math.pi * 2;
-    final fraction = angle / (math.pi * 2);
-
-    var cumulative = 0.0;
-    for (final entry in values) {
-      cumulative += entry.duration.inMilliseconds / total;
-      if (fraction <= cumulative) return entry;
-    }
-    return values.isEmpty ? null : values.last;
-  }
-
-  Future<void> _showAppSlice(
-    BuildContext context,
-    AppUsageAppEntry entry,
-  ) {
-    return showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            width: 220,
+            height: 220,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                AppIcon(
-                  iconBytes: entry.iconBytes,
-                  appName: entry.appName,
-                  size: 58,
-                  borderRadius: 18,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  entry.appName,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(sheetContext)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _duration(entry.duration),
-                  style: TextStyle(
-                    color: Theme.of(sheetContext)
-                        .colorScheme
-                        .onSurfaceVariant,
+                CustomPaint(
+                  size: const Size.square(220),
+                  painter: _SimpleUsageDonutPainter(
+                    entries: values,
+                    colors: colors,
+                    trackColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                   ),
                 ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      onOpenApp(entry);
-                    },
-                    child: const Text('View app history'),
+                Container(
+                  width: 132,
+                  height: 132,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        totalUsage == null ? '—' : _duration(totalUsage!),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _PieTrend(value: comparisonPercent),
+                      const SizedBox(height: 1),
+                      Text(
+                        'vs yesterday',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+          const SizedBox(height: 18),
+          if (values.isEmpty)
+            Text(
+              'No app usage measured yet.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            _UsageLegendList(
+              entries: values,
+              colors: colors,
+              totalMilliseconds: visibleTotal,
+              onOpenApp: onOpenApp,
+            ),
+        ],
+      ),
     );
   }
 }
 
-class _UsageRingPainter extends CustomPainter {
-  final List<AppUsageAppEntry> entries;
-  final int total;
-  final List<Color> colors;
-  final Color trackColor;
-  final double strokeWidth;
-
-  const _UsageRingPainter({
+class _SimpleUsageDonutPainter extends CustomPainter {
+  const _SimpleUsageDonutPainter({
     required this.entries,
-    required this.total,
     required this.colors,
     required this.trackColor,
-    required this.strokeWidth,
   });
+
+  final List<AppUsageAppEntry> entries;
+  final List<Color> colors;
+  final Color trackColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = (size.shortestSide - strokeWidth) / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    final radius = math.min(size.width, size.height) / 2 - 12;
+
     final rect = Rect.fromCircle(center: center, radius: radius);
-    final track = Paint()
-      ..color = trackColor
+
+    const strokeWidth = 28.0;
+
+    final trackPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt;
+      ..strokeCap = StrokeCap.round
+      ..color = trackColor;
 
-    canvas.drawCircle(center, radius, track);
+    canvas.drawCircle(center, radius, trackPaint);
+
+    final total = entries.fold<int>(
+      0,
+      (sum, entry) => sum + entry.duration.inMilliseconds,
+    );
+
     if (total <= 0) return;
 
     var start = -math.pi / 2;
+    const gap = 0.035;
+
     for (var index = 0; index < entries.length; index++) {
-      final sweep = entries[index].duration.inMilliseconds /
-          total *
-          math.pi *
-          2;
-      if (sweep <= 0) continue;
+      final fraction = entries[index].duration.inMilliseconds / total;
+
+      final rawSweep = fraction * math.pi * 2;
+
+      final sweep = math.max(0.0, rawSweep - gap);
 
       final paint = Paint()
-        ..color = colors[index % colors.length]
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.butt;
-      canvas.drawArc(rect, start, sweep, false, paint);
-      start += sweep;
+        ..strokeCap = StrokeCap.round
+        ..color = colors[index % colors.length];
+
+      canvas.drawArc(rect, start + gap / 2, sweep, false, paint);
+
+      start += rawSweep;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _UsageRingPainter oldDelegate) {
+  bool shouldRepaint(covariant _SimpleUsageDonutPainter oldDelegate) {
     return oldDelegate.entries != entries ||
-        oldDelegate.total != total ||
         oldDelegate.trackColor != trackColor;
   }
 }
 
-class _RingTrend extends StatelessWidget {
-  final double? value;
+class _UsageLegendList extends StatelessWidget {
+  const _UsageLegendList({
+    required this.entries,
+    required this.colors,
+    required this.totalMilliseconds,
+    required this.onOpenApp,
+  });
 
-  const _RingTrend({required this.value});
+  final List<AppUsageAppEntry> entries;
+  final List<Color> colors;
+  final int totalMilliseconds;
+  final ValueChanged<AppUsageAppEntry> onOpenApp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(entries.length, (index) {
+        final entry = entries[index];
+
+        final percent = totalMilliseconds <= 0
+            ? 0
+            : (entry.duration.inMilliseconds / totalMilliseconds * 100).round();
+
+        return Column(
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => onOpenApp(entry),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: colors[index % colors.length],
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    AppIcon(
+                      iconBytes: entry.iconBytes,
+                      appName: entry.appName,
+                      size: 34,
+                      borderRadius: 10,
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        entry.appName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Text(
+                      '$percent%',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _duration(entry.duration),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right_rounded, size: 18),
+                  ],
+                ),
+              ),
+            ),
+            if (index != entries.length - 1)
+              Divider(
+                height: 1,
+                indent: 54,
+                color: Theme.of(context).dividerColor,
+              ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+class _PieTrend extends StatelessWidget {
+  const _PieTrend({required this.value});
+
+  final double? value;
 
   @override
   Widget build(BuildContext context) {
     if (value == null) {
-      return Text(
-        '—',
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
-        ),
-      );
+      return const Text('—', style: TextStyle(fontWeight: FontWeight.w700));
     }
 
-    final increased = value! > 0;
-    final decreased = value! < 0;
-    final color = increased
+    final down = value! < -0.5;
+    final up = value! > 0.5;
+
+    final color = down
+        ? AppTheme.success
+        : up
         ? AppTheme.danger
-        : decreased
-            ? AppTheme.success
-            : Theme.of(context).colorScheme.onSurfaceVariant;
-    final icon = increased
-        ? Icons.arrow_upward_rounded
-        : decreased
-            ? Icons.arrow_downward_rounded
-            : Icons.remove_rounded;
+        : Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: color),
-        const SizedBox(width: 2),
+        FaIcon(
+          down
+              ? FontAwesomeIcons.arrowDown
+              : up
+              ? FontAwesomeIcons.arrowUp
+              : FontAwesomeIcons.minus,
+          size: 10,
+          color: color,
+        ),
+        const SizedBox(width: 4),
         Text(
           '${value!.abs().round()}%',
           style: TextStyle(
             color: color,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -441,13 +446,126 @@ class _RingTrend extends StatelessWidget {
   }
 }
 
-class _EntryCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color accent;
-  final VoidCallback onTap;
+class _LastSevenDaysCard extends StatefulWidget {
+  const _LastSevenDaysCard();
 
+  @override
+  State<_LastSevenDaysCard> createState() => _LastSevenDaysCardState();
+}
+
+class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
+  late Future<List<DailyUsageMetrics>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = context.read<UsageProvider>().loadDailyUsageHistory(days: 7);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final focus = context.watch<FocusProvider>();
+    return FutureBuilder<List<DailyUsageMetrics>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const SizedBox(
+            height: 92,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final days = (snapshot.data ?? const <DailyUsageMetrics>[]).reversed
+            .toList(growable: false);
+        if (days.isEmpty) {
+          return const Text('No recent daily measurements yet.');
+        }
+        return Material(
+          color: Theme.of(context).colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(color: Theme.of(context).dividerColor),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: List.generate(days.length, (index) {
+              final day = days[index];
+              final focused = focus.focusedDurationForDate(day.day);
+              return Column(
+                children: [
+                  ListTile(
+                    leading: Container(
+                      width: 42,
+                      height: 42,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Text(
+                        DateFormat('d').format(day.day),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    title: Text(
+                      DateFormat('EEE, MMM d').format(day.day),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      'Screen ${day.measured ? _duration(day.totalUsage) : '—'}  •  Focus ${_duration(focused)}',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      final raw = DateFormat('yyyy-MM-dd').format(day.day);
+                      context.push('/wellbeing/day?date=$raw');
+                    },
+                  ),
+                  if (index != days.length - 1)
+                    Divider(
+                      height: 1,
+                      indent: 68,
+                      color: Theme.of(context).dividerColor,
+                    ),
+                ],
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _UsageAccessCard extends StatelessWidget {
+  const _UsageAccessCard({required this.supported, required this.onTap});
+  final bool supported;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const FaIcon(FontAwesomeIcons.shieldHalved, size: 18),
+        title: Text(
+          supported
+              ? 'App usage access needed'
+              : 'App usage is unavailable here',
+        ),
+        subtitle: Text(
+          supported
+              ? 'Allow Focused to read Android app-usage statistics.'
+              : 'This feature currently requires Android.',
+        ),
+        trailing: onTap == null
+            ? null
+            : const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _EntryCard extends StatelessWidget {
   const _EntryCard({
     required this.icon,
     required this.title,
@@ -455,6 +573,12 @@ class _EntryCard extends StatelessWidget {
     required this.accent,
     required this.onTap,
   });
+
+  final FaIconData icon;
+  final String title;
+  final String subtitle;
+  final Color accent;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -465,31 +589,21 @@ class _EntryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 150),
+          constraints: const BoxConstraints(minHeight: 132),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).dividerColor),
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(icon, color: accent, size: 21),
-              ),
-              const SizedBox(height: 16),
+              FaIcon(icon, color: accent, size: 19),
+              const SizedBox(height: 14),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                maxLines: 2,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
               Text(
@@ -498,9 +612,7 @@ class _EntryCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                  height: 1.3,
-                  fontWeight: FontWeight.w300,
+                  fontSize: 11,
                 ),
               ),
             ],
@@ -512,91 +624,72 @@ class _EntryCard extends StatelessWidget {
 }
 
 class _FocusInterruptionCard extends StatelessWidget {
-  final FocusAnalysisResult? analysis;
-
   const _FocusInterruptionCard({required this.analysis});
+  final FocusAnalysisResult? analysis;
 
   @override
   Widget build(BuildContext context) {
-    final value = analysis;
+    final scheme = Theme.of(context).colorScheme;
+    if (analysis == null) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Row(
+          children: [
+            FaIcon(FontAwesomeIcons.circleInfo, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No analyzed focus session yet. Finish a focus session and Focused will show interruption details here.',
+                style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: value == null
-          ? Row(
-              children: [
-                Icon(
-                  Icons.do_not_disturb_on_outlined,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Finish a focus session to see interruption details.',
-                    style: TextStyle(
-                      color:
-                          Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Row(
-              children: [
-                _MiniValue(
-                  value: '${value.interruptionCount}',
-                  label: 'interruptions',
-                ),
-                const SizedBox(width: 20),
-                _MiniValue(
-                  value: _duration(value.distractedDuration),
-                  label: 'distracted',
-                ),
-                const SizedBox(width: 20),
-                _MiniValue(
-                  value: '${value.focusQuality.round()}%',
-                  label: 'focus quality',
-                ),
-              ],
-            ),
-    );
-  }
-}
-
-class _MiniValue extends StatelessWidget {
-  final String value;
-  final String label;
-
-  const _MiniValue({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            value,
-            maxLines: 1,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+          Container(
+            width: 50,
+            height: 50,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '${analysis!.focusQuality.round()}%',
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 11,
-              fontWeight: FontWeight.w300,
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${analysis!.interruptionCount} interruption${analysis!.interruptionCount == 1 ? '' : 's'}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${_duration(analysis!.distractedDuration)} distracted during the latest analyzed focus session.',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ],
             ),
           ),
         ],
@@ -605,55 +698,7 @@ class _MiniValue extends StatelessWidget {
   }
 }
 
-class _UsageAccessCard extends StatelessWidget {
-  final bool supported;
-  final VoidCallback? onTap;
-
-  const _UsageAccessCard({
-    required this.supported,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(
-                supported
-                    ? Icons.shield_outlined
-                    : Icons.desktop_windows_outlined,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  supported
-                      ? 'Allow app usage access to see screen-time details.'
-                      : 'Android app usage is not available on this device.',
-                  style: const TextStyle(fontWeight: FontWeight.w400),
-                ),
-              ),
-              if (onTap != null) const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-FocusAnalysisResult? _latestAnalysis(
-  FocusProvider focus,
-  UsageProvider usage,
-) {
+FocusAnalysisResult? _latestAnalysis(FocusProvider focus, UsageProvider usage) {
   final live = usage.focusAnalysisResult;
   if (live != null) return live;
   for (final session in focus.sessionHistory) {
@@ -663,16 +708,16 @@ FocusAnalysisResult? _latestAnalysis(
   return null;
 }
 
-List<Color> _ringColors(BuildContext context) => [
-      Theme.of(context).colorScheme.primary,
-      AppTheme.lavender,
-      AppTheme.mist,
-      AppTheme.warning,
-      AppTheme.success,
-      AppTheme.danger,
-      Theme.of(context).colorScheme.secondary,
-      Theme.of(context).colorScheme.tertiary,
-    ];
+List<Color> _pieColors(BuildContext context) {
+  final scheme = Theme.of(context).colorScheme;
+  return [
+    scheme.primary,
+    AppTheme.lavender,
+    AppTheme.success,
+    AppTheme.warning,
+    AppTheme.mist,
+  ];
+}
 
 String _duration(Duration value) {
   final hours = value.inHours;
@@ -680,5 +725,6 @@ String _duration(Duration value) {
   if (hours > 0) {
     return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   }
-  return '${value.inMinutes}m';
+  if (value.inMinutes > 0) return '${value.inMinutes}m';
+  return '${value.inSeconds}s';
 }

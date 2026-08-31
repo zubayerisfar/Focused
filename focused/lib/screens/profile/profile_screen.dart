@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/achievement_badge.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/user_profile_provider.dart';
 import '../../services/achievement_service.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../widgets/achievement_badge_art.dart';
@@ -19,6 +22,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final account = context.watch<AccountProvider>();
+    final localProfile = context.watch<UserProfileProvider>().profile;
     final tasks = context.watch<TaskProvider>();
     final focus = context.watch<FocusProvider>();
     final photo = account.photoUrl;
@@ -38,16 +42,7 @@ class ProfileScreen extends StatelessWidget {
     final earned = badges.where((badge) => badge.achieved).toList(growable: false);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            tooltip: 'Badges',
-            onPressed: () => context.push('/badges'),
-            icon: const Icon(Icons.workspace_premium_outlined),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Profile')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 36),
         children: [
@@ -80,54 +75,48 @@ class ProfileScreen extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 26),
-          _BadgeShowcase(
-            badges: earned,
-            totalBadgeCount: badges.length,
-            onTap: () => context.push('/badges'),
+          const SizedBox(height: 24),
+          _AccountInfoCard(
+            accountType: account.signedInWithGoogle ? 'Google' : 'Email',
+            verified: account.emailVerified,
+            totalFocus: _formatDuration(focus.totalStoredFocusDuration),
+            nationality: localProfile.nationality,
+            birthday: localProfile.birthday,
           ),
-          const SizedBox(height: 18),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Theme.of(context).dividerColor),
-            ),
-            child: Column(
-              children: [
-                _ProfileRow(
-                  icon: account.signedInWithGoogle
-                      ? Icons.account_circle_outlined
-                      : Icons.alternate_email_rounded,
-                  label: 'Account',
-                  value: account.signedInWithGoogle
-                      ? 'Google account'
-                      : 'Email account',
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Achievements',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
-                Divider(height: 1, color: Theme.of(context).dividerColor),
-                _ProfileRow(
-                  icon: account.emailVerified
-                      ? Icons.verified_rounded
-                      : Icons.mark_email_unread_outlined,
-                  label: 'Email',
-                  value: account.emailVerified ? 'Verified' : 'Not verified',
+              ),
+              Text(
+                '${earned.length}/${badges.length}',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
-                Divider(height: 1, color: Theme.of(context).dividerColor),
-                _ProfileRow(
-                  icon: Icons.timer_outlined,
-                  label: 'Total focus',
-                  value: _formatDuration(focus.totalStoredFocusDuration),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _UnlockedBadgeStrip(badges: earned),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: () => context.push('/badges'),
+            icon: const FaIcon(FontAwesomeIcons.medal, size: 16),
+            label: const Text('Badge showcase'),
           ),
           const SizedBox(height: 18),
           OutlinedButton.icon(
             onPressed: () => context.go('/?tab=settings'),
-            icon: const Icon(Icons.settings_outlined),
+            icon: const FaIcon(FontAwesomeIcons.gear, size: 16),
             label: const Text('Account settings'),
           ),
         ],
@@ -136,82 +125,126 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-class _BadgeShowcase extends StatelessWidget {
-  const _BadgeShowcase({
-    required this.badges,
-    required this.totalBadgeCount,
-    required this.onTap,
-  });
-
+class _UnlockedBadgeStrip extends StatelessWidget {
+  const _UnlockedBadgeStrip({required this.badges});
   final List<AchievementBadge> badges;
-  final int totalBadgeCount;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final shown = badges.take(4).toList(growable: false);
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(17),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Theme.of(context).dividerColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Badge showcase',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                  ),
-                  Text(
-                    '${badges.length}/$totalBadgeCount',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
-              ),
-              const SizedBox(height: 14),
-              if (shown.isEmpty)
-                Text(
-                  'Your unlocked badges will appear here.',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                )
-              else
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: shown
-                      .map(
-                        (badge) => AchievementBadgeArt(
-                          badge: badge,
-                          size: 64,
-                          showLock: false,
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-            ],
+    if (badges.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          'Your earned badges will appear here.',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
+      );
+    }
+
+    return SizedBox(
+      height: 106,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: badges.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final badge = badges[index];
+          return SizedBox(
+            width: 84,
+            child: Column(
+              children: [
+                AchievementBadgeArt(
+                  badge: badge,
+                  size: 68,
+                  showLock: false,
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  badge.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
+  }
+}
+
+class _AccountInfoCard extends StatelessWidget {
+  const _AccountInfoCard({
+    required this.accountType,
+    required this.verified,
+    required this.totalFocus,
+    required this.nationality,
+    required this.birthday,
+  });
+
+  final String accountType;
+  final bool verified;
+  final String totalFocus;
+  final String nationality;
+  final DateTime? birthday;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        children: [
+          _ProfileRow(
+            icon: FontAwesomeIcons.user,
+            label: 'Account',
+            value: accountType,
+          ),
+          _divider(context),
+          _ProfileRow(
+            icon: FontAwesomeIcons.envelope,
+            label: 'Email',
+            value: verified ? 'Verified' : 'Not verified',
+          ),
+          _divider(context),
+          _ProfileRow(
+            icon: FontAwesomeIcons.flag,
+            label: 'Nationality',
+            value: nationality.trim().isEmpty ? '—' : nationality,
+          ),
+          _divider(context),
+          _ProfileRow(
+            icon: FontAwesomeIcons.cakeCandles,
+            label: 'Birthday',
+            value: birthday == null ? '—' : DateFormat('MMM d').format(birthday!),
+          ),
+          _divider(context),
+          _ProfileRow(
+            icon: FontAwesomeIcons.stopwatch,
+            label: 'Total focus',
+            value: totalFocus,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _divider(BuildContext context) {
+    return Divider(height: 1, color: Theme.of(context).dividerColor);
   }
 }
 
@@ -222,18 +255,24 @@ class _ProfileRow extends StatelessWidget {
     required this.value,
   });
 
-  final IconData icon;
+  final FaIconData icon;
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon),
+      leading: FaIcon(icon, size: 17),
       title: Text(label),
-      trailing: Text(
-        value,
-        style: const TextStyle(fontWeight: FontWeight.w600),
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 170),
+        child: Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
