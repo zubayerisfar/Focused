@@ -78,9 +78,11 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
       linkedDay.day,
     );
 
-    final linkedTaskCompleted =
-        linkedTask != null &&
-        taskProvider.isTaskCompletedForDate(linkedTask, sessionDate);
+    final linkedTaskCompleted = linkedTask != null &&
+        taskProvider.isTaskCompletedForDate(
+          linkedTask,
+          sessionDate,
+        );
 
     return Scaffold(
       body: SafeArea(
@@ -241,7 +243,10 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
                 },
                 child: const Text(
                   'Done',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -251,6 +256,7 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
     );
   }
 }
+
 
 class _ScheduleExecutionCard extends StatelessWidget {
   final FocusSession session;
@@ -298,8 +304,8 @@ class _ScheduleExecutionCard extends StatelessWidget {
                 child: Text(
                   'Schedule execution',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
             ],
@@ -329,8 +335,7 @@ class _ScheduleExecutionCard extends StatelessWidget {
           const SizedBox(height: 9),
           _ExecutionLine(
             label: 'Active focus',
-            value:
-                '${_durationShort(active)} • ${coverage(active).round()}% of plan',
+            value: '${_durationShort(active)} • ${coverage(active).round()}% of plan',
           ),
           const SizedBox(height: 9),
           _ExecutionLine(
@@ -343,9 +348,9 @@ class _ScheduleExecutionCard extends StatelessWidget {
           Text(
             'The original calendar window is stored with this focus session, so later task edits do not rewrite this execution history.',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              height: 1.35,
-            ),
+                  color: scheme.onSurfaceVariant,
+                  height: 1.35,
+                ),
           ),
         ],
       ),
@@ -369,9 +374,9 @@ class _ExecutionLine extends StatelessWidget {
           child: Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
         ),
         const SizedBox(width: 8),
@@ -435,7 +440,9 @@ class _LinkedTaskCompletionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isCompleted ? Icons.task_alt_rounded : Icons.sync_rounded,
+            isCompleted
+                ? Icons.task_alt_rounded
+                : Icons.sync_rounded,
             color: color,
             size: 30,
           ),
@@ -445,7 +452,9 @@ class _LinkedTaskCompletionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isCompleted ? 'Task completed' : 'Finishing task…',
+                  isCompleted
+                      ? 'Task completed'
+                      : 'Finishing task…',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -458,7 +467,9 @@ class _LinkedTaskCompletionCard extends StatelessWidget {
                       : 'Focused is updating “$taskName” as completed.',
                   style: TextStyle(
                     height: 1.35,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant,
                     fontWeight: FontWeight.w300,
                   ),
                 ),
@@ -548,6 +559,7 @@ class _SessionResultsCard extends StatelessWidget {
     );
   }
 }
+
 
 class _UsageAnalysisLoadingCard extends StatelessWidget {
   const _UsageAnalysisLoadingCard();

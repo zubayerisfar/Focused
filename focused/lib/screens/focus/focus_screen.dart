@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -19,90 +20,66 @@ class FocusScreen extends StatelessWidget {
     final focusedToday = provider.focusedDurationForDate(now);
     final sessionsToday = provider.sessionCountForDate(now);
     final longest = provider.longestFocusSessionForDate(now);
-    final recent = provider.sessionHistory.take(5).toList();
+    final recent = provider.sessionHistory.take(5).toList(growable: false);
 
     return SafeArea(
       bottom: false,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 110),
         children: [
-          Row(
-            children: [
-              Text(
-                'Focus',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const Spacer(),
-              InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: () => context.push('/profile'),
-                child: Padding(
-                  padding: const EdgeInsets.all(2),
-                  child: CircleAvatar(
-                    radius: 21,
-                    backgroundImage: account.photoUrl == null
-                        ? null
-                        : NetworkImage(account.photoUrl!),
-                    child: account.photoUrl == null
-                        ? Text(
-                            _initials(account.displayName),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          )
-                        : null,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _FocusHero(
-            running: provider.isRunning,
-            paused: provider.isPaused,
-            taskName: provider.taskName,
-            focusedToday: focusedToday,
-            remainingSeconds: provider.remainingSeconds,
-            onPressed: () => context.push(
-              provider.isRunning ? '/focus/session' : '/focus/setup',
-            ),
-          ),
-          const SizedBox(height: 18),
+          _FocusHeader(account: account),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
                 child: _FocusMetric(
-                  icon: Icons.layers_rounded,
-                  value: '$sessionsToday',
-                  label: 'sessions today',
+                  icon: const FaIcon(FontAwesomeIcons.stopwatch, size: 18),
+                  value: _formatDuration(focusedToday),
+                  label: 'Today',
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _FocusMetric(
-                  icon: Icons.emoji_events_outlined,
+                  icon: const FaIcon(FontAwesomeIcons.layerGroup, size: 18),
+                  value: '$sessionsToday',
+                  label: 'Sessions',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _FocusMetric(
+                  icon: const FaIcon(FontAwesomeIcons.bolt, size: 18),
                   value: _formatDuration(longest),
-                  label: 'longest today',
+                  label: 'Longest',
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 18),
+          _FocusStartCard(
+            provider: provider,
+            focusedToday: focusedToday,
+          ),
+          const SizedBox(height: 28),
           Row(
             children: [
-              Text(
-                'Recent sessions',
-                style: Theme.of(context).textTheme.titleLarge,
+              Expanded(
+                child: Text(
+                  'Recent sessions',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
               ),
-              const Spacer(),
               if (recent.isNotEmpty)
                 Text(
-                  '${provider.sessionHistory.length} saved',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                      ),
+                  '${provider.sessionHistory.length} total',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
             ],
           ),
@@ -122,181 +99,143 @@ class FocusScreen extends StatelessWidget {
   }
 }
 
-class _FocusHero extends StatelessWidget {
-  final bool running;
-  final bool paused;
-  final String taskName;
-  final Duration focusedToday;
-  final int remainingSeconds;
-  final VoidCallback onPressed;
+class _FocusHeader extends StatelessWidget {
+  const _FocusHeader({required this.account});
 
-  const _FocusHero({
-    required this.running,
-    required this.paused,
-    required this.taskName,
+  final AccountProvider account;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 54,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Focus',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => context.push('/profile'),
+            child: CircleAvatar(
+              radius: 22,
+              backgroundImage:
+                  account.photoUrl == null ? null : NetworkImage(account.photoUrl!),
+              child: account.photoUrl == null
+                  ? Text(
+                      _initials(account.displayName),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    )
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FocusStartCard extends StatelessWidget {
+  const _FocusStartCard({
+    required this.provider,
     required this.focusedToday,
-    required this.remainingSeconds,
-    required this.onPressed,
   });
+
+  final FocusProvider provider;
+  final Duration focusedToday;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final remaining = Duration(
-      seconds: remainingSeconds < 0 ? 0 : remainingSeconds,
-    );
+    final running = provider.isRunning;
+    final paused = provider.isPaused;
+    final remaining = Duration(seconds: provider.remainingSeconds);
+    final taskName = provider.taskName.trim();
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
             scheme.primaryContainer,
-            scheme.primaryContainer.withOpacity(0.58),
+            scheme.surfaceContainer,
           ],
         ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: scheme.primary.withOpacity(0.18),
-        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: scheme.primary.withOpacity(0.18)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 7,
-                ),
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: scheme.surface.withOpacity(0.72),
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                alignment: Alignment.center,
+                child: FaIcon(
+                  running
+                      ? FontAwesomeIcons.clock
+                      : FontAwesomeIcons.bullseye,
+                  size: 20,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      running
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.center_focus_strong_rounded,
-                      size: 17,
-                      color: running
-                          ? (paused ? AppTheme.warning : AppTheme.success)
-                          : scheme.primary,
-                    ),
-                    const SizedBox(width: 7),
                     Text(
                       running
-                          ? (paused ? 'Paused' : 'In focus')
-                          : 'Ready',
+                          ? (taskName.isEmpty ? 'Focus session' : taskName)
+                          : 'Ready to focus',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      running
+                          ? (paused ? 'Paused' : '${_formatClock(remaining)} remaining')
+                          : '${_formatDuration(focusedToday)} focused today',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Spacer(),
-              Text(
-                running
-                    ? _formatClock(remaining)
-                    : '${_formatDuration(focusedToday)} today',
-                style: TextStyle(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
             ],
-          ),
-          const SizedBox(height: 30),
-          Container(
-            width: 138,
-            height: 138,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: scheme.surface.withOpacity(0.82),
-              border: Border.all(
-                color: scheme.primary.withOpacity(0.22),
-                width: 9,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  running
-                      ? Icons.timer_rounded
-                      : Icons.psychology_alt_rounded,
-                  size: 34,
-                  color: scheme.primary,
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  running
-                      ? _formatClock(remaining)
-                      : _formatDuration(focusedToday),
-                  style: const TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                Text(
-                  running ? 'remaining' : 'focused today',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 30),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              running
-                  ? (taskName.trim().isEmpty
-                      ? 'Open focus session'
-                      : taskName)
-                  : 'Make the next block count.',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: scheme.onPrimaryContainer,
-                  ),
-            ),
-          ),
-          const SizedBox(height: 7),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              running
-                  ? 'Stay with the work you chose. Your actual active-focus time is being recorded.'
-                  : 'Choose a task or start an open session. Focused will record your real active time and later compare it with app usage.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onPrimaryContainer.withOpacity(0.78),
-                    height: 1.4,
-                  ),
-            ),
           ),
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: onPressed,
-              icon: Icon(
+              onPressed: () => context.push(
+                running ? '/focus/session' : '/focus/setup',
+              ),
+              icon: FaIcon(
                 running
-                    ? Icons.open_in_full_rounded
-                    : Icons.play_arrow_rounded,
+                    ? FontAwesomeIcons.arrowUpRightFromSquare
+                    : FontAwesomeIcons.play,
+                size: 16,
               ),
-              label: Text(
-                running ? 'Return to session' : 'Start focus',
-              ),
+              label: Text(running ? 'Return to session' : 'Start focus'),
             ),
           ),
         ],
@@ -306,49 +245,53 @@ class _FocusHero extends StatelessWidget {
 }
 
 class _FocusMetric extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-
   const _FocusMetric({
     required this.icon,
     required this.value,
     required this.label,
   });
 
+  final Widget icon;
+  final String value;
+  final String label;
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(13, 13, 10, 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-        ),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: Theme.of(context).colorScheme.primary,
+          IconTheme(
+            data: IconThemeData(color: scheme.primary),
+            child: icon,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 17,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ],
       ),
@@ -357,16 +300,13 @@ class _FocusMetric extends StatelessWidget {
 }
 
 class _SessionHistoryTile extends StatelessWidget {
-  final FocusSession session;
+  const _SessionHistoryTile({required this.session});
 
-  const _SessionHistoryTile({
-    required this.session,
-  });
+  final FocusSession session;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
     return Material(
       color: scheme.surface,
       borderRadius: BorderRadius.circular(20),
@@ -375,56 +315,57 @@ class _SessionHistoryTile extends StatelessWidget {
         onTap: () => context.push(
           '/focus/history/${Uri.encodeComponent(session.id)}',
         ),
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Theme.of(context).dividerColor),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
           child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              Icons.check_rounded,
-              color: scheme.primary,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  session.taskName.trim().isEmpty
-                      ? 'Open focus session'
-                      : session.taskName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                  ),
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${_formatDuration(session.actualFocusDuration)} active • ${DateFormat('MMM d, h:mm a').format(session.endedAt)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                alignment: Alignment.center,
+                child: FaIcon(
+                  FontAwesomeIcons.circleCheck,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.taskName.trim().isEmpty
+                          ? 'Open focus session'
+                          : session.taskName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${_formatDuration(session.actualFocusDuration)} • ${DateFormat('MMM d, h:mm a').format(session.endedAt)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
                         color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w400,
                       ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded),
+            ],
           ),
-            const Icon(Icons.chevron_right_rounded),
-          ],
         ),
       ),
-    ),
     );
   }
 }
@@ -435,34 +376,26 @@ class _FocusEmptyHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-        ),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Icon(
-            Icons.history_toggle_off_rounded,
-            size: 40,
+          FaIcon(
+            FontAwesomeIcons.clockRotateLeft,
             color: Theme.of(context).colorScheme.primary,
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Your focus history starts here',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Finish a session and its real active-focus time will appear here.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Text(
+              'Finished sessions will appear here.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
         ],
       ),
@@ -473,11 +406,9 @@ class _FocusEmptyHistory extends StatelessWidget {
 String _formatDuration(Duration duration) {
   final hours = duration.inHours;
   final minutes = duration.inMinutes.remainder(60);
-
   if (hours > 0) {
     return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   }
-
   return '${duration.inMinutes}m';
 }
 
@@ -485,17 +416,14 @@ String _formatClock(Duration duration) {
   final hours = duration.inHours;
   final minutes = duration.inMinutes.remainder(60);
   final seconds = duration.inSeconds.remainder(60);
-
   if (hours > 0) {
     return '${hours.toString().padLeft(2, '0')}:'
         '${minutes.toString().padLeft(2, '0')}:'
         '${seconds.toString().padLeft(2, '0')}';
   }
-
   return '${minutes.toString().padLeft(2, '0')}:'
       '${seconds.toString().padLeft(2, '0')}';
 }
-
 
 String _initials(String name) {
   final parts = name
@@ -503,11 +431,7 @@ String _initials(String name) {
       .split(RegExp(r'\s+'))
       .where((part) => part.isNotEmpty)
       .toList();
-
   if (parts.isEmpty) return 'F';
-  if (parts.length == 1) {
-    return parts.first.substring(0, 1).toUpperCase();
-  }
-
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
   return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
 }

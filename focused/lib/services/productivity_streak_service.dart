@@ -45,7 +45,41 @@ class ProductivityStreakService {
 
     return streak;
   }
+
+  /// Calculates the longest productivity streak across all known local dates.
+  int calculateLongestStreak({
+    required Iterable<DateTime> activityDates,
+  }) {
+    final days = <DateTime>{
+      for (final date in activityDates) _dateOnlyLocal(date),
+    }.toList()
+      ..sort();
+
+    if (days.isEmpty) return 0;
+
+    var longest = 1;
+    var current = 1;
+
+    for (var index = 1; index < days.length; index++) {
+      final previous = days[index - 1];
+      final expected = DateTime(
+        previous.year,
+        previous.month,
+        previous.day + 1,
+      );
+
+      if (days[index] == expected) {
+        current++;
+        if (current > longest) longest = current;
+      } else {
+        current = 1;
+      }
+    }
+
+    return longest;
+  }
 }
+
 
 DateTime _dateOnlyLocal(DateTime value) {
   final local = value.isUtc ? value.toLocal() : value;

@@ -13,9 +13,11 @@ import '../screens/habits/habit_details_screen.dart';
 import '../screens/habits/habit_edit_screen.dart';
 import '../screens/main/main_shell.dart';
 import '../screens/onboarding/intro_sequence_screen.dart';
+import '../screens/profile/badges_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/settings/private_sync_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/streak/streak_screen.dart';
 import '../screens/tasks/task_details_screen.dart';
 import '../screens/tasks/task_edit_screen.dart';
 import '../screens/wellbeing/app_usage_app_details_screen.dart';
@@ -78,6 +80,14 @@ GoRouter createAppRouter({
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/streak',
+        builder: (context, state) => const StreakScreen(),
+      ),
+      GoRoute(
+        path: '/badges',
+        builder: (context, state) => const BadgesScreen(),
       ),
       GoRoute(
         path: '/settings',

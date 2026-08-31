@@ -12,6 +12,7 @@ import 'providers/focus_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'providers/private_sync_provider.dart';
+import 'providers/streak_goal_provider.dart';
 import 'providers/task_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/usage_provider.dart';
@@ -32,6 +33,7 @@ import 'services/private_sync_cloud_service.dart';
 import 'services/private_sync_crypto_service.dart';
 import 'services/private_sync_secure_storage_service.dart';
 import 'services/private_sync_snapshot_service.dart';
+import 'services/streak_goal_storage_service.dart';
 import 'services/task_notification_service.dart';
 import 'services/task_occurrence_completion_storage_service.dart';
 import 'services/task_storage_service.dart';
@@ -65,6 +67,8 @@ Future<void> main() async {
       UserProfileStorageService();
   final onboardingStorageService =
       OnboardingStorageService();
+  final streakGoalStorageService =
+      StreakGoalStorageService();
 
   await taskStorageService.init();
   await occurrenceCompletionStorage.init();
@@ -76,6 +80,7 @@ Future<void> main() async {
   await habitStorageService.init();
   await userProfileStorageService.init();
   await onboardingStorageService.init();
+  await streakGoalStorageService.init();
 
   final taskNotificationService =
       TaskNotificationService();
@@ -168,6 +173,12 @@ Future<void> main() async {
   );
   await onboardingProvider.load();
 
+  final streakGoalProvider =
+      StreakGoalProvider(
+    storageService: streakGoalStorageService,
+  );
+  await streakGoalProvider.load();
+
   final accountProvider = AccountProvider(
     authService: AuthService(),
   );
@@ -197,6 +208,8 @@ Future<void> main() async {
         appCategoryStorageService,
     focusAnalysisStorageService:
         focusAnalysisStorageService,
+    streakGoalStorageService:
+        streakGoalStorageService,
     cryptoService: privateSyncCryptoService,
   );
 
@@ -214,6 +227,7 @@ Future<void> main() async {
       focusProvider,
       habitProvider,
       userProfileProvider,
+      streakGoalProvider,
       usageProvider,
     ],
   );
@@ -235,6 +249,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider.value(
           value: onboardingProvider,
+        ),
+        ChangeNotifierProvider.value(
+          value: streakGoalProvider,
         ),
         ChangeNotifierProvider.value(
           value: privateSyncProvider,

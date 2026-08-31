@@ -321,6 +321,62 @@ class FocusProvider extends ChangeNotifier {
     return total;
   }
 
+  /// Total stored active-focus time with overlapping intervals unioned.
+  ///
+  /// This avoids double-counting if malformed or duplicated historical
+  /// sessions ever contain overlapping focus intervals.
+  Duration get totalStoredFocusDuration {
+    return _unionIntervalsDuration(
+      _sessionHistory.expand((session) => session.focusIntervals),
+    );
+  }
+
+  /// Longest real-focus duration of a completed session linked to a task.
+  Duration get longestLinkedTaskSessionFocusDuration {
+    var longest = Duration.zero;
+
+    for (final session in _sessionHistory) {
+      if (session.taskId == null) continue;
+
+      final duration = _unionIntervalsDuration(session.focusIntervals);
+      if (duration.compareTo(longest) > 0) {
+        longest = duration;
+      }
+    }
+
+    return longest;
+  }
+
+  Duration _unionIntervalsDuration(Iterable<FocusInterval> intervals) {
+    final valid = intervals
+        .where((interval) => interval.endTime.isAfter(interval.startTime))
+        .toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    if (valid.isEmpty) return Duration.zero;
+
+    var currentStart = valid.first.startTime;
+    var currentEnd = valid.first.endTime;
+    var total = Duration.zero;
+
+    for (var index = 1; index < valid.length; index++) {
+      final interval = valid[index];
+
+      if (!interval.startTime.isAfter(currentEnd)) {
+        if (interval.endTime.isAfter(currentEnd)) {
+          currentEnd = interval.endTime;
+        }
+        continue;
+      }
+
+      total += currentEnd.difference(currentStart);
+      currentStart = interval.startTime;
+      currentEnd = interval.endTime;
+    }
+
+    return total + currentEnd.difference(currentStart);
+  }
+
   // ---------------------------------------------------------
   // ACTIVE SESSION GETTERS
   // ---------------------------------------------------------

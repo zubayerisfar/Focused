@@ -6,6 +6,7 @@ import '../services/app_category_storage_service.dart';
 import '../services/focus_analysis_storage_service.dart';
 import '../services/focus_session_storage_service.dart';
 import '../services/habit_storage_service.dart';
+import '../services/streak_goal_storage_service.dart';
 import '../services/task_occurrence_completion_storage_service.dart';
 import '../services/task_storage_service.dart';
 import '../services/user_profile_storage_service.dart';
@@ -37,6 +38,8 @@ class PrivateSyncSnapshotService {
         appCategoryStorageService,
     required FocusAnalysisStorageService
         focusAnalysisStorageService,
+    required StreakGoalStorageService
+        streakGoalStorageService,
     PrivateSyncCryptoService? cryptoService,
   })  : _taskStorageService = taskStorageService,
         _occurrenceCompletionStorage =
@@ -50,6 +53,8 @@ class PrivateSyncSnapshotService {
             appCategoryStorageService,
         _focusAnalysisStorageService =
             focusAnalysisStorageService,
+        _streakGoalStorageService =
+            streakGoalStorageService,
         _cryptoService =
             cryptoService ??
             PrivateSyncCryptoService();
@@ -66,6 +71,8 @@ class PrivateSyncSnapshotService {
       _appCategoryStorageService;
   final FocusAnalysisStorageService
       _focusAnalysisStorageService;
+  final StreakGoalStorageService
+      _streakGoalStorageService;
   final PrivateSyncCryptoService _cryptoService;
 
   Future<PrivateSyncSnapshotExport> export() async {
@@ -130,6 +137,8 @@ class PrivateSyncSnapshotService {
             MapEntry(appId, category.name),
       ),
       'focusAnalyses': focusAnalyses,
+      'streakGoalDays':
+          _streakGoalStorageService.loadGoalDays(),
 
       // Raw Android UsageStats records are deliberately excluded.
       // They are device telemetry, not account-owned cloud state.
