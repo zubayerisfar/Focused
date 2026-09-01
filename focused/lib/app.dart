@@ -9,20 +9,15 @@ import 'providers/usage_provider.dart';
 import 'theme/app_theme.dart';
 
 class FocusProductivityApp extends StatefulWidget {
-  const FocusProductivityApp({
-    super.key,
-    required this.routerConfig,
-  });
+  const FocusProductivityApp({super.key, required this.routerConfig});
 
   final GoRouter routerConfig;
 
   @override
-  State<FocusProductivityApp> createState() =>
-      _FocusProductivityAppState();
+  State<FocusProductivityApp> createState() => _FocusProductivityAppState();
 }
 
-class _FocusProductivityAppState
-    extends State<FocusProductivityApp>
+class _FocusProductivityAppState extends State<FocusProductivityApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -40,17 +35,12 @@ class _FocusProductivityAppState
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
 
-    unawaited(
-      context
-          .read<UsageProvider>()
-          .refreshPermissionAndUsage(),
-    );
+    unawaited(context.read<UsageProvider>().refreshPermissionAndUsage());
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider =
-        context.watch<ThemeProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,

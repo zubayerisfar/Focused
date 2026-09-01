@@ -39,7 +39,9 @@ class FocusAnalysisStorageService implements FocusAnalysisStore {
   Box<dynamic> get _requiredBox {
     final box = _box;
     if (box == null) {
-      throw StateError('FocusAnalysisStorageService.init() must be called first.');
+      throw StateError(
+        'FocusAnalysisStorageService.init() must be called first.',
+      );
     }
     return box;
   }

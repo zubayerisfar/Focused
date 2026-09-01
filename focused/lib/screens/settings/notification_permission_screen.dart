@@ -16,7 +16,8 @@ class NotificationPermissionScreen extends StatefulWidget {
 class _NotificationPermissionScreenState
     extends State<NotificationPermissionScreen>
     with WidgetsBindingObserver {
-  final NotificationAccessService _settingsService = NotificationAccessService();
+  final NotificationAccessService _settingsService =
+      NotificationAccessService();
   bool? _enabled;
   bool _busy = true;
   String? _error;
@@ -132,18 +133,15 @@ class _NotificationPermissionScreenState
                       ? 'Notifications are allowed'
                       : 'Notifications need permission',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Focused uses notifications for task reminders, habit reminders, focus transitions, and birthday reminders.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4),
                 ),
               ],
             ),
@@ -172,18 +170,12 @@ class _NotificationPermissionScreenState
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(
-              _error!,
-              style: TextStyle(color: scheme.error),
-            ),
+            Text(_error!, style: TextStyle(color: scheme.error)),
           ],
           const SizedBox(height: 12),
           Text(
-            'Notification permission lets Focused send task reminders, habit reminders and focus alerts. Notification Access is a separate permission used only to count notifications posted by other apps.',
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-              height: 1.45,
-            ),
+            'Notification permission lets Focused send task reminders, habit reminders and focus alerts.',
+            style: TextStyle(color: scheme.onSurfaceVariant, height: 1.45),
           ),
         ],
       ),

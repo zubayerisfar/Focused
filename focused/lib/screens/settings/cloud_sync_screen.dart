@@ -39,8 +39,8 @@ class CloudSyncScreen extends StatelessWidget {
                       child: Text(
                         sync.statusLabel,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     if (sync.isSyncing)
@@ -54,18 +54,12 @@ class CloudSyncScreen extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   'Tasks, recurring-task completion history, habits, habit progress, focus history, profile and Focused settings can sync through your Firebase account.',
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   'Raw Android screen-time, app-open events, notification events and foreground-app history stay on this device.',
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
+                  style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4),
                 ),
               ],
             ),
@@ -93,7 +87,10 @@ class CloudSyncScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 child: Text(
                   'New Android device detected. Sync now to restore tasks, habits, focus history and profile. Screen-time and app-open history are read locally from Android UsageStats; notification history begins after notification access is enabled.',
-                  style: TextStyle(color: scheme.onPrimaryContainer, height: 1.4),
+                  style: TextStyle(
+                    color: scheme.onPrimaryContainer,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ),
@@ -105,10 +102,7 @@ class CloudSyncScreen extends StatelessWidget {
             label: Text(sync.isSyncing ? 'Syncing…' : 'Sync now'),
           ),
           const SizedBox(height: 20),
-          _InfoRow(
-            label: 'Device',
-            value: sync.deviceName ?? 'Focused device',
-          ),
+          _InfoRow(label: 'Device', value: sync.deviceName ?? 'Focused device'),
           _InfoRow(
             label: 'Installation ID',
             value: sync.deviceId == null
@@ -122,9 +116,18 @@ class CloudSyncScreen extends StatelessWidget {
                 : _formatDateTime(sync.lastSyncAt!.toLocal()),
           ),
           if (sync.lastResult != null) ...[
-            _InfoRow(label: 'Uploaded', value: '${sync.lastResult!.pushed} records'),
-            _InfoRow(label: 'Downloaded', value: '${sync.lastResult!.pulled} records'),
-            _InfoRow(label: 'Remote deletions applied', value: '${sync.lastResult!.deleted} records'),
+            _InfoRow(
+              label: 'Uploaded',
+              value: '${sync.lastResult!.pushed} records',
+            ),
+            _InfoRow(
+              label: 'Downloaded',
+              value: '${sync.lastResult!.pulled} records',
+            ),
+            _InfoRow(
+              label: 'Remote deletions applied',
+              value: '${sync.lastResult!.deleted} records',
+            ),
           ],
         ],
       ),

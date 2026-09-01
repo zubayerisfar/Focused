@@ -10,54 +10,11 @@ import '../../providers/cloud_sync_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_profile_provider.dart';
-import '../../services/notification_access_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   final bool embedded;
 
   const SettingsScreen({super.key, this.embedded = false});
-
-  Future<void> _openAppNotificationSettings(BuildContext context) async {
-    final service = NotificationAccessService();
-    if (!service.isSupported) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notification settings are available on Android.')),
-        );
-      }
-      return;
-    }
-
-    try {
-      await service.openAppNotificationSettings();
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open Android notification settings: $error')),
-      );
-    }
-  }
-
-  Future<void> _openNotificationAccessSettings(BuildContext context) async {
-    final service = NotificationAccessService();
-    if (!service.isSupported) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notification Access is available on Android.')),
-        );
-      }
-      return;
-    }
-
-    try {
-      await service.openSettings();
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open Android Notification Access: $error')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,21 +51,10 @@ class SettingsScreen extends StatelessWidget {
                 title: 'App usage access',
                 subtitle: _usageStatusText(usageProvider.accessStatus),
                 trailing: _StatusDot(
-                  active: usageProvider.accessStatus == UsageAccessStatus.granted,
+                  active:
+                      usageProvider.accessStatus == UsageAccessStatus.granted,
                 ),
                 onTap: () => context.push('/wellbeing/permission'),
-              ),
-              _SettingsTile(
-                icon: FontAwesomeIcons.bell,
-                title: 'Notification permission',
-                subtitle: 'Allow reminders and focus notifications',
-                onTap: () => _openAppNotificationSettings(context),
-              ),
-              _SettingsTile(
-                icon: FontAwesomeIcons.eye,
-                title: 'Notification access',
-                subtitle: 'Count notifications from other Android apps',
-                onTap: () => _openNotificationAccessSettings(context),
               ),
             ],
           ),
@@ -153,6 +99,25 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           _SettingsSection(
+            title: 'Session & account actions',
+            subtitle: 'Manage your Focused account',
+            icon: const FaIcon(FontAwesomeIcons.userShield, size: 18),
+            children: [
+              _SettingsTile(
+                icon: FontAwesomeIcons.pause,
+                title: 'Deactivate account',
+                subtitle: 'Pause your account for 24 hours',
+                onTap: () => context.push('/settings/deactivate-account'),
+              ),
+              _SettingsTile(
+                icon: FontAwesomeIcons.trash,
+                title: 'Delete account',
+                subtitle: 'Permanently remove your account',
+                onTap: () => context.push('/settings/delete-account'),
+              ),
+            ],
+          ),
+          _SettingsSection(
             title: 'Cloud Sync',
             subtitle: cloudSync.statusLabel,
             icon: const FaIcon(FontAwesomeIcons.cloudArrowUp, size: 18),
@@ -164,7 +129,8 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Workspace sync',
                 subtitle: cloudSync.statusLabel,
                 trailing: _StatusDot(
-                  active: cloudSync.lastSyncAt != null &&
+                  active:
+                      cloudSync.lastSyncAt != null &&
                       cloudSync.errorMessage == null,
                 ),
                 onTap: () => context.push('/settings/cloud-sync'),
@@ -289,7 +255,9 @@ class SettingsScreen extends StatelessWidget {
                     TextField(
                       controller: nameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(labelText: 'Display name'),
+                      decoration: const InputDecoration(
+                        labelText: 'Display name',
+                      ),
                     ),
                     const SizedBox(height: 12),
                     InputDecorator(
@@ -307,9 +275,9 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Material(
-                      color: Theme.of(sheetContext)
-                          .colorScheme
-                          .surfaceContainerLow,
+                      color: Theme.of(
+                        sheetContext,
+                      ).colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(18),
                       child: ListTile(
                         leading: const FaIcon(
@@ -320,8 +288,9 @@ class SettingsScreen extends StatelessWidget {
                         subtitle: Text(
                           selectedBirthday == null
                               ? 'Optional'
-                              : DateFormat('MMMM d, yyyy')
-                                  .format(selectedBirthday!),
+                              : DateFormat(
+                                  'MMMM d, yyyy',
+                                ).format(selectedBirthday!),
                         ),
                         trailing: selectedBirthday == null
                             ? const Icon(Icons.chevron_right_rounded)
@@ -336,7 +305,8 @@ class SettingsScreen extends StatelessWidget {
                           final now = DateTime.now();
                           final picked = await showDatePicker(
                             context: sheetContext,
-                            initialDate: selectedBirthday ??
+                            initialDate:
+                                selectedBirthday ??
                                 DateTime(now.year - 20, now.month, now.day),
                             firstDate: DateTime(now.year - 120),
                             lastDate: now,
@@ -359,9 +329,9 @@ class SettingsScreen extends StatelessWidget {
                           ? 'Add a birthday if you want Focused to wish you happy birthday.'
                           : 'Focused will schedule a yearly birthday notification at 9:00 AM if notification permission is allowed.',
                       style: TextStyle(
-                        color: Theme.of(sheetContext)
-                            .colorScheme
-                            .onSurfaceVariant,
+                        color: Theme.of(
+                          sheetContext,
+                        ).colorScheme.onSurfaceVariant,
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -474,10 +444,7 @@ class _SettingsSection extends StatelessWidget {
           subtitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 12,
-            color: scheme.onSurfaceVariant,
-          ),
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
         ),
         children: children,
       ),
@@ -513,8 +480,9 @@ class _ProfileHeader extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 25,
-                backgroundImage:
-                    photoUrl == null ? null : NetworkImage(photoUrl!),
+                backgroundImage: photoUrl == null
+                    ? null
+                    : NetworkImage(photoUrl!),
                 child: photoUrl == null
                     ? Text(
                         _initials(name),
@@ -577,10 +545,7 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: FaIcon(icon, size: 18),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(subtitle),
       trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
       onTap: onTap,
@@ -599,9 +564,7 @@ class _StatusDot extends StatelessWidget {
       height: 10,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active
-            ? Colors.green
-            : Theme.of(context).colorScheme.outline,
+        color: active ? Colors.green : Theme.of(context).colorScheme.outline,
       ),
     );
   }
@@ -642,10 +605,7 @@ class _AppearanceTile extends StatelessWidget {
     final theme = context.watch<ThemeProvider>();
     return ListTile(
       leading: const FaIcon(FontAwesomeIcons.circleHalfStroke, size: 18),
-      title: const Text(
-        'Theme',
-        style: TextStyle(fontWeight: FontWeight.w600),
-      ),
+      title: const Text('Theme', style: TextStyle(fontWeight: FontWeight.w600)),
       trailing: DropdownButton<ThemeMode>(
         value: theme.themeMode,
         underline: const SizedBox.shrink(),

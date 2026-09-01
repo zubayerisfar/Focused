@@ -13,10 +13,10 @@ class CloudSyncProvider extends ChangeNotifier {
     required CloudSyncService syncService,
     required SyncMetadataStorageService metadataStorage,
     required Future<void> Function() refreshLocalProviders,
-  })  : _accountProvider = accountProvider,
-        _syncService = syncService,
-        _metadataStorage = metadataStorage,
-        _refreshLocalProviders = refreshLocalProviders;
+  }) : _accountProvider = accountProvider,
+       _syncService = syncService,
+       _metadataStorage = metadataStorage,
+       _refreshLocalProviders = refreshLocalProviders;
 
   final AccountProvider _accountProvider;
   final CloudSyncService _syncService;
@@ -25,6 +25,7 @@ class CloudSyncProvider extends ChangeNotifier {
 
   String? _deviceId;
   String? _deviceName;
+  String? _deviceFingerprint;
   DateTime? _lastSyncAt;
   CloudSyncResult? _lastResult;
   String? _errorMessage;
@@ -56,7 +57,10 @@ class CloudSyncProvider extends ChangeNotifier {
   Future<void> initialize() async {
     if (_initialized) return;
     _deviceId = await _metadataStorage.getOrCreateDeviceId();
-    _deviceName = await AndroidInstallationInfoService().friendlyDeviceName();
+    final identityService = AndroidInstallationInfoService();
+    final identity = await identityService.deviceIdentity();
+    _deviceName = identity?.friendlyName;
+    _deviceFingerprint = identity?.fingerprint;
     _observedUid = _accountProvider.user?.uid;
     _accountProvider.addListener(_handleAccountChanged);
     await _refreshRegistrationState();
@@ -88,6 +92,7 @@ class CloudSyncProvider extends ChangeNotifier {
         uid: user.uid,
         deviceId: deviceId,
         deviceName: _deviceName,
+        deviceFingerprint: _deviceFingerprint,
       );
       await _refreshLocalProviders();
       _lastResult = result;
@@ -137,7 +142,8 @@ class CloudSyncProvider extends ChangeNotifier {
     }
 
     try {
-      final deviceId = _deviceId ?? await _metadataStorage.getOrCreateDeviceId();
+      final deviceId =
+          _deviceId ?? await _metadataStorage.getOrCreateDeviceId();
       _deviceId = deviceId;
       _isNewDevice = !await _syncService.isDeviceRegistered(
         uid: user.uid,

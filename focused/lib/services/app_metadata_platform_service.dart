@@ -14,9 +14,8 @@ abstract class AppMetadataPlatformService {
 }
 
 class AndroidAppMetadataService implements AppMetadataPlatformService {
-  AndroidAppMetadataService({
-    MethodChannel? channel,
-  }) : _channel = channel ?? const MethodChannel(_channelName);
+  AndroidAppMetadataService({MethodChannel? channel})
+    : _channel = channel ?? const MethodChannel(_channelName);
 
   static const String _channelName = 'focused/app_metadata';
 
@@ -46,10 +45,7 @@ class AndroidAppMetadataService implements AppMetadataPlatformService {
 
     final raw = await _channel.invokeMethod<List<dynamic>>(
       'getAppMetadataBatch',
-      {
-        'packageNames': packages,
-        'iconSize': iconSize.clamp(48, 192),
-      },
+      {'packageNames': packages, 'iconSize': iconSize.clamp(48, 192)},
     );
 
     if (raw == null || raw.isEmpty) {
@@ -65,12 +61,7 @@ class AndroidAppMetadataService implements AppMetadataPlatformService {
       }
 
       try {
-        result.add(
-          AppMetadata.fromPlatformMap(
-            item,
-            fetchedAt: fetchedAt,
-          ),
-        );
+        result.add(AppMetadata.fromPlatformMap(item, fetchedAt: fetchedAt));
       } catch (_) {
         // One bad native result must not prevent the remaining app metadata
         // from being shown.

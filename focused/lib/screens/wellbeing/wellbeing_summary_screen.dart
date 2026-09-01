@@ -19,9 +19,7 @@ class WellbeingSummaryScreen extends StatelessWidget {
     final latestAnalysis = _latestAnalysis(focus, usage);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Overall summary'),
-      ),
+      appBar: AppBar(title: const Text('Overall summary')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
         children: [
@@ -39,9 +37,7 @@ class WellbeingSummaryScreen extends StatelessWidget {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer,
+                        color: Theme.of(context).colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Icon(
@@ -78,9 +74,9 @@ class WellbeingSummaryScreen extends StatelessWidget {
           const SizedBox(height: 22),
           Text(
             'Your day in simple numbers',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
@@ -152,10 +148,7 @@ class WellbeingSummaryScreen extends StatelessWidget {
   }
 }
 
-FocusAnalysisResult? _latestAnalysis(
-  FocusProvider focus,
-  UsageProvider usage,
-) {
+FocusAnalysisResult? _latestAnalysis(FocusProvider focus, UsageProvider usage) {
   final live = usage.focusAnalysisResult;
   if (live != null) return live;
 
@@ -189,9 +182,7 @@ class _MetricGrid extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Theme.of(context).dividerColor,
-                      ),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,9 +200,9 @@ class _MetricGrid extends StatelessWidget {
                         Text(
                           item.label,
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w400,
                           ),
                         ),

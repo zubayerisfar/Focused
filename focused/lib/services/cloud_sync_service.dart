@@ -41,14 +41,14 @@ class CloudSyncService {
     required FocusSessionStorageService focusSessionStorage,
     required UserProfileStorageService userProfileStorage,
     required StreakGoalStorageService streakGoalStorage,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _metadataStorage = metadataStorage,
-        _taskStorage = taskStorage,
-        _taskCompletionStorage = taskCompletionStorage,
-        _habitStorage = habitStorage,
-        _focusSessionStorage = focusSessionStorage,
-        _userProfileStorage = userProfileStorage,
-        _streakGoalStorage = streakGoalStorage;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _metadataStorage = metadataStorage,
+       _taskStorage = taskStorage,
+       _taskCompletionStorage = taskCompletionStorage,
+       _habitStorage = habitStorage,
+       _focusSessionStorage = focusSessionStorage,
+       _userProfileStorage = userProfileStorage,
+       _streakGoalStorage = streakGoalStorage;
 
   final FirebaseFirestore _firestore;
   final SyncMetadataStorageService _metadataStorage;
@@ -63,6 +63,7 @@ class CloudSyncService {
     required String uid,
     required String deviceId,
     String? deviceName,
+    String? deviceFingerprint,
   }) async {
     if (uid.trim().isEmpty) {
       throw ArgumentError('A signed-in Firebase UID is required for sync.');
@@ -78,6 +79,7 @@ class CloudSyncService {
       deviceId: deviceId,
       firstSeenAt: startedAt,
       deviceName: deviceName,
+      deviceFingerprint: deviceFingerprint,
     );
 
     Future<void> syncCollection(_SyncCollectionAdapter adapter) async {
@@ -97,7 +99,8 @@ class CloudSyncService {
         loadLocal: () => {
           for (final task in _taskStorage.loadTasks()) task.id: task.toMap(),
         },
-        applyRemote: (id, payload) => _taskStorage.saveTask(Task.fromMap(payload)),
+        applyRemote: (id, payload) =>
+            _taskStorage.saveTask(Task.fromMap(payload)),
         deleteLocal: _taskStorage.deleteTask,
       ),
     );
@@ -130,9 +133,11 @@ class CloudSyncService {
       _SyncCollectionAdapter(
         name: 'habits',
         loadLocal: () => {
-          for (final habit in _habitStorage.loadHabits()) habit.id: habit.toMap(),
+          for (final habit in _habitStorage.loadHabits())
+            habit.id: habit.toMap(),
         },
-        applyRemote: (id, payload) => _habitStorage.saveHabit(Habit.fromMap(payload)),
+        applyRemote: (id, payload) =>
+            _habitStorage.saveHabit(Habit.fromMap(payload)),
         deleteLocal: _habitStorage.deleteHabit,
       ),
     );
@@ -144,9 +149,8 @@ class CloudSyncService {
           for (final progress in _habitStorage.loadProgress())
             progress.storageKey: progress.toMap(),
         },
-        applyRemote: (id, payload) => _habitStorage.saveProgress(
-          HabitProgress.fromMap(payload),
-        ),
+        applyRemote: (id, payload) =>
+            _habitStorage.saveProgress(HabitProgress.fromMap(payload)),
         deleteLocal: (id) async {
           HabitProgress? match;
           for (final progress in _habitStorage.loadProgress()) {
@@ -168,9 +172,8 @@ class CloudSyncService {
           for (final session in _focusSessionStorage.loadSessions())
             session.id: session.toMap(),
         },
-        applyRemote: (id, payload) => _focusSessionStorage.saveSession(
-          FocusSession.fromMap(payload),
-        ),
+        applyRemote: (id, payload) =>
+            _focusSessionStorage.saveSession(FocusSession.fromMap(payload)),
         deleteLocal: _focusSessionStorage.deleteSession,
       ),
     );
@@ -180,11 +183,12 @@ class CloudSyncService {
         name: 'profile',
         loadLocal: () {
           final profile = _userProfileStorage.loadProfile();
-          return profile == null ? <String, Map<String, dynamic>>{} : {'main': profile.toMap()};
+          return profile == null
+              ? <String, Map<String, dynamic>>{}
+              : {'main': profile.toMap()};
         },
-        applyRemote: (id, payload) => _userProfileStorage.saveProfile(
-          UserProfile.fromMap(payload),
-        ),
+        applyRemote: (id, payload) =>
+            _userProfileStorage.saveProfile(UserProfile.fromMap(payload)),
         deleteLocal: (id) async {},
       ),
     );
@@ -215,6 +219,7 @@ class CloudSyncService {
       firstSeenAt: startedAt,
       lastSyncAt: completedAt,
       deviceName: deviceName,
+      deviceFingerprint: deviceFingerprint,
     );
 
     return CloudSyncResult(
@@ -238,7 +243,10 @@ class CloudSyncService {
     // been synced on this installation. This prevents a freshly-created local
     // default (for example profile/settings) from appearing newer than an
     // existing remote record during new-device restore.
-    final collection = _firestore.collection('users').doc(uid).collection(adapter.name);
+    final collection = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection(adapter.name);
     final snapshot = await collection.get();
     final remote = <String, _RemoteEnvelope>{};
     for (final doc in snapshot.docs) {
@@ -329,11 +337,14 @@ class CloudSyncService {
 
       if (localMeta == null) continue;
 
-      if (remoteEnvelope == null || localMeta.updatedAt.isAfter(remoteEnvelope.updatedAt)) {
+      if (remoteEnvelope == null ||
+          localMeta.updatedAt.isAfter(remoteEnvelope.updatedAt)) {
         await _pushEnvelope(
           collection: collection,
           metadata: localMeta,
-          payload: localMeta.isDeleted ? null : localRecords[id] ?? adapter.loadLocal()[id],
+          payload: localMeta.isDeleted
+              ? null
+              : localRecords[id] ?? adapter.loadLocal()[id],
           deviceId: deviceId,
         );
         pushed++;
@@ -365,7 +376,11 @@ class CloudSyncService {
       }
     }
 
-    return _CollectionSyncResult(pushed: pushed, pulled: pulled, deleted: deleted);
+    return _CollectionSyncResult(
+      pushed: pushed,
+      pulled: pulled,
+      deleted: deleted,
+    );
   }
 
   Future<void> _pushEnvelope({
@@ -404,15 +419,16 @@ class CloudSyncService {
         .doc(uid)
         .collection('devices')
         .get();
-    final devices = snapshot.docs
-        .map((doc) => CloudDevice.tryParse(doc.id, doc.data()))
-        .whereType<CloudDevice>()
-        .toList()
-      ..sort((a, b) {
-        final aTime = a.lastSyncAt ?? a.createdAt;
-        final bTime = b.lastSyncAt ?? b.createdAt;
-        return bTime.compareTo(aTime);
-      });
+    final devices =
+        snapshot.docs
+            .map((doc) => CloudDevice.tryParse(doc.id, doc.data()))
+            .whereType<CloudDevice>()
+            .toList()
+          ..sort((a, b) {
+            final aTime = a.lastSyncAt ?? a.createdAt;
+            final bTime = b.lastSyncAt ?? b.createdAt;
+            return bTime.compareTo(aTime);
+          });
     return List<CloudDevice>.unmodifiable(devices);
   }
 
@@ -422,17 +438,37 @@ class CloudSyncService {
     required DateTime firstSeenAt,
     DateTime? lastSyncAt,
     String? deviceName,
+    String? deviceFingerprint,
   }) async {
     final platform = kIsWeb ? 'web' : defaultTargetPlatform.name;
-    final ref = _firestore.collection('users').doc(uid).collection('devices').doc(deviceId);
+    final devices = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('devices');
+
+    // Reuse an existing physical device record after app data reset.
+    DocumentReference<Map<String, dynamic>> ref = devices.doc(deviceId);
+    if (deviceFingerprint != null && deviceFingerprint.trim().isNotEmpty) {
+      final matches = await devices
+          .where('deviceFingerprint', isEqualTo: deviceFingerprint)
+          .limit(1)
+          .get();
+      if (matches.docs.isNotEmpty) {
+        ref = matches.docs.first.reference;
+      }
+    }
+
     final existing = await ref.get();
     await ref.set({
-      'deviceId': deviceId,
+      'deviceId': ref.id,
+      'deviceFingerprint': deviceFingerprint,
       'platform': platform,
-      'deviceName': _cleanDeviceName(deviceName) ?? _friendlyDeviceName(platform),
+      'deviceName':
+          _cleanDeviceName(deviceName) ?? _friendlyDeviceName(platform),
       if (!existing.exists || existing.data()?['createdAt'] is! Timestamp)
         'createdAt': Timestamp.fromDate(firstSeenAt.toUtc()),
-      if (lastSyncAt != null) 'lastSyncAt': Timestamp.fromDate(lastSyncAt.toUtc()),
+      if (lastSyncAt != null)
+        'lastSyncAt': Timestamp.fromDate(lastSyncAt.toUtc()),
       'status': 'active',
     }, SetOptions(merge: true));
   }
@@ -482,12 +518,16 @@ class CloudDevice {
     final lastSyncRaw = map['lastSyncAt'];
     return CloudDevice(
       deviceId: map['deviceId'] is String ? map['deviceId'] as String : id,
-      platform: map['platform'] is String ? map['platform'] as String : 'unknown',
+      platform: map['platform'] is String
+          ? map['platform'] as String
+          : 'unknown',
       deviceName: map['deviceName'] is String
           ? map['deviceName'] as String
           : 'Focused device',
       createdAt: createdRaw.toDate().toLocal(),
-      lastSyncAt: lastSyncRaw is Timestamp ? lastSyncRaw.toDate().toLocal() : null,
+      lastSyncAt: lastSyncRaw is Timestamp
+          ? lastSyncRaw.toDate().toLocal()
+          : null,
       status: map['status'] is String ? map['status'] as String : 'active',
     );
   }
@@ -503,12 +543,17 @@ class _SyncCollectionAdapter {
 
   final String name;
   final Map<String, Map<String, dynamic>> Function() loadLocal;
-  final Future<void> Function(String id, Map<dynamic, dynamic> payload) applyRemote;
+  final Future<void> Function(String id, Map<dynamic, dynamic> payload)
+  applyRemote;
   final Future<void> Function(String id) deleteLocal;
 }
 
 class _CollectionSyncResult {
-  const _CollectionSyncResult({required this.pushed, required this.pulled, required this.deleted});
+  const _CollectionSyncResult({
+    required this.pushed,
+    required this.pulled,
+    required this.deleted,
+  });
   final int pushed;
   final int pulled;
   final int deleted;
@@ -542,9 +587,12 @@ class _RemoteEnvelope {
       createdAt: created.toDate().toUtc(),
       updatedAt: updated.toDate().toUtc(),
       deletedAt: deletedRaw is Timestamp ? deletedRaw.toDate().toUtc() : null,
-      payload: payloadRaw is Map ? Map<dynamic, dynamic>.from(payloadRaw) : null,
-      originDeviceId:
-          map['originDeviceId'] is String ? map['originDeviceId'] as String : null,
+      payload: payloadRaw is Map
+          ? Map<dynamic, dynamic>.from(payloadRaw)
+          : null,
+      originDeviceId: map['originDeviceId'] is String
+          ? map['originDeviceId'] as String
+          : null,
     );
   }
 }
@@ -568,10 +616,11 @@ String _canonicalize(Object? value) {
     return '[${value.map(_canonicalize).join(',')}]';
   }
   if (value is Map) {
-    final entries = value.entries
-        .map((entry) => MapEntry(entry.key.toString(), entry.value))
-        .toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final entries =
+        value.entries
+            .map((entry) => MapEntry(entry.key.toString(), entry.value))
+            .toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
     return '{${entries.map((entry) => '${jsonEncode(entry.key)}:${_canonicalize(entry.value)}').join(',')}}';
   }
   return jsonEncode(value.toString());

@@ -31,10 +31,7 @@ class TodayScreen extends StatelessWidget {
 
     final now = DateTime.now();
     final schedule = taskProvider.scheduledOccurrencesForDate(now);
-    final todayTasks = taskProvider.tasksForDate(
-      now,
-      includeCompleted: false,
-    );
+    final todayTasks = taskProvider.tasksForDate(now, includeCompleted: false);
     final habits = habitProvider.habitsForDate(now);
 
     final next = _findNextTodayTask(
@@ -56,8 +53,7 @@ class TodayScreen extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
-        onRefresh: () =>
-            usageProvider.refreshPermissionAndUsage(force: true),
+        onRefresh: () => usageProvider.refreshPermissionAndUsage(force: true),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
@@ -71,31 +67,19 @@ class TodayScreen extends StatelessWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
               sliver: SliverList(
-                delegate: SliverChildListDelegate(
-                  [
-                    _DailyOverviewCard(
-                      focusedToday:
-                          focusProvider.focusedDurationForDate(now),
-                      usageToday:
-                          usageProvider.todaySummary?.totalUsage,
-                      comparisonPercent:
-                          usageProvider.todayVsYesterdayPercent,
-                      topApps:
-                          usageProvider.topAppEntriesToday(limit: 3),
-                      usageConnected: usageProvider.hasUsageAccess,
-                    ),
-                    const SizedBox(height: 32),
-                    _DailyPlanSection(
-                      next: next,
-                      date: now,
-                    ),
-                    const SizedBox(height: 32),
-                    _HabitTrackerSection(
-                      habits: habits,
-                      date: now,
-                    ),
-                  ],
-                ),
+                delegate: SliverChildListDelegate([
+                  _DailyOverviewCard(
+                    focusedToday: focusProvider.focusedDurationForDate(now),
+                    usageToday: usageProvider.todaySummary?.totalUsage,
+                    comparisonPercent: usageProvider.todayVsYesterdayPercent,
+                    topApps: usageProvider.topAppEntriesToday(limit: 3),
+                    usageConnected: usageProvider.hasUsageAccess,
+                  ),
+                  const SizedBox(height: 32),
+                  _DailyPlanSection(next: next, date: now),
+                  const SizedBox(height: 32),
+                  _HabitTrackerSection(habits: habits, date: now),
+                ]),
               ),
             ),
           ],
@@ -130,9 +114,9 @@ class _HomeHeader extends StatelessWidget {
               child: Text(
                 'Home',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.4,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
+                ),
               ),
             ),
             InkWell(
@@ -173,8 +157,9 @@ class _HomeHeader extends StatelessWidget {
               child: CircleAvatar(
                 radius: 22,
                 backgroundColor: scheme.primaryContainer,
-                backgroundImage:
-                    photoUrl == null ? null : NetworkImage(photoUrl!),
+                backgroundImage: photoUrl == null
+                    ? null
+                    : NetworkImage(photoUrl!),
                 child: photoUrl == null
                     ? Text(
                         _initials(displayName),
@@ -222,9 +207,9 @@ class _DailyOverviewCard extends StatelessWidget {
           Text(
             'Today at a glance',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w700,
-                ),
+              fontSize: 23,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -247,9 +232,7 @@ class _DailyOverviewCard extends StatelessWidget {
                       : _formatDuration(usageToday!),
                   icon: Icons.smartphone_rounded,
                   accent: AppTheme.mist,
-                  trendPercent: usageToday == null
-                      ? null
-                      : comparisonPercent,
+                  trendPercent: usageToday == null ? null : comparisonPercent,
                   onTap: () => context.push('/wellbeing'),
                 ),
               ),
@@ -265,9 +248,9 @@ class _DailyOverviewCard extends StatelessWidget {
                   child: Text(
                     'Most used apps',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 Text(
@@ -385,13 +368,13 @@ class _TrendText extends StatelessWidget {
     final color = flat
         ? Theme.of(context).colorScheme.onSurfaceVariant
         : down
-            ? AppTheme.success
-            : AppTheme.danger;
+        ? AppTheme.success
+        : AppTheme.danger;
     final icon = flat
         ? Icons.remove_rounded
         : down
-            ? Icons.south_east_rounded
-            : Icons.north_east_rounded;
+        ? Icons.south_east_rounded
+        : Icons.north_east_rounded;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -411,12 +394,8 @@ class _TrendText extends StatelessWidget {
   }
 }
 
-
 class _TopAppsCompactList extends StatelessWidget {
-  const _TopAppsCompactList({
-    required this.entries,
-    required this.onOpenApp,
-  });
+  const _TopAppsCompactList({required this.entries, required this.onOpenApp});
 
   final List<AppUsageAppEntry> entries;
   final ValueChanged<AppUsageAppEntry> onOpenApp;
@@ -439,7 +418,10 @@ class _TopAppsCompactList extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => onOpenApp(entry),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       AppIcon(
@@ -489,10 +471,7 @@ class _DailyPlanSection extends StatelessWidget {
   final _NextTodayTask? next;
   final DateTime date;
 
-  const _DailyPlanSection({
-    required this.next,
-    required this.date,
-  });
+  const _DailyPlanSection({required this.next, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -508,17 +487,17 @@ class _DailyPlanSection extends StatelessWidget {
                   Text(
                     'Daily plan',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     'Next task',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w400,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ],
               ),
@@ -557,9 +536,8 @@ class _NextTaskCard extends StatelessWidget {
         onTap: () => context.push(
           '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(next.date)}',
         ),
-        onLongPress: () => context.push(
-          '/task/edit/${Uri.encodeComponent(task.id)}',
-        ),
+        onLongPress: () =>
+            context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
         child: Padding(
           padding: const EdgeInsets.all(17),
           child: Row(
@@ -592,10 +570,9 @@ class _NextTaskCard extends StatelessWidget {
                           ? 'Anytime today'
                           : '${DateFormat('h:mm a').format(next.occurrence!.start)} – ${DateFormat('h:mm a').format(next.occurrence!.end)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w300,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w300,
+                      ),
                     ),
                   ],
                 ),
@@ -652,10 +629,7 @@ class _HabitTrackerSection extends StatelessWidget {
   final List<Habit> habits;
   final DateTime date;
 
-  const _HabitTrackerSection({
-    required this.habits,
-    required this.date,
-  });
+  const _HabitTrackerSection({required this.habits, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -669,19 +643,15 @@ class _HabitTrackerSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              Icons.fact_check_outlined,
-              size: 22,
-              color: AppTheme.lavender,
-            ),
+            Icon(Icons.fact_check_outlined, size: 22, color: AppTheme.lavender),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 "Today's habit tracker",
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             if (habits.isNotEmpty)
@@ -715,10 +685,7 @@ class _HabitTrackerSection extends StatelessWidget {
           ...habits.map(
             (habit) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _HabitTrackerCard(
-                habit: habit,
-                date: date,
-              ),
+              child: _HabitTrackerCard(habit: habit, date: date),
             ),
           ),
       ],
@@ -730,10 +697,7 @@ class _HabitTrackerCard extends StatelessWidget {
   final Habit habit;
   final DateTime date;
 
-  const _HabitTrackerCard({
-    required this.habit,
-    required this.date,
-  });
+  const _HabitTrackerCard({required this.habit, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -749,9 +713,7 @@ class _HabitTrackerCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => context.push(
-          '/habit/${Uri.encodeComponent(habit.id)}',
-        ),
+        onTap: () => context.push('/habit/${Uri.encodeComponent(habit.id)}'),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
           child: Row(
@@ -783,10 +745,9 @@ class _HabitTrackerCard extends StatelessWidget {
                     Text(
                       progressText,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w300,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w300,
+                      ),
                     ),
                   ],
                 ),
@@ -795,9 +756,7 @@ class _HabitTrackerCard extends StatelessWidget {
                 tooltip: complete ? 'Undo' : 'Complete',
                 onPressed: () => provider.toggleCompleted(habit.id, date),
                 icon: Icon(
-                  complete
-                      ? Icons.check_circle_rounded
-                      : Icons.circle_outlined,
+                  complete ? Icons.check_circle_rounded : Icons.circle_outlined,
                   color: complete ? habit.color : null,
                 ),
               ),
@@ -829,10 +788,9 @@ _NextTodayTask? _findNextTodayTask({
 }) {
   final day = DateTime(now.year, now.month, now.day);
 
-  final scheduled = schedule
-      .where((occurrence) => !occurrence.isCompleted)
-      .toList()
-    ..sort((a, b) => a.start.compareTo(b.start));
+  final scheduled =
+      schedule.where((occurrence) => !occurrence.isCompleted).toList()
+        ..sort((a, b) => a.start.compareTo(b.start));
 
   if (scheduled.isNotEmpty) {
     final future = scheduled.where((occurrence) => occurrence.end.isAfter(now));
@@ -849,12 +807,10 @@ _NextTodayTask? _findNextTodayTask({
       .toList();
   if (unscheduled.isEmpty) return null;
 
-  unscheduled.sort((a, b) => a.priority.sortOrder.compareTo(b.priority.sortOrder));
-  return _NextTodayTask(
-    task: unscheduled.first,
-    occurrence: null,
-    date: day,
+  unscheduled.sort(
+    (a, b) => a.priority.sortOrder.compareTo(b.priority.sortOrder),
   );
+  return _NextTodayTask(task: unscheduled.first, occurrence: null, date: day);
 }
 
 String _formatDuration(Duration duration) {

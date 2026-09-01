@@ -36,16 +36,15 @@ class AchievementService {
         .toList(growable: false);
   }
 
-  List<AchievementBadge> _sessionBadges(
-    Duration longestLinkedTaskSession,
-  ) {
+  List<AchievementBadge> _sessionBadges(Duration longestLinkedTaskSession) {
     final hours = longestLinkedTaskSession.inSeconds / 3600.0;
 
     return [
       AchievementBadge(
         id: 'focus_session_1h',
         title: 'One-hour task',
-        description: 'Finish a linked task focus session with 1 hour of real focus.',
+        description:
+            'Finish a linked task focus session with 1 hour of real focus.',
         assetPath: 'assets/badges/focus_session_1h.png',
         category: AchievementBadgeCategory.focusSession,
         achieved: hours >= 1,
@@ -55,7 +54,8 @@ class AchievementService {
       AchievementBadge(
         id: 'focus_session_3h',
         title: 'Three-hour task',
-        description: 'Finish a linked task focus session with 3 hours of real focus.',
+        description:
+            'Finish a linked task focus session with 3 hours of real focus.',
         assetPath: 'assets/badges/focus_session_3h.png',
         category: AchievementBadgeCategory.focusSession,
         achieved: hours >= 3,

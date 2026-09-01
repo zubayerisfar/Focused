@@ -42,34 +42,25 @@ import 'services/user_profile_storage_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await Hive.initFlutter();
 
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadTheme();
+
   final taskStorageService = TaskStorageService();
-  final occurrenceCompletionStorage =
-      TaskOccurrenceCompletionStorageService();
-  final focusSessionStorageService =
-      FocusSessionStorageService();
-  final focusAnalysisStorageService =
-      FocusAnalysisStorageService();
-  final usageRecordStorageService =
-      UsageRecordStorageService();
-  final appCategoryStorageService =
-      AppCategoryStorageService();
-  final appMetadataStorageService =
-      AppMetadataStorageService();
+  final occurrenceCompletionStorage = TaskOccurrenceCompletionStorageService();
+  final focusSessionStorageService = FocusSessionStorageService();
+  final focusAnalysisStorageService = FocusAnalysisStorageService();
+  final usageRecordStorageService = UsageRecordStorageService();
+  final appCategoryStorageService = AppCategoryStorageService();
+  final appMetadataStorageService = AppMetadataStorageService();
   final habitStorageService = HabitStorageService();
-  final userProfileStorageService =
-      UserProfileStorageService();
-  final onboardingStorageService =
-      OnboardingStorageService();
-  final streakGoalStorageService =
-      StreakGoalStorageService();
-  final syncMetadataStorageService =
-      SyncMetadataStorageService();
+  final userProfileStorageService = UserProfileStorageService();
+  final onboardingStorageService = OnboardingStorageService();
+  final streakGoalStorageService = StreakGoalStorageService();
+  final syncMetadataStorageService = SyncMetadataStorageService();
 
   await taskStorageService.init();
   await occurrenceCompletionStorage.init();
@@ -85,25 +76,21 @@ Future<void> main() async {
   await syncMetadataStorageService.init();
 
   final installationInfoService = AndroidInstallationInfoService();
-  final androidFirstInstallTime =
-      await installationInfoService.firstInstallTime();
-  final usageHistoryStartedAt =
-      await syncMetadataStorageService.getOrCreateUsageTrackingStartedAt(
-    installationStartedAt: androidFirstInstallTime,
-  );
+  final androidFirstInstallTime = await installationInfoService
+      .firstInstallTime();
+  final usageHistoryStartedAt = await syncMetadataStorageService
+      .getOrCreateUsageTrackingStartedAt(
+        installationStartedAt: androidFirstInstallTime,
+      );
 
-  final taskNotificationService =
-      TaskNotificationService();
-  final habitNotificationService =
-      HabitNotificationService();
-  final focusGuardService =
-      FocusGuardPlatformService();
+  final taskNotificationService = TaskNotificationService();
+  final habitNotificationService = HabitNotificationService();
+  final focusGuardService = FocusGuardPlatformService();
 
   final taskProvider = TaskProvider(
     storageService: taskStorageService,
     notificationService: taskNotificationService,
-    occurrenceCompletionStorage:
-        occurrenceCompletionStorage,
+    occurrenceCompletionStorage: occurrenceCompletionStorage,
   );
   await taskProvider.loadStoredTasks();
 
@@ -121,13 +108,9 @@ Future<void> main() async {
         return;
       }
 
-      final occurrenceDate =
-          session.linkedOccurrenceDate ?? session.startedAt;
+      final occurrenceDate = session.linkedOccurrenceDate ?? session.startedAt;
 
-      if (taskProvider.isTaskCompletedForDate(
-        task,
-        occurrenceDate,
-      )) {
+      if (taskProvider.isTaskCompletedForDate(task, occurrenceDate)) {
         return;
       }
 
@@ -141,27 +124,21 @@ Future<void> main() async {
   );
   await focusProvider.loadStoredSessions();
 
-  final appMetadataPlatformService =
-      AndroidAppMetadataService();
+  final appMetadataPlatformService = AndroidAppMetadataService();
 
   final usageProvider = UsageProvider(
     usageStatsService: AndroidUsageStatsService(),
     storageService: usageRecordStorageService,
-    categoryStorageService:
-        appCategoryStorageService,
-    focusAnalysisStorageService:
-        focusAnalysisStorageService,
-    appMetadataService:
-        appMetadataPlatformService,
-    appMetadataStorageService:
-        appMetadataStorageService,
+    categoryStorageService: appCategoryStorageService,
+    focusAnalysisStorageService: focusAnalysisStorageService,
+    appMetadataService: appMetadataPlatformService,
+    appMetadataStorageService: appMetadataStorageService,
     focusGuardController: focusGuardService,
     historyStartedAt: usageHistoryStartedAt,
   );
 
   await usageProvider.loadStoredCategories();
-  await usageProvider
-      .syncFocusGuardAllowedPackages();
+  await usageProvider.syncFocusGuardAllowedPackages();
   await usageProvider.loadStoredFocusAnalyses();
   await usageProvider.loadStoredAppMetadata();
   await usageProvider.loadStoredUsage();
@@ -172,28 +149,23 @@ Future<void> main() async {
   );
   await habitProvider.loadStoredHabits();
 
-  final userProfileProvider =
-      UserProfileProvider(
+  final userProfileProvider = UserProfileProvider(
     storageService: userProfileStorageService,
     notificationService: taskNotificationService,
   );
   await userProfileProvider.loadStoredProfile();
 
-  final onboardingProvider =
-      OnboardingProvider(
+  final onboardingProvider = OnboardingProvider(
     storageService: onboardingStorageService,
   );
   await onboardingProvider.load();
 
-  final streakGoalProvider =
-      StreakGoalProvider(
+  final streakGoalProvider = StreakGoalProvider(
     storageService: streakGoalStorageService,
   );
   await streakGoalProvider.load();
 
-  final accountProvider = AccountProvider(
-    authService: AuthService(),
-  );
+  final accountProvider = AccountProvider(authService: AuthService());
   await accountProvider.initialize();
 
   if (accountProvider.isSignedIn) {
@@ -235,44 +207,20 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => ThemeProvider(),
-        ),
-        ChangeNotifierProvider.value(
-          value: accountProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: onboardingProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: streakGoalProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: cloudSyncProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: usageProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: focusProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: taskProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: habitProvider,
-        ),
-        ChangeNotifierProvider.value(
-          value: userProfileProvider,
-        ),
+        ChangeNotifierProvider(create: (_) => themeProvider),
+        ChangeNotifierProvider.value(value: accountProvider),
+        ChangeNotifierProvider.value(value: onboardingProvider),
+        ChangeNotifierProvider.value(value: streakGoalProvider),
+        ChangeNotifierProvider.value(value: cloudSyncProvider),
+        ChangeNotifierProvider.value(value: usageProvider),
+        ChangeNotifierProvider.value(value: focusProvider),
+        ChangeNotifierProvider.value(value: taskProvider),
+        ChangeNotifierProvider.value(value: habitProvider),
+        ChangeNotifierProvider.value(value: userProfileProvider),
       ],
-      child: FocusProductivityApp(
-        routerConfig: router,
-      ),
+      child: FocusProductivityApp(routerConfig: router),
     ),
   );
 
-  unawaited(
-    usageProvider.refreshPermissionAndUsage(),
-  );
+  unawaited(usageProvider.refreshPermissionAndUsage());
 }

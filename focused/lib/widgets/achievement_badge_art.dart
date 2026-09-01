@@ -59,10 +59,7 @@ class AchievementBadgeArt extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Opacity(
-            opacity: badge.achieved ? 1 : 0.28,
-            child: art,
-          ),
+          Opacity(opacity: badge.achieved ? 1 : 0.28, child: art),
           if (!badge.achieved && showLock)
             Container(
               width: size * 0.42,

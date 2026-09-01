@@ -7,10 +7,7 @@ abstract class AppCategoryStore {
 
   Future<Map<String, AppCategory>> loadAll();
 
-  Future<void> saveCategory(
-    String appId,
-    AppCategory category,
-  );
+  Future<void> saveCategory(String appId, AppCategory category);
 
   Future<void> deleteCategory(String appId);
 }
@@ -66,10 +63,7 @@ class AppCategoryStorageService implements AppCategoryStore {
   }
 
   @override
-  Future<void> saveCategory(
-    String appId,
-    AppCategory category,
-  ) async {
+  Future<void> saveCategory(String appId, AppCategory category) async {
     final normalized = appId.trim();
     if (normalized.isEmpty) {
       throw ArgumentError.value(appId, 'appId', 'App id cannot be empty.');

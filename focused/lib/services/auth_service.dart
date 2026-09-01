@@ -5,7 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   AuthService({FirebaseAuth? firebaseAuth})
-      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _firebaseAuth;
 
@@ -44,8 +44,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final credential =
-        await _firebaseAuth.createUserWithEmailAndPassword(
+    final credential = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
@@ -88,11 +87,9 @@ class AuthService {
       );
     }
 
-    final googleUser =
-        await GoogleSignIn.instance.authenticate();
+    final googleUser = await GoogleSignIn.instance.authenticate();
 
-    final googleAuthentication =
-        googleUser.authentication;
+    final googleAuthentication = googleUser.authentication;
 
     final idToken = googleAuthentication.idToken;
 
@@ -102,20 +99,13 @@ class AuthService {
       );
     }
 
-    final firebaseCredential =
-        GoogleAuthProvider.credential(
-      idToken: idToken,
-    );
+    final firebaseCredential = GoogleAuthProvider.credential(idToken: idToken);
 
-    return _firebaseAuth.signInWithCredential(
-      firebaseCredential,
-    );
+    return _firebaseAuth.signInWithCredential(firebaseCredential);
   }
 
   Future<void> sendPasswordReset(String email) {
-    return _firebaseAuth.sendPasswordResetEmail(
-      email: email.trim(),
-    );
+    return _firebaseAuth.sendPasswordResetEmail(email: email.trim());
   }
 
   Future<void> sendVerificationEmail() async {
@@ -147,9 +137,7 @@ class AuthService {
     final cleanName = name.trim();
 
     if (cleanName.isEmpty) {
-      throw ArgumentError(
-        'Display name cannot be empty.',
-      );
+      throw ArgumentError('Display name cannot be empty.');
     }
 
     await user.updateDisplayName(cleanName);
@@ -157,8 +145,7 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    if (_googleInitialized &&
-        _supportsNativeGoogleSignIn) {
+    if (_googleInitialized && _supportsNativeGoogleSignIn) {
       try {
         await GoogleSignIn.instance.signOut();
       } catch (_) {
