@@ -6,21 +6,64 @@ import 'package:provider/provider.dart';
 
 import '../../models/usage_access_status.dart';
 import '../../providers/account_provider.dart';
-import '../../providers/private_sync_provider.dart';
+import '../../providers/cloud_sync_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../services/notification_access_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   final bool embedded;
 
   const SettingsScreen({super.key, this.embedded = false});
 
+  Future<void> _openAppNotificationSettings(BuildContext context) async {
+    final service = NotificationAccessService();
+    if (!service.isSupported) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notification settings are available on Android.')),
+        );
+      }
+      return;
+    }
+
+    try {
+      await service.openAppNotificationSettings();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Android notification settings: $error')),
+      );
+    }
+  }
+
+  Future<void> _openNotificationAccessSettings(BuildContext context) async {
+    final service = NotificationAccessService();
+    if (!service.isSupported) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notification Access is available on Android.')),
+        );
+      }
+      return;
+    }
+
+    try {
+      await service.openSettings();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Android Notification Access: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
     final account = context.watch<AccountProvider>();
-    final privateSync = context.watch<PrivateSyncProvider>();
+    final cloudSync = context.watch<CloudSyncProvider>();
     final profile = context.watch<UserProfileProvider>().profile;
 
     return Scaffold(
@@ -59,7 +102,13 @@ class SettingsScreen extends StatelessWidget {
                 icon: FontAwesomeIcons.bell,
                 title: 'Notification permission',
                 subtitle: 'Allow reminders and focus notifications',
-                onTap: () => context.push('/settings/notification-permission'),
+                onTap: () => _openAppNotificationSettings(context),
+              ),
+              _SettingsTile(
+                icon: FontAwesomeIcons.eye,
+                title: 'Notification access',
+                subtitle: 'Count notifications from other Android apps',
+                onTap: () => _openNotificationAccessSettings(context),
               ),
             ],
           ),
@@ -104,18 +153,29 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           _SettingsSection(
-            title: 'Privacy & sync',
-            subtitle: privateSync.statusLabel,
-            icon: const FaIcon(FontAwesomeIcons.lock, size: 18),
+            title: 'Cloud Sync',
+            subtitle: cloudSync.statusLabel,
+            icon: const FaIcon(FontAwesomeIcons.cloudArrowUp, size: 18),
             children: [
               _SettingsTile(
-                icon: privateSync.isReady
-                    ? FontAwesomeIcons.lock
-                    : FontAwesomeIcons.cloud,
-                title: 'Encrypted sync',
-                subtitle: privateSync.statusLabel,
-                trailing: _StatusDot(active: privateSync.isReady),
-                onTap: () => context.push('/settings/private-sync'),
+                icon: cloudSync.isSyncing
+                    ? FontAwesomeIcons.arrowsRotate
+                    : FontAwesomeIcons.cloudArrowUp,
+                title: 'Workspace sync',
+                subtitle: cloudSync.statusLabel,
+                trailing: _StatusDot(
+                  active: cloudSync.lastSyncAt != null &&
+                      cloudSync.errorMessage == null,
+                ),
+                onTap: () => context.push('/settings/cloud-sync'),
+              ),
+              _SettingsTile(
+                icon: FontAwesomeIcons.laptop,
+                title: 'My devices',
+                subtitle: cloudSync.devices.isEmpty
+                    ? 'View registered installations'
+                    : '${cloudSync.devices.length} registered',
+                onTap: () => context.push('/devices'),
               ),
             ],
           ),
@@ -133,20 +193,18 @@ class SettingsScreen extends StatelessWidget {
               _SettingsTile(
                 icon: FontAwesomeIcons.rightFromBracket,
                 title: 'Sign out',
-                subtitle: privateSync.cloudConfigured
-                    ? 'Remove this device’s local private key and sign out'
-                    : 'Sign out on this device',
+                subtitle: 'Sign out on this device',
                 onTap: () => _signOut(context),
               ),
               const _DisabledAccountTile(
                 icon: FontAwesomeIcons.circlePause,
                 title: 'Deactivate account',
-                subtitle: 'Available after encrypted cloud sync is connected',
+                subtitle: 'Not implemented yet',
               ),
               const _DisabledAccountTile(
                 icon: FontAwesomeIcons.trash,
                 title: 'Delete account',
-                subtitle: 'Available after encrypted cloud sync is connected',
+                subtitle: 'Not implemented yet',
                 destructive: true,
               ),
             ],
@@ -345,10 +403,8 @@ class SettingsScreen extends StatelessWidget {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Sign out?'),
-          content: Text(
-            context.read<PrivateSyncProvider>().cloudConfigured
-                ? 'This signs you out and removes the Focused private key stored on this device. Your local productivity data is not deleted. Make sure you saved the private key first.'
-                : 'This signs you out of your Focused account. Your existing local productivity data is not deleted.',
+          content: const Text(
+            'This signs you out of your Focused account. Your existing local productivity data and local Digital Wellbeing history are not deleted.',
           ),
           actions: [
             TextButton(
@@ -364,8 +420,6 @@ class SettingsScreen extends StatelessWidget {
       },
     );
     if (confirmed != true || !context.mounted) return;
-    await context.read<PrivateSyncProvider>().forgetLocalKeyForSignOut();
-    if (!context.mounted) return;
     await context.read<AccountProvider>().signOut();
   }
 }

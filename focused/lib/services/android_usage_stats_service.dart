@@ -2,16 +2,21 @@ import 'dart:io';
 
 import 'package:usage_stats/usage_stats.dart';
 
+import '../models/app_open_event.dart';
 import '../models/app_usage_record.dart';
+import 'app_open_counter.dart';
 import 'usage_event_normalizer.dart';
 import 'usage_stats_service.dart';
 
 class AndroidUsageStatsService implements UsageStatsService {
   AndroidUsageStatsService({
     UsageEventNormalizer normalizer = const UsageEventNormalizer(),
-  }) : _normalizer = normalizer;
+    AppOpenCounter appOpenCounter = const AppOpenCounter(),
+  })  : _normalizer = normalizer,
+        _appOpenCounter = appOpenCounter;
 
   final UsageEventNormalizer _normalizer;
+  final AppOpenCounter _appOpenCounter;
 
   final Map<String, String> _appNameCache = {};
 
@@ -128,6 +133,67 @@ class AndroidUsageStatsService implements UsageStatsService {
       normalized.map(
         (record) => record.copyWith(
           appName: labels[record.appId] ?? record.appId,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<List<AppOpenEvent>> queryAppOpenEvents(
+    DateTime start,
+    DateTime end,
+  ) async {
+    if (!isSupported) {
+      return const [];
+    }
+
+    if (!end.isAfter(start)) {
+      return const [];
+    }
+
+    final granted = await hasUsageAccess();
+    if (!granted) {
+      throw StateError('Android Usage Access has not been granted.');
+    }
+
+    final queryStart = start.subtract(_boundaryLookback);
+    final rawEvents = await UsageStats.queryEvents(queryStart, end);
+    final points = <UsageEventPoint>[];
+    for (final event in rawEvents) {
+      final timestamp = event.timeStampDate;
+      final kind = _mapEventType(event.eventTypeValue);
+      if (timestamp == null || kind == null) continue;
+      points.add(
+        UsageEventPoint(
+          packageName: event.packageName,
+          className: event.className,
+          timestamp: timestamp,
+          kind: kind,
+        ),
+      );
+    }
+
+    final rawOpenings = _appOpenCounter.count(
+      rangeStart: start,
+      rangeEnd: end,
+      events: points,
+      ignoredPackages: _ignoredPackages,
+    );
+    if (rawOpenings.isEmpty) return const [];
+
+    final labels = <String, String>{};
+    await Future.wait(
+      rawOpenings.map((item) => item.appId).toSet().map((packageName) async {
+        labels[packageName] = await _resolveAppName(packageName);
+      }),
+    );
+
+    return List<AppOpenEvent>.unmodifiable(
+      rawOpenings.map(
+        (item) => AppOpenEvent(
+          appId: item.appId,
+          appName: labels[item.appId] ?? item.appId,
+          timestamp: item.timestamp,
         ),
       ),
     );

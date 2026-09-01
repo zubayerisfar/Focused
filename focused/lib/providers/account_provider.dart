@@ -177,8 +177,9 @@ class AccountProvider extends ChangeNotifier {
 
         _errorMessage =
             'Google could open the account picker but could not '
-            'authenticate this Android build. Check the debug SHA-1/'
-            'SHA-256 and confirm google-services.json contains a Web '
+            'authenticate this Android build. Check the SHA-1/SHA-256 '
+            'for the certificate that signed this exact build, then download '
+            'a fresh google-services.json. The file must also contain a Web '
             'OAuth client (client_type 3).';
       } else {
         _errorMessage =
@@ -354,8 +355,8 @@ class AccountProvider extends ChangeNotifier {
       case GoogleSignInExceptionCode
             .providerConfigurationError:
         return 'Google Sign-In is not configured correctly for this '
-            'Android build. Check the debug SHA fingerprints and Web '
-            'OAuth client.';
+            'Android build. Register the signing certificate SHA-1/SHA-256 '
+            'in Firebase and confirm the Web OAuth client is present.';
       case GoogleSignInExceptionCode.interrupted:
         return 'Google Sign-In was interrupted. Please try again.';
       case GoogleSignInExceptionCode.uiUnavailable:

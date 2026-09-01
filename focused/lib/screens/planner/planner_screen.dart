@@ -8,6 +8,7 @@ import '../../models/habit.dart';
 import '../../models/task.dart';
 import '../../models/task_occurrence.dart';
 import '../../models/task_recurrence.dart';
+import '../../providers/cloud_sync_provider.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
@@ -117,6 +118,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     _calendarMode = mode;
                   });
                 },
+                onSync: _syncPlanner,
                 onMenuAction: _handleMenuAction,
               ),
               Padding(
@@ -237,6 +239,31 @@ class _PlannerScreenState extends State<PlannerScreen> {
     });
   }
 
+
+  Future<void> _syncPlanner() async {
+    final sync = context.read<CloudSyncProvider>();
+    if (!sync.canSync) return;
+
+    try {
+      final result = await sync.syncNow();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Synced just now · ${result.pushed} uploaded · ${result.pulled} downloaded',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(sync.errorMessage ?? 'Planner sync could not finish.'),
+        ),
+      );
+    }
+  }
+
   void _handleMenuAction(_PlannerMenuAction action) {
     switch (action) {
       case _PlannerMenuAction.backlog:
@@ -260,6 +287,7 @@ class _PlannerHeader extends StatelessWidget {
   final VoidCallback onPickDate;
   final VoidCallback onToday;
   final ValueChanged<PlannerCalendarMode> onModeChanged;
+  final VoidCallback onSync;
   final ValueChanged<_PlannerMenuAction> onMenuAction;
 
   const _PlannerHeader({
@@ -269,12 +297,14 @@ class _PlannerHeader extends StatelessWidget {
     required this.onPickDate,
     required this.onToday,
     required this.onModeChanged,
+    required this.onSync,
     required this.onMenuAction,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final sync = context.watch<CloudSyncProvider>();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 8),
@@ -297,11 +327,14 @@ class _PlannerHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Flexible(
-                      child: Text(
-                        DateFormat('MMMM yyyy').format(selectedDate),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          DateFormat('MMMM yyyy').format(selectedDate),
+                          maxLines: 1,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 2),
@@ -331,9 +364,20 @@ class _PlannerHeader extends StatelessWidget {
               ),
             ),
           ),
+          _PlannerHeaderIconButton(
+            tooltip: sync.isSyncing ? 'Syncing…' : 'Sync planner',
+            onPressed: sync.canSync ? onSync : null,
+            child: sync.isSyncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const FaIcon(FontAwesomeIcons.arrowsRotate, size: 16),
+          ),
           if (area == _PlannerArea.tasks)
             PopupMenuButton<PlannerCalendarMode>(
-              tooltip: 'Change calendar view',
+              tooltip: 'Calendar view: ${calendarMode.label}',
               initialValue: calendarMode,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(
@@ -363,26 +407,14 @@ class _PlannerHeader extends StatelessWidget {
                 }).toList();
               },
               child: Container(
-                height: 38,
-                padding: const EdgeInsets.symmetric(horizontal: 9),
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer.withOpacity(0.55),
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(calendarMode.icon, size: 18),
-                    const SizedBox(width: 5),
-                    Text(
-                      calendarMode.label,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                child: Icon(calendarMode.icon, size: 20),
               ),
             ),
           PopupMenuButton<_PlannerMenuAction>(
@@ -421,7 +453,7 @@ class _PlannerHeader extends StatelessWidget {
 
 class _PlannerHeaderIconButton extends StatelessWidget {
   final String tooltip;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Widget child;
 
   const _PlannerHeaderIconButton({

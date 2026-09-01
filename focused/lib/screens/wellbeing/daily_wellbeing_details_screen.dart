@@ -88,6 +88,23 @@ class _DailyWellbeingDetailsScreenState
                   ),
                 ],
               ),
+              if (day == null || !day.measured) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'No local screen-time measurement exists for this date on this device.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               Text(
                 'Top apps',

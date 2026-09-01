@@ -1,0 +1,6 @@
+# Copy this file to android/key.properties and keep the real file private.
+# Use ONE stable release/upload keystore for every release build.
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=focused
+storeFile=../focused-upload-keystore.jks

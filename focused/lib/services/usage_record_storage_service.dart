@@ -95,6 +95,14 @@ class UsageRecordStorageService implements UsageRecordStore {
 
     records.sort((a, b) => a.startTime.compareTo(b.startTime));
 
+    // Empty snapshots from older builds represented "unknown" days as 0m.
+    // They are not real measurements, so migrate them away instead of
+    // presenting them as screen-time history.
+    if (records.isEmpty) {
+      await box.delete(key);
+      return null;
+    }
+
     return UsageDaySnapshot(
       day: _startOfDay(day),
       updatedAt: updatedAt,

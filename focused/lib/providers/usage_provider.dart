@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/app_category.dart';
+import '../models/app_open_event.dart';
 import '../models/app_metadata.dart';
 import '../models/app_usage_app_entry.dart';
 import '../models/app_usage_history_point.dart';
@@ -12,6 +13,7 @@ import '../models/daily_usage_summary.dart';
 import '../models/focus_analysis_result.dart';
 import '../models/focus_analysis_coverage.dart';
 import '../models/focus_session.dart';
+import '../models/notification_event.dart';
 import '../models/usage_access_status.dart';
 import '../models/usage_data_coverage.dart';
 import '../models/usage_data_provenance.dart';
@@ -22,6 +24,7 @@ import '../services/app_category_storage_service.dart';
 import '../services/focus_analysis_storage_service.dart';
 import '../services/focus_interruption_analyzer.dart';
 import '../services/focus_guard_service.dart';
+import '../services/notification_access_service.dart';
 import '../services/usage_analyzer.dart';
 import '../services/usage_record_storage_service.dart';
 import '../services/usage_stats_service.dart';
@@ -37,6 +40,8 @@ class UsageProvider extends ChangeNotifier {
     UsageAnalyzer? usageAnalyzer,
     FocusInterruptionAnalyzer? focusInterruptionAnalyzer,
     FocusGuardController? focusGuardController,
+    NotificationAccessService? notificationAccessService,
+    DateTime? historyStartedAt,
   })  : _usageStatsService = usageStatsService ?? AndroidUsageStatsService(),
         _storageService = storageService,
         _categoryStorageService = categoryStorageService,
@@ -48,7 +53,10 @@ class UsageProvider extends ChangeNotifier {
         _focusInterruptionAnalyzer =
             focusInterruptionAnalyzer ?? FocusInterruptionAnalyzer(),
         _focusGuardController =
-            focusGuardController ?? const NoopFocusGuardController();
+            focusGuardController ?? const NoopFocusGuardController(),
+        _notificationAccessService =
+            notificationAccessService ?? NotificationAccessService(),
+        _historyStartedAt = historyStartedAt?.toLocal();
 
   final UsageStatsService _usageStatsService;
   final UsageRecordStore? _storageService;
@@ -59,6 +67,8 @@ class UsageProvider extends ChangeNotifier {
   final UsageAnalyzer _usageAnalyzer;
   final FocusInterruptionAnalyzer _focusInterruptionAnalyzer;
   final FocusGuardController _focusGuardController;
+  final NotificationAccessService _notificationAccessService;
+  final DateTime? _historyStartedAt;
 
   // Package ids are the stable key for real Android data. A few legacy labels
   // are retained as aliases so existing analyzer tests/data remain meaningful.
@@ -122,6 +132,8 @@ class UsageProvider extends ChangeNotifier {
   FocusAnalysisResult? get focusAnalysisResult => _focusAnalysisResult;
   UsageDataProvenance get todayProvenance => _todayProvenance;
   UsageDataProvenance get yesterdayProvenance => _yesterdayProvenance;
+  DateTime? get usageHistoryStartDay =>
+      _historyStartedAt == null ? null : _startOfDay(_historyStartedAt!);
 
   Map<String, FocusAnalysisResult> get storedFocusAnalyses =>
       Map<String, FocusAnalysisResult>.unmodifiable(_focusAnalysesBySessionId);
@@ -429,22 +441,34 @@ class UsageProvider extends ChangeNotifier {
     final yesterdaySnapshot = await store.loadDay(yesterday);
 
     if (todaySnapshot != null) {
-      _todayRecords = List.of(todaySnapshot.records);
-      _todaySummary = _usageAnalyzer.buildDailySummary(
-        today,
-        _todayRecords,
+      final records = _applyHistoryBoundary(
+        todaySnapshot.day,
+        todaySnapshot.records,
       );
-      _lastUpdatedAt = todaySnapshot.updatedAt;
-      _todayProvenance = UsageDataProvenance.focusedStorage;
+      if (records.isNotEmpty) {
+        _todayRecords = List.of(records);
+        _todaySummary = _usageAnalyzer.buildDailySummary(
+          today,
+          _todayRecords,
+        );
+        _lastUpdatedAt = todaySnapshot.updatedAt;
+        _todayProvenance = UsageDataProvenance.focusedStorage;
+      }
     }
 
-    if (yesterdaySnapshot != null) {
-      _yesterdayRecords = List.of(yesterdaySnapshot.records);
-      _yesterdaySummary = _usageAnalyzer.buildDailySummary(
-        yesterday,
-        _yesterdayRecords,
+    if (yesterdaySnapshot != null && !_isBeforeHistoryStart(yesterday)) {
+      final records = _applyHistoryBoundary(
+        yesterdaySnapshot.day,
+        yesterdaySnapshot.records,
       );
-      _yesterdayProvenance = UsageDataProvenance.focusedStorage;
+      if (records.isNotEmpty) {
+        _yesterdayRecords = List.of(records);
+        _yesterdaySummary = _usageAnalyzer.buildDailySummary(
+          yesterday,
+          _yesterdayRecords,
+        );
+        _yesterdayProvenance = UsageDataProvenance.focusedStorage;
+      }
     }
 
     _ensureMetadataForRecords([
@@ -599,7 +623,7 @@ class UsageProvider extends ChangeNotifier {
 
     try {
       final todayRecords = await _usageStatsService.queryUsageRecords(
-        today,
+        _effectiveQueryStart(today),
         effectiveNow,
       );
 
@@ -609,38 +633,59 @@ class UsageProvider extends ChangeNotifier {
       _todayProvenance = UsageDataProvenance.liveAndroid;
 
       if (store != null) {
-        await store.saveDay(
-          today,
-          _todayRecords,
-          updatedAt: effectiveNow,
-        );
+        if (_todayRecords.isEmpty) {
+          await store.deleteDay(today);
+        } else {
+          await store.saveDay(
+            today,
+            _todayRecords,
+            updatedAt: effectiveNow,
+          );
+        }
       }
     } catch (error) {
       errors.add('Today: $error');
     }
 
-    try {
-      final yesterdayRecords = await _usageStatsService.queryUsageRecords(
-        yesterday,
-        today,
-      );
-
-      _yesterdayRecords = List.of(yesterdayRecords);
-      _yesterdaySummary = _usageAnalyzer.buildDailySummary(
-        yesterday,
-        _yesterdayRecords,
-      );
-      _yesterdayProvenance = UsageDataProvenance.androidHistory;
-
+    if (_isBeforeHistoryStart(yesterday)) {
+      _yesterdayRecords = const <AppUsageRecord>[];
+      _yesterdaySummary = null;
+      _yesterdayProvenance = UsageDataProvenance.missing;
       if (store != null) {
-        await store.saveDay(
-          yesterday,
-          _yesterdayRecords,
-          updatedAt: effectiveNow,
-        );
+        await store.deleteDay(yesterday);
       }
-    } catch (error) {
-      errors.add('Yesterday: $error');
+    } else {
+      try {
+        final yesterdayRecords = await _usageStatsService.queryUsageRecords(
+          _effectiveQueryStart(yesterday),
+          today,
+        );
+
+        _yesterdayRecords = List.of(yesterdayRecords);
+        if (_yesterdayRecords.isEmpty) {
+          _yesterdaySummary = null;
+          _yesterdayProvenance = UsageDataProvenance.missing;
+          if (store != null) {
+            await store.deleteDay(yesterday);
+          }
+        } else {
+          _yesterdaySummary = _usageAnalyzer.buildDailySummary(
+            yesterday,
+            _yesterdayRecords,
+          );
+          _yesterdayProvenance = UsageDataProvenance.androidHistory;
+
+          if (store != null) {
+            await store.saveDay(
+              yesterday,
+              _yesterdayRecords,
+              updatedAt: effectiveNow,
+            );
+          }
+        }
+      } catch (error) {
+        errors.add('Yesterday: $error');
+      }
     }
 
     _ensureMetadataForRecords([
@@ -957,6 +1002,10 @@ class UsageProvider extends ChangeNotifier {
 
     for (var index = 0; index < days; index++) {
       final day = DateTime(start.year, start.month, start.day + index);
+      if (_isBeforeHistoryStart(day)) {
+        continue;
+      }
+
       final resolved = await _resolveUsageDay(
         day,
         now: now,
@@ -994,10 +1043,153 @@ class UsageProvider extends ChangeNotifier {
     return List<AppUsageHistoryPoint>.unmodifiable(result);
   }
 
+  Future<List<AppOpenEvent>> loadAppOpenEvents({
+    required DateTime start,
+    required DateTime end,
+    String? appId,
+  }) async {
+    if (!_usageStatsService.isSupported || !end.isAfter(start)) {
+      return const <AppOpenEvent>[];
+    }
+
+    final historyStart = _historyStartedAt?.toLocal();
+    final effectiveStart = historyStart != null && historyStart.isAfter(start)
+        ? historyStart
+        : start;
+    if (!end.isAfter(effectiveStart)) {
+      return const <AppOpenEvent>[];
+    }
+
+    final granted = await _usageStatsService.hasUsageAccess();
+    if (!granted) return const <AppOpenEvent>[];
+
+    final events =
+        await _usageStatsService.queryAppOpenEvents(effectiveStart, end);
+    if (appId == null || appId.trim().isEmpty) {
+      return events;
+    }
+
+    return List<AppOpenEvent>.unmodifiable(
+      events.where((event) => event.appId == appId),
+    );
+  }
+
+  Future<List<NotificationEvent>> loadNotificationEvents({
+    required DateTime start,
+    required DateTime end,
+    String? appId,
+  }) async {
+    if (!_notificationAccessService.isSupported || !end.isAfter(start)) {
+      return const <NotificationEvent>[];
+    }
+
+    final granted = await _notificationAccessService.hasAccess();
+    if (!granted) return const <NotificationEvent>[];
+
+    final events = await _notificationAccessService.queryEvents(
+      start: start,
+      end: end,
+    );
+    if (appId == null || appId.trim().isEmpty) {
+      return events;
+    }
+
+    return List<NotificationEvent>.unmodifiable(
+      events.where((event) => event.packageName == appId),
+    );
+  }
+
+  List<Duration> hourlyUsageForAppToday(String appId) {
+    final summary = _todaySummary;
+    if (summary == null) {
+      return List<Duration>.filled(24, Duration.zero, growable: false);
+    }
+
+    final appRecords = _todayRecords
+        .where((record) => record.appId == appId)
+        .toList(growable: false);
+    final appSummary = _usageAnalyzer.buildDailySummary(
+      summary.date,
+      appRecords,
+    );
+
+    final values = List<Duration>.filled(
+      24,
+      Duration.zero,
+      growable: false,
+    );
+    for (final hour in appSummary.hourlyUsage) {
+      final index = hour.hourStart.hour;
+      if (index >= 0 && index < values.length) {
+        values[index] = hour.totalUsage;
+      }
+    }
+    return values;
+  }
+
+  Duration focusDistractionDurationForApp(
+    String appId, {
+    required DateTime start,
+    required DateTime end,
+  }) {
+    if (!end.isAfter(start)) return Duration.zero;
+    final ranges = <_UsageTimeRange>[];
+
+    for (final analysis in _focusAnalysesBySessionId.values) {
+      for (final interruption in analysis.interruptions) {
+        if (interruption.appId != appId ||
+            !interruption.endTime.isAfter(start) ||
+            !interruption.startTime.isBefore(end)) {
+          continue;
+        }
+        final clippedStart = interruption.startTime.isBefore(start)
+            ? start
+            : interruption.startTime;
+        final clippedEnd = interruption.endTime.isAfter(end)
+            ? end
+            : interruption.endTime;
+        if (clippedEnd.isAfter(clippedStart)) {
+          ranges.add(_UsageTimeRange(clippedStart, clippedEnd));
+        }
+      }
+    }
+
+    return _sumMergedRanges(ranges);
+  }
+
+  int focusInterruptionCountForApp(
+    String appId, {
+    required DateTime start,
+    required DateTime end,
+  }) {
+    if (!end.isAfter(start)) return 0;
+    final ranges = <_UsageTimeRange>[];
+    for (final analysis in _focusAnalysesBySessionId.values) {
+      for (final interruption in analysis.interruptions) {
+        if (interruption.appId != appId ||
+            !interruption.endTime.isAfter(start) ||
+            !interruption.startTime.isBefore(end)) {
+          continue;
+        }
+        final clippedStart = interruption.startTime.isBefore(start)
+            ? start
+            : interruption.startTime;
+        final clippedEnd = interruption.endTime.isAfter(end)
+            ? end
+            : interruption.endTime;
+        if (clippedEnd.isAfter(clippedStart)) {
+          ranges.add(_UsageTimeRange(clippedStart, clippedEnd));
+        }
+      }
+    }
+    return _mergeUsageRanges(ranges).length;
+  }
+
   Future<List<DailyUsageMetrics>> loadDailyUsageHistory({
     int days = 7,
     DateTime? endDay,
     bool backfillRecentMissingDays = true,
+    bool includeMissingDays = true,
   }) async {
     if (days <= 0) {
       return const <DailyUsageMetrics>[];
@@ -1015,6 +1207,13 @@ class UsageProvider extends ChangeNotifier {
 
     for (var index = 0; index < days; index++) {
       final day = DateTime(start.year, start.month, start.day + index);
+      if (_isBeforeHistoryStart(day)) {
+        if (includeMissingDays) {
+          values.add(_missingDailyUsage(day));
+        }
+        continue;
+      }
+
       final resolved = await _resolveUsageDay(
         day,
         now: now,
@@ -1022,18 +1221,9 @@ class UsageProvider extends ChangeNotifier {
       );
 
       if (resolved == null) {
-        values.add(
-          DailyUsageMetrics(
-            day: day,
-            provenance: UsageDataProvenance.missing,
-            completeDay: false,
-            totalUsage: Duration.zero,
-            productiveUsage: Duration.zero,
-            neutralUsage: Duration.zero,
-            distractingUsage: Duration.zero,
-            topApps: const <AppUsageAppEntry>[],
-          ),
-        );
+        if (includeMissingDays) {
+          values.add(_missingDailyUsage(day));
+        }
         continue;
       }
 
@@ -1234,6 +1424,10 @@ class UsageProvider extends ChangeNotifier {
     required bool backfillRecentMissingDays,
   }) async {
     final normalizedDay = _startOfDay(day);
+    if (_isBeforeHistoryStart(normalizedDay)) {
+      return null;
+    }
+
     final normalizedToday = _startOfDay(now);
     final yesterday = DateTime(
       normalizedToday.year,
@@ -1241,7 +1435,9 @@ class UsageProvider extends ChangeNotifier {
       normalizedToday.day - 1,
     );
 
-    if (_sameDate(normalizedDay, normalizedToday) && _todaySummary != null) {
+    if (_sameDate(normalizedDay, normalizedToday) &&
+        _todaySummary != null &&
+        _todayRecords.isNotEmpty) {
       return _ResolvedUsageDay(
         snapshot: UsageDaySnapshot(
           day: normalizedDay,
@@ -1273,11 +1469,30 @@ class UsageProvider extends ChangeNotifier {
     if (store != null) {
       final stored = await store.loadDay(normalizedDay);
       if (stored != null) {
-        return _ResolvedUsageDay(
-          snapshot: stored,
-          provenance: UsageDataProvenance.focusedStorage,
-          completeDay: normalizedDay.isBefore(normalizedToday),
+        final boundedRecords = _applyHistoryBoundary(
+          normalizedDay,
+          stored.records,
         );
+        if (boundedRecords.isEmpty) {
+          await store.deleteDay(normalizedDay);
+        } else {
+          if (boundedRecords.length != stored.records.length) {
+            await store.saveDay(
+              normalizedDay,
+              boundedRecords,
+              updatedAt: stored.updatedAt,
+            );
+          }
+          return _ResolvedUsageDay(
+            snapshot: UsageDaySnapshot(
+              day: stored.day,
+              updatedAt: stored.updatedAt,
+              records: List<AppUsageRecord>.unmodifiable(boundedRecords),
+            ),
+            provenance: UsageDataProvenance.focusedStorage,
+            completeDay: normalizedDay.isBefore(normalizedToday),
+          );
+        }
       }
     }
 
@@ -1318,9 +1533,16 @@ class UsageProvider extends ChangeNotifier {
 
     try {
       final records = await _usageStatsService.queryUsageRecords(
-        normalizedDay,
+        _effectiveQueryStart(normalizedDay),
         queryEnd,
       );
+      if (records.isEmpty) {
+        if (store != null) {
+          await store.deleteDay(normalizedDay);
+        }
+        return null;
+      }
+
       final snapshot = UsageDaySnapshot(
         day: normalizedDay,
         updatedAt: now,
@@ -1362,6 +1584,60 @@ class UsageProvider extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  DateTime _effectiveQueryStart(DateTime day) {
+    final normalized = _startOfDay(day);
+    final historyStart = _historyStartedAt;
+    if (historyStart == null) return normalized;
+
+    final localStart = historyStart.toLocal();
+    if (_sameDate(normalized, localStart) && localStart.isAfter(normalized)) {
+      return localStart;
+    }
+    return normalized;
+  }
+
+  List<AppUsageRecord> _applyHistoryBoundary(
+    DateTime day,
+    List<AppUsageRecord> records,
+  ) {
+    final queryStart = _effectiveQueryStart(day);
+    if (queryStart == _startOfDay(day)) {
+      return List<AppUsageRecord>.unmodifiable(records);
+    }
+
+    final bounded = <AppUsageRecord>[];
+    for (final record in records) {
+      if (!record.endTime.isAfter(queryStart)) {
+        continue;
+      }
+      bounded.add(
+        record.startTime.isBefore(queryStart)
+            ? record.copyWith(startTime: queryStart)
+            : record,
+      );
+    }
+    return List<AppUsageRecord>.unmodifiable(bounded);
+  }
+
+  bool _isBeforeHistoryStart(DateTime day) {
+    final start = usageHistoryStartDay;
+    if (start == null) return false;
+    return _startOfDay(day).isBefore(start);
+  }
+
+  DailyUsageMetrics _missingDailyUsage(DateTime day) {
+    return DailyUsageMetrics(
+      day: _startOfDay(day),
+      provenance: UsageDataProvenance.missing,
+      completeDay: false,
+      totalUsage: Duration.zero,
+      productiveUsage: Duration.zero,
+      neutralUsage: Duration.zero,
+      distractingUsage: Duration.zero,
+      topApps: const <AppUsageAppEntry>[],
+    );
   }
 
   DailyUsageMetrics _buildDailyUsageMetrics(

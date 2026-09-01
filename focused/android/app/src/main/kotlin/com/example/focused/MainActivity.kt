@@ -1,14 +1,19 @@
 package com.example.focused
 
 import android.Manifest
+import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Process
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -19,6 +24,8 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val APP_METADATA_CHANNEL = "focused/app_metadata"
         private const val FOCUS_GUARD_CHANNEL = "focused/focus_guard"
+        private const val NOTIFICATION_EVENTS_CHANNEL = "focused/notification_events"
+        private const val INSTALLATION_INFO_CHANNEL = "focused/installation_info"
         private const val NOTIFICATION_PERMISSION_REQUEST = 4401
         private const val DEFAULT_ICON_SIZE = 96
         private const val MAX_BATCH_SIZE = 200
@@ -26,6 +33,39 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            INSTALLATION_INFO_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "getFirstInstallTimeMillis" -> {
+                        @Suppress("DEPRECATION")
+                        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                        result.success(packageInfo.firstInstallTime)
+                    }
+
+                    "getDeviceIdentity" -> {
+                        result.success(
+                            mapOf(
+                                "manufacturer" to Build.MANUFACTURER,
+                                "brand" to Build.BRAND,
+                                "model" to Build.MODEL,
+                            ),
+                        )
+                    }
+
+                    else -> result.notImplemented()
+                }
+            } catch (error: Throwable) {
+                result.error(
+                    "INSTALLATION_INFO_FAILED",
+                    error.message ?: "Could not read Android installation information.",
+                    null,
+                )
+            }
+        }
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -138,6 +178,133 @@ class MainActivity : FlutterActivity() {
                 )
             }
         }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            NOTIFICATION_EVENTS_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "hasNotificationAccess" -> {
+                        result.success(hasNotificationListenerAccess())
+                    }
+
+                    "openNotificationAccessSettings" -> {
+                        openNotificationListenerSettings()
+                        result.success(null)
+                    }
+
+                    "openAppNotificationSettings" -> {
+                        openAppNotificationSettings()
+                        result.success(null)
+                    }
+
+                    "getNotificationEvents" -> {
+                        val startMillis = call.argument<Number>("startMillis")?.toLong() ?: 0L
+                        val endMillis = call.argument<Number>("endMillis")?.toLong()
+                            ?: System.currentTimeMillis()
+                        result.success(
+                            NotificationEventStore.query(
+                                applicationContext,
+                                startMillis,
+                                endMillis,
+                            ),
+                        )
+                    }
+
+                    "pruneNotificationEvents" -> {
+                        val cutoffMillis = call.argument<Number>("cutoffMillis")?.toLong()
+                            ?: 0L
+                        NotificationEventStore.pruneBefore(applicationContext, cutoffMillis)
+                        result.success(null)
+                    }
+
+                    else -> result.notImplemented()
+                }
+            } catch (error: Throwable) {
+                result.error(
+                    "NOTIFICATION_ACCESS_FAILED",
+                    error.message ?: "Notification access operation failed.",
+                    null,
+                )
+            }
+        }
+    }
+
+    private fun hasNotificationListenerAccess(): Boolean {
+        val expected = ComponentName(this, FocusedNotificationListenerService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            val manager = getSystemService(NotificationManager::class.java)
+            return manager?.isNotificationListenerAccessGranted(expected) == true
+        }
+
+        val enabled = Settings.Secure.getString(
+            contentResolver,
+            "enabled_notification_listeners",
+        ) ?: return false
+        return enabled.split(':').any { raw ->
+            ComponentName.unflattenFromString(raw) == expected
+        }
+    }
+
+    private fun openNotificationListenerSettings() {
+        val component = ComponentName(this, FocusedNotificationListenerService::class.java)
+        val candidates = mutableListOf<Intent>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            candidates += Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).apply {
+                putExtra(
+                    Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                    component.flattenToString(),
+                )
+            }
+        }
+
+        candidates += Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        candidates += Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:$packageName")
+        }
+        candidates += Intent(Settings.ACTION_SETTINGS)
+
+        startFirstResolvableSettingsIntent(candidates)
+    }
+
+    private fun openAppNotificationSettings() {
+        val candidates = mutableListOf<Intent>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            candidates += Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            }
+        }
+
+        candidates += Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:$packageName")
+        }
+        candidates += Intent(Settings.ACTION_SETTINGS)
+
+        startFirstResolvableSettingsIntent(candidates)
+    }
+
+    private fun startFirstResolvableSettingsIntent(candidates: List<Intent>) {
+        var lastError: Throwable? = null
+        for (candidate in candidates) {
+            if (candidate.resolveActivity(packageManager) == null) continue
+            try {
+                candidate.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(candidate)
+                return
+            } catch (error: Throwable) {
+                // OEM Settings apps occasionally advertise an intent but reject
+                // it when launched. Try the next, less-specific settings page.
+                lastError = error
+            }
+        }
+
+        throw IllegalStateException(
+            "Android Settings could not be opened on this device.",
+            lastError,
+        )
     }
 
     private fun requestNotificationPermissionIfNeeded() {

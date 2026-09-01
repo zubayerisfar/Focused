@@ -62,9 +62,26 @@ class AppTheme {
         indicatorColor: const Color(0xFFE8EAF5),
         elevation: 0,
       ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        dragHandleColor: Color(0xFF7B7D84),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      listTileTheme: const ListTileThemeData(
+        textColor: text,
+        iconColor: muted,
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
+        labelStyle: const TextStyle(color: muted),
+        hintStyle: const TextStyle(color: Color(0xFF8A8D95)),
+        prefixIconColor: muted,
+        suffixIconColor: muted,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
@@ -120,10 +137,19 @@ class AppTheme {
         side: BorderSide.none,
         backgroundColor: scheme.surfaceContainerHigh,
         selectedColor: scheme.primaryContainer,
+        disabledColor: scheme.surfaceContainerHigh.withOpacity(0.55),
+        checkmarkColor: text,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+        labelStyle: const TextStyle(
+          color: text,
+          fontWeight: FontWeight.w700,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          color: text,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(

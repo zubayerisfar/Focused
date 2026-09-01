@@ -11,13 +11,14 @@ import 'providers/account_provider.dart';
 import 'providers/focus_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/onboarding_provider.dart';
-import 'providers/private_sync_provider.dart';
+import 'providers/cloud_sync_provider.dart';
 import 'providers/streak_goal_provider.dart';
 import 'providers/task_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/usage_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'router/app_router.dart';
+import 'services/android_installation_info_service.dart';
 import 'services/android_usage_stats_service.dart';
 import 'services/app_category_storage_service.dart';
 import 'services/app_metadata_platform_service.dart';
@@ -29,10 +30,8 @@ import 'services/focus_session_storage_service.dart';
 import 'services/habit_notification_service.dart';
 import 'services/habit_storage_service.dart';
 import 'services/onboarding_storage_service.dart';
-import 'services/private_sync_cloud_service.dart';
-import 'services/private_sync_crypto_service.dart';
-import 'services/private_sync_secure_storage_service.dart';
-import 'services/private_sync_snapshot_service.dart';
+import 'services/cloud_sync_service.dart';
+import 'services/sync_metadata_storage_service.dart';
 import 'services/streak_goal_storage_service.dart';
 import 'services/task_notification_service.dart';
 import 'services/task_occurrence_completion_storage_service.dart';
@@ -69,6 +68,8 @@ Future<void> main() async {
       OnboardingStorageService();
   final streakGoalStorageService =
       StreakGoalStorageService();
+  final syncMetadataStorageService =
+      SyncMetadataStorageService();
 
   await taskStorageService.init();
   await occurrenceCompletionStorage.init();
@@ -81,6 +82,15 @@ Future<void> main() async {
   await userProfileStorageService.init();
   await onboardingStorageService.init();
   await streakGoalStorageService.init();
+  await syncMetadataStorageService.init();
+
+  final installationInfoService = AndroidInstallationInfoService();
+  final androidFirstInstallTime =
+      await installationInfoService.firstInstallTime();
+  final usageHistoryStartedAt =
+      await syncMetadataStorageService.getOrCreateUsageTrackingStartedAt(
+    installationStartedAt: androidFirstInstallTime,
+  );
 
   final taskNotificationService =
       TaskNotificationService();
@@ -146,6 +156,7 @@ Future<void> main() async {
     appMetadataStorageService:
         appMetadataStorageService,
     focusGuardController: focusGuardService,
+    historyStartedAt: usageHistoryStartedAt,
   );
 
   await usageProvider.loadStoredCategories();
@@ -192,47 +203,29 @@ Future<void> main() async {
     );
   }
 
-  final privateSyncCryptoService =
-      PrivateSyncCryptoService();
-
-  final privateSyncSnapshotService =
-      PrivateSyncSnapshotService(
-    taskStorageService: taskStorageService,
-    occurrenceCompletionStorage:
-        occurrenceCompletionStorage,
-    focusSessionStorageService:
-        focusSessionStorageService,
-    habitStorageService: habitStorageService,
-    userProfileStorageService:
-        userProfileStorageService,
-    appCategoryStorageService:
-        appCategoryStorageService,
-    focusAnalysisStorageService:
-        focusAnalysisStorageService,
-    streakGoalStorageService:
-        streakGoalStorageService,
-    cryptoService: privateSyncCryptoService,
+  final cloudSyncService = CloudSyncService(
+    metadataStorage: syncMetadataStorageService,
+    taskStorage: taskStorageService,
+    taskCompletionStorage: occurrenceCompletionStorage,
+    habitStorage: habitStorageService,
+    focusSessionStorage: focusSessionStorageService,
+    userProfileStorage: userProfileStorageService,
+    streakGoalStorage: streakGoalStorageService,
   );
 
-  final privateSyncProvider =
-      PrivateSyncProvider(
+  final cloudSyncProvider = CloudSyncProvider(
     accountProvider: accountProvider,
-    cryptoService: privateSyncCryptoService,
-    secureStorageService:
-        PrivateSyncSecureStorageService(),
-    cloudService: PrivateSyncCloudService(),
-    snapshotService:
-        privateSyncSnapshotService,
-    localChangeSources: [
-      taskProvider,
-      focusProvider,
-      habitProvider,
-      userProfileProvider,
-      streakGoalProvider,
-      usageProvider,
-    ],
+    syncService: cloudSyncService,
+    metadataStorage: syncMetadataStorageService,
+    refreshLocalProviders: () async {
+      await taskProvider.loadStoredTasks();
+      await focusProvider.loadStoredSessions();
+      await habitProvider.loadStoredHabits();
+      await userProfileProvider.loadStoredProfile();
+      await streakGoalProvider.load();
+    },
   );
-  await privateSyncProvider.initialize();
+  await cloudSyncProvider.initialize();
 
   final router = createAppRouter(
     accountProvider: accountProvider,
@@ -255,7 +248,7 @@ Future<void> main() async {
           value: streakGoalProvider,
         ),
         ChangeNotifierProvider.value(
-          value: privateSyncProvider,
+          value: cloudSyncProvider,
         ),
         ChangeNotifierProvider.value(
           value: usageProvider,

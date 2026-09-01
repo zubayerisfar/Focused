@@ -47,8 +47,6 @@ dependencies:
   firebase_auth: ^6.6.1
   google_sign_in: ^7.2.0
   cloud_firestore: ^6.9.0
-  flutter_secure_storage: ^11.0.0
-  cryptography: ^2.9.0
   font_awesome_flutter: ^11.0.0
 
 dev_dependencies:

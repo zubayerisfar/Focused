@@ -747,8 +747,26 @@ class _DailyTrendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxSeconds = days.fold<int>(1, (value, day) {
-      return math.max(value, day.measured ? day.totalUsage.inSeconds : 0);
+    final measuredDays = days.where((day) => day.measured).toList();
+    if (measuredDays.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Text(
+          'Daily screen-time history will appear here as Focused measures it on this device.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+      );
+    }
+
+    final maxSeconds = measuredDays.fold<int>(1, (value, day) {
+      return math.max(value, day.totalUsage.inSeconds);
     });
 
     return Container(
@@ -777,10 +795,8 @@ class _DailyTrendCard extends StatelessWidget {
             height: 190,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: days.map((day) {
-                final ratio = day.measured
-                    ? day.totalUsage.inSeconds / maxSeconds
-                    : 0.0;
+              children: measuredDays.map((day) {
+                final ratio = day.totalUsage.inSeconds / maxSeconds;
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -790,34 +806,21 @@ class _DailyTrendCard extends StatelessWidget {
                         Expanded(
                           child: Align(
                             alignment: Alignment.bottomCenter,
-                            child: day.measured
-                                ? FractionallySizedBox(
-                                    heightFactor: ratio.clamp(0.03, 1.0),
-                                    child: Container(
-                                      width: 22,
-                                      decoration: BoxDecoration(
-                                        color: day.completeDay
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                            : Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                                .withOpacity(0.45),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  )
-                                : Container(
-                                    width: 22,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
+                            child: FractionallySizedBox(
+                              heightFactor: ratio.clamp(0.03, 1.0),
+                              child: Container(
+                                width: 22,
+                                decoration: BoxDecoration(
+                                  color: day.completeDay
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context)
                                           .colorScheme
-                                          .outlineVariant,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
+                                          .primary
+                                          .withOpacity(0.45),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),

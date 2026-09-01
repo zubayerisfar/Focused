@@ -824,32 +824,45 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (sheetContext) {
+        final scheme = Theme.of(sheetContext).colorScheme;
+        final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.72;
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ListTile(
-                title: Text(
-                  'Reminder',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 12),
+              children: [
+                ListTile(
+                  title: Text(
+                    'Reminder',
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
-              ...values.map(
-                (value) => ListTile(
-                  title: Text(_reminderLabel(value)),
-                  trailing: value == _reminderMinutesBefore
-                      ? const Icon(Icons.check_rounded)
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _reminderMinutesBefore = value;
-                    });
-                    Navigator.pop(sheetContext);
-                  },
+                ...values.map(
+                  (value) => ListTile(
+                    title: Text(
+                      _reminderLabel(value),
+                      style: TextStyle(color: scheme.onSurface),
+                    ),
+                    trailing: value == _reminderMinutesBefore
+                        ? Icon(Icons.check_rounded, color: scheme.primary)
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _reminderMinutesBefore = value;
+                      });
+                      Navigator.pop(sheetContext);
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -865,27 +878,40 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (sheetContext) {
+        final scheme = Theme.of(sheetContext).colorScheme;
+        final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.72;
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 12),
+              children: [
+                ListTile(
+                  title: Text(
+                    title,
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
-              ...values.map(
-                (value) => ListTile(
-                  title: Text(label(value)),
-                  onTap: () {
-                    onSelected(value);
-                    Navigator.pop(sheetContext);
-                  },
+                ...values.map(
+                  (value) => ListTile(
+                    title: Text(
+                      label(value),
+                      style: TextStyle(color: scheme.onSurface),
+                    ),
+                    onTap: () {
+                      onSelected(value);
+                      Navigator.pop(sheetContext);
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

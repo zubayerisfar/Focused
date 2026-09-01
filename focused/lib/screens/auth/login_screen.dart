@@ -62,8 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 12),
             Text(
               _isRegister
-                  ? 'Create an account with Google or email. '
-                      'The private encryption key comes in the next phase.'
+                  ? 'Create an account with Google or email. Tasks and habits can '
+                      'sync across your devices; raw usage history stays on this device.'
                   : 'Sign in with Google or your Focused email/password.',
               style: const TextStyle(
                 color: Color(0xFF91A2BB),
@@ -121,9 +121,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
                       style: const TextStyle(color: Color(0xFFF3F7FF)),
-                      decoration: const InputDecoration(
-                        labelText: 'Your name',
-                        prefixIcon: Icon(Icons.person_outline_rounded),
+                      cursorColor: const Color(0xFF7EA2FF),
+                      decoration: _authInputDecoration(
+                        label: 'Your name',
+                        prefixIcon: Icons.person_outline_rounded,
                       ),
                       validator: (value) {
                         if ((value ?? '').trim().length < 2) {
@@ -141,9 +142,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     autocorrect: false,
                     enableSuggestions: false,
                     style: const TextStyle(color: Color(0xFFF3F7FF)),
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.alternate_email_rounded),
+                    cursorColor: const Color(0xFF7EA2FF),
+                    decoration: _authInputDecoration(
+                      label: 'Email',
+                      prefixIcon: Icons.alternate_email_rounded,
                     ),
                     validator: (value) {
                       final text = value?.trim() ?? '';
@@ -163,12 +165,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     onFieldSubmitted:
                         _isRegister ? null : (_) => _submitEmail(),
                     style: const TextStyle(color: Color(0xFFF3F7FF)),
-                    decoration: InputDecoration(
-                      labelText: 'Password',
+                    cursorColor: const Color(0xFF7EA2FF),
+                    decoration: _authInputDecoration(
+                      label: 'Password',
                       helperText: _isRegister
                           ? 'Your Focused password — not your Google password.'
                           : null,
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      prefixIcon: Icons.lock_outline_rounded,
                       suffixIcon: IconButton(
                         onPressed: () {
                           setState(() => _hidePassword = !_hidePassword);
@@ -195,9 +198,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _submitEmail(),
                       style: const TextStyle(color: Color(0xFFF3F7FF)),
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm password',
-                        prefixIcon: Icon(Icons.verified_user_outlined),
+                      cursorColor: const Color(0xFF7EA2FF),
+                      decoration: _authInputDecoration(
+                        label: 'Confirm password',
+                        prefixIcon: Icons.verified_user_outlined,
                       ),
                       validator: (value) {
                         if (value != _passwordController.text) {
@@ -265,8 +269,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    'Authentication identifies the account. '
-                    'Private data encryption and cross-device keys are added next.',
+                    'Your Focused account syncs productivity data across devices. '
+                    'Raw screen-time, app-open, and notification history stays local.',
                     style: TextStyle(
                       color: Color(0xFF687D9C),
                       height: 1.45,
@@ -278,6 +282,52 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  InputDecoration _authInputDecoration({
+    required String label,
+    required IconData prefixIcon,
+    String? helperText,
+    Widget? suffixIcon,
+  }) {
+    const borderColor = Color(0xFF223754);
+    const focusedBorderColor = Color(0xFF6F9AFF);
+
+    return InputDecoration(
+      labelText: label,
+      helperText: helperText,
+      filled: true,
+      fillColor: const Color(0xFF0A1321),
+      labelStyle: const TextStyle(color: Color(0xFF91A2BB)),
+      floatingLabelStyle: const TextStyle(color: Color(0xFF9DB8FF)),
+      helperStyle: const TextStyle(color: Color(0xFF687D9C)),
+      errorStyle: const TextStyle(color: Color(0xFFFF9B9B)),
+      prefixIcon: Icon(prefixIcon),
+      prefixIconColor: const Color(0xFF7187A7),
+      suffixIcon: suffixIcon,
+      suffixIconColor: const Color(0xFF7187A7),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: focusedBorderColor, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Color(0xFF8F3D49)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Color(0xFFFF7D8E), width: 1.5),
       ),
     );
   }

@@ -459,7 +459,10 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
   @override
   void initState() {
     super.initState();
-    _future = context.read<UsageProvider>().loadDailyUsageHistory(days: 7);
+    _future = context.read<UsageProvider>().loadDailyUsageHistory(
+          days: 7,
+          includeMissingDays: false,
+        );
   }
 
   @override

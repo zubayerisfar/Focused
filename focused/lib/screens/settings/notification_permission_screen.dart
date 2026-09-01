@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/task_provider.dart';
+import '../../services/notification_access_service.dart';
 
 class NotificationPermissionScreen extends StatefulWidget {
   const NotificationPermissionScreen({super.key});
@@ -15,8 +16,10 @@ class NotificationPermissionScreen extends StatefulWidget {
 class _NotificationPermissionScreenState
     extends State<NotificationPermissionScreen>
     with WidgetsBindingObserver {
+  final NotificationAccessService _settingsService = NotificationAccessService();
   bool? _enabled;
   bool _busy = true;
+  String? _error;
 
   @override
   void initState() {
@@ -49,23 +52,45 @@ class _NotificationPermissionScreenState
   }
 
   Future<void> _request() async {
-    setState(() => _busy = true);
-    final granted = await context
-        .read<TaskProvider>()
-        .requestNotificationPermission();
     if (!mounted) return;
     setState(() {
-      _enabled = granted;
-      _busy = false;
+      _busy = true;
+      _error = null;
     });
-    if (!granted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Permission is still off. If Android no longer shows the prompt, open Android Settings → Apps → Focused → Notifications.',
-          ),
-        ),
-      );
+
+    try {
+      final granted = await context
+          .read<TaskProvider>()
+          .requestNotificationPermission();
+      if (!mounted) return;
+      setState(() {
+        _enabled = granted;
+        _busy = false;
+      });
+
+      // If Android does not show the runtime prompt (for example after the
+      // user has denied it repeatedly), take the user to Focused's system
+      // notification settings so the permission can still be changed.
+      if (!granted) {
+        await _settingsService.openAppNotificationSettings();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = error.toString();
+      });
+    }
+  }
+
+  Future<void> _openAndroidSettings() async {
+    if (!mounted) return;
+    setState(() => _error = null);
+    try {
+      await _settingsService.openAppNotificationSettings();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.toString());
     }
   }
 
@@ -140,8 +165,21 @@ class _NotificationPermissionScreenState
             ),
           ),
           const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _openAndroidSettings,
+            icon: const Icon(Icons.settings_rounded),
+            label: const Text('Open Android notification settings'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: TextStyle(color: scheme.error),
+            ),
+          ],
+          const SizedBox(height: 12),
           Text(
-            'If Android says the permission is permanently disabled, open Android Settings → Apps → Focused → Notifications and enable it there.',
+            'Notification permission lets Focused send task reminders, habit reminders and focus alerts. Notification Access is a separate permission used only to count notifications posted by other apps.',
             style: TextStyle(
               color: scheme.onSurfaceVariant,
               height: 1.45,
