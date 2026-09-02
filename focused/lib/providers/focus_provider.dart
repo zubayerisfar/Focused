@@ -19,11 +19,11 @@ class FocusProvider extends ChangeNotifier {
     FocusGuardController? focusGuardController,
     DateTime Function()? now,
     FutureOr<void> Function(FocusSession session)? onSessionFinished,
-  })  : _storageService = storageService,
-        _focusGuardController =
-            focusGuardController ?? const NoopFocusGuardController(),
-        _now = now ?? DateTime.now,
-        _onSessionFinished = onSessionFinished;
+  }) : _storageService = storageService,
+       _focusGuardController =
+           focusGuardController ?? const NoopFocusGuardController(),
+       _now = now ?? DateTime.now,
+       _onSessionFinished = onSessionFinished;
 
   Timer? _ticker;
 
@@ -67,10 +67,10 @@ class FocusProvider extends ChangeNotifier {
   String? _lastPersistenceError;
   String? _lastPersistenceErrorSessionId;
 
-  FocusGuardStatus _focusGuardStatus =
-      const FocusGuardStatus.unsupported();
+  FocusGuardStatus _focusGuardStatus = const FocusGuardStatus.unsupported();
   String? _focusGuardError;
   DateTime? _lastFocusGuardStatusRefreshAt;
+  int _guardWarningSeconds = 30;
 
   // ---------------------------------------------------------
   // STORED HISTORY
@@ -107,8 +107,7 @@ class FocusProvider extends ChangeNotifier {
   String? get lastPersistenceError {
     final session = _lastSession;
 
-    if (session == null ||
-        _lastPersistenceErrorSessionId != session.id) {
+    if (session == null || _lastPersistenceErrorSessionId != session.id) {
       return null;
     }
 
@@ -131,9 +130,7 @@ class FocusProvider extends ChangeNotifier {
       });
     }).toList();
 
-    result.sort(
-      (a, b) => b.endedAt.compareTo(a.endedAt),
-    );
+    result.sort((a, b) => b.endedAt.compareTo(a.endedAt));
 
     return List<FocusSession>.unmodifiable(result);
   }
@@ -159,11 +156,7 @@ class FocusProvider extends ChangeNotifier {
 
         while (!cursor.isAfter(lastDay)) {
           result.add(cursor);
-          cursor = DateTime(
-            cursor.year,
-            cursor.month,
-            cursor.day + 1,
-          );
+          cursor = DateTime(cursor.year, cursor.month, cursor.day + 1);
         }
       }
     }
@@ -176,10 +169,7 @@ class FocusProvider extends ChangeNotifier {
     var longest = Duration.zero;
 
     for (final session in sessionsForDate(date)) {
-      final duration = _focusDurationForSessionOnDate(
-        session,
-        date,
-      );
+      final duration = _focusDurationForSessionOnDate(session, date);
 
       if (duration.compareTo(longest) > 0) {
         longest = duration;
@@ -216,12 +206,7 @@ class FocusProvider extends ChangeNotifier {
             : interval.endTime;
 
         if (end.isAfter(start)) {
-          clipped.add(
-            FocusInterval(
-              startTime: start,
-              endTime: end,
-            ),
-          );
+          clipped.add(FocusInterval(startTime: start, endTime: end));
         }
       }
     }
@@ -230,9 +215,7 @@ class FocusProvider extends ChangeNotifier {
       return Duration.zero;
     }
 
-    clipped.sort(
-      (a, b) => a.startTime.compareTo(b.startTime),
-    );
+    clipped.sort((a, b) => a.startTime.compareTo(b.startTime));
 
     var currentStart = clipped.first.startTime;
     var currentEnd = clipped.first.endTime;
@@ -259,10 +242,7 @@ class FocusProvider extends ChangeNotifier {
     return total;
   }
 
-  Duration _focusDurationForSessionOnDate(
-    FocusSession session,
-    DateTime date,
-  ) {
+  Duration _focusDurationForSessionOnDate(FocusSession session, DateTime date) {
     final dayStart = DateTime(date.year, date.month, date.day);
     final dayEnd = DateTime(date.year, date.month, date.day + 1);
     final clipped = <FocusInterval>[];
@@ -276,17 +256,10 @@ class FocusProvider extends ChangeNotifier {
       final start = interval.startTime.isBefore(dayStart)
           ? dayStart
           : interval.startTime;
-      final end = interval.endTime.isAfter(dayEnd)
-          ? dayEnd
-          : interval.endTime;
+      final end = interval.endTime.isAfter(dayEnd) ? dayEnd : interval.endTime;
 
       if (end.isAfter(start)) {
-        clipped.add(
-          FocusInterval(
-            startTime: start,
-            endTime: end,
-          ),
-        );
+        clipped.add(FocusInterval(startTime: start, endTime: end));
       }
     }
 
@@ -294,9 +267,7 @@ class FocusProvider extends ChangeNotifier {
       return Duration.zero;
     }
 
-    clipped.sort(
-      (a, b) => a.startTime.compareTo(b.startTime),
-    );
+    clipped.sort((a, b) => a.startTime.compareTo(b.startTime));
 
     var currentStart = clipped.first.startTime;
     var currentEnd = clipped.first.endTime;
@@ -348,10 +319,11 @@ class FocusProvider extends ChangeNotifier {
   }
 
   Duration _unionIntervalsDuration(Iterable<FocusInterval> intervals) {
-    final valid = intervals
-        .where((interval) => interval.endTime.isAfter(interval.startTime))
-        .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    final valid =
+        intervals
+            .where((interval) => interval.endTime.isAfter(interval.startTime))
+            .toList()
+          ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
     if (valid.isEmpty) return Duration.zero;
 
@@ -390,8 +362,7 @@ class FocusProvider extends ChangeNotifier {
       return null;
     }
 
-    if (_currentBlockIndex < 0 ||
-        _currentBlockIndex >= _plan.length) {
+    if (_currentBlockIndex < 0 || _currentBlockIndex >= _plan.length) {
       return null;
     }
 
@@ -411,6 +382,7 @@ class FocusProvider extends ChangeNotifier {
   bool get sessionFinished => _sessionFinished;
   FocusGuardStatus get focusGuardStatus => _focusGuardStatus;
   String? get focusGuardError => _focusGuardError;
+  int get guardWarningSeconds => _guardWarningSeconds;
 
   bool get isBreak {
     return currentBlock?.isBreak ?? false;
@@ -443,8 +415,7 @@ class FocusProvider extends ChangeNotifier {
       return 0;
     }
 
-    final completedSeconds =
-        _currentBlockTotalSeconds - _remainingSeconds;
+    final completedSeconds = _currentBlockTotalSeconds - _remainingSeconds;
 
     return (completedSeconds / _currentBlockTotalSeconds)
         .clamp(0.0, 1.0)
@@ -497,11 +468,10 @@ class FocusProvider extends ChangeNotifier {
     required int totalFocusMinutes,
     required int focusBlockMinutes,
     required int breakMinutes,
+    int guardWarningSeconds = 30,
   }) {
     if (_isRunning) {
-      throw StateError(
-        'A focus session is already running.',
-      );
+      throw StateError('A focus session is already running.');
     }
 
     if (taskId != null && taskId.trim().isEmpty) {
@@ -530,25 +500,20 @@ class FocusProvider extends ChangeNotifier {
     }
 
     if (totalFocusMinutes <= 0) {
-      throw ArgumentError(
-        'Total focus duration must be greater than zero.',
-      );
+      throw ArgumentError('Total focus duration must be greater than zero.');
     }
 
     if (focusBlockMinutes <= 0) {
-      throw ArgumentError(
-        'Focus block duration must be greater than zero.',
-      );
+      throw ArgumentError('Focus block duration must be greater than zero.');
     }
 
     if (breakMinutes < 0) {
-      throw ArgumentError(
-        'Break duration cannot be negative.',
-      );
+      throw ArgumentError('Break duration cannot be negative.');
     }
 
     _taskId = taskId;
     _taskName = taskName;
+    _guardWarningSeconds = guardWarningSeconds > 0 ? guardWarningSeconds : 30;
     _taskOccurrenceDate = taskOccurrenceDate == null
         ? null
         : _dateOnlyLocal(taskOccurrenceDate);
@@ -586,15 +551,11 @@ class FocusProvider extends ChangeNotifier {
     _lastFocusGuardStatusRefreshAt = null;
 
     _sessionStartedAt = _now();
-    _activeSessionId =
-        _sessionStartedAt!.microsecondsSinceEpoch.toString();
+    _activeSessionId = _sessionStartedAt!.microsecondsSinceEpoch.toString();
 
-    _plannedFocusDuration =
-        Duration(minutes: totalFocusMinutes);
+    _plannedFocusDuration = Duration(minutes: totalFocusMinutes);
 
-    _beginCurrentBlock(
-      startAt: _sessionStartedAt!,
-    );
+    _beginCurrentBlock(startAt: _sessionStartedAt!);
 
     _startTicker();
     _startNativeFocusGuard();
@@ -616,30 +577,24 @@ class FocusProvider extends ChangeNotifier {
     var remainingFocusMinutes = totalFocusMinutes;
 
     while (remainingFocusMinutes > 0) {
-      final currentFocusMinutes =
-          remainingFocusMinutes >= focusBlockMinutes
-              ? focusBlockMinutes
-              : remainingFocusMinutes;
+      final currentFocusMinutes = remainingFocusMinutes >= focusBlockMinutes
+          ? focusBlockMinutes
+          : remainingFocusMinutes;
 
       blocks.add(
         FocusBlock(
           type: FocusBlockType.focus,
-          duration: Duration(
-            minutes: currentFocusMinutes,
-          ),
+          duration: Duration(minutes: currentFocusMinutes),
         ),
       );
 
       remainingFocusMinutes -= currentFocusMinutes;
 
-      if (remainingFocusMinutes > 0 &&
-          breakMinutes > 0) {
+      if (remainingFocusMinutes > 0 && breakMinutes > 0) {
         blocks.add(
           FocusBlock(
             type: FocusBlockType.breakTime,
-            duration: Duration(
-              minutes: breakMinutes,
-            ),
+            duration: Duration(minutes: breakMinutes),
           ),
         );
       }
@@ -652,23 +607,18 @@ class FocusProvider extends ChangeNotifier {
   // START CURRENT BLOCK
   // ---------------------------------------------------------
 
-  void _beginCurrentBlock({
-    required DateTime startAt,
-  }) {
+  void _beginCurrentBlock({required DateTime startAt}) {
     final block = currentBlock;
 
     if (block == null) {
       return;
     }
 
-    _currentBlockTotalSeconds =
-        block.duration.inSeconds;
+    _currentBlockTotalSeconds = block.duration.inSeconds;
 
-    _remainingSeconds =
-        block.duration.inSeconds;
+    _remainingSeconds = block.duration.inSeconds;
 
-    _blockDeadline =
-        startAt.add(block.duration);
+    _blockDeadline = startAt.add(block.duration);
 
     _currentFocusIntervalStart = null;
     _currentBreakIntervalStart = null;
@@ -687,12 +637,9 @@ class FocusProvider extends ChangeNotifier {
   void _startTicker() {
     _ticker?.cancel();
 
-    _ticker = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) {
-        _tick();
-      },
-    );
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _tick();
+    });
   }
 
   void _tick() {
@@ -717,8 +664,7 @@ class FocusProvider extends ChangeNotifier {
       }
 
       if (now.isBefore(deadline)) {
-        _remainingSeconds =
-            _secondsUntil(deadline, now);
+        _remainingSeconds = _secondsUntil(deadline, now);
 
         notifyListeners();
 
@@ -729,18 +675,12 @@ class FocusProvider extends ChangeNotifier {
 
       final transitionTime = deadline;
 
-      _completeCurrentBlockAt(
-        transitionTime,
-      );
+      _completeCurrentBlockAt(transitionTime);
     }
   }
 
-  int _secondsUntil(
-    DateTime end,
-    DateTime now,
-  ) {
-    final milliseconds =
-        end.difference(now).inMilliseconds;
+  int _secondsUntil(DateTime end, DateTime now) {
+    final milliseconds = end.difference(now).inMilliseconds;
 
     if (milliseconds <= 0) {
       return 0;
@@ -753,9 +693,7 @@ class FocusProvider extends ChangeNotifier {
   // BLOCK FINISHED
   // ---------------------------------------------------------
 
-  void _completeCurrentBlockAt(
-    DateTime transitionTime,
-  ) {
+  void _completeCurrentBlockAt(DateTime transitionTime) {
     final block = currentBlock;
 
     if (block == null) {
@@ -763,34 +701,24 @@ class FocusProvider extends ChangeNotifier {
     }
 
     if (block.isFocus) {
-      _closeCurrentFocusInterval(
-        transitionTime,
-      );
+      _closeCurrentFocusInterval(transitionTime);
 
       _completedFocusBlocks++;
     } else {
-      _closeCurrentBreakInterval(
-        transitionTime,
-      );
+      _closeCurrentBreakInterval(transitionTime);
     }
 
-    final isLastBlock =
-        _currentBlockIndex == _plan.length - 1;
+    final isLastBlock = _currentBlockIndex == _plan.length - 1;
 
     if (isLastBlock) {
-      _finishSession(
-        endAt: transitionTime,
-        completedNaturally: true,
-      );
+      _finishSession(endAt: transitionTime, completedNaturally: true);
 
       return;
     }
 
     _currentBlockIndex++;
 
-    _beginCurrentBlock(
-      startAt: transitionTime,
-    );
+    _beginCurrentBlock(startAt: transitionTime);
 
     _syncNativeFocusGuardPhase();
   }
@@ -808,8 +736,7 @@ class FocusProvider extends ChangeNotifier {
     final deadline = _blockDeadline;
 
     if (deadline != null) {
-      _remainingSeconds =
-          _secondsUntil(deadline, now);
+      _remainingSeconds = _secondsUntil(deadline, now);
     }
 
     if (isFocus) {
@@ -848,9 +775,7 @@ class FocusProvider extends ChangeNotifier {
 
     _isPaused = false;
 
-    _blockDeadline = now.add(
-      Duration(seconds: _remainingSeconds),
-    );
+    _blockDeadline = now.add(Duration(seconds: _remainingSeconds));
 
     if (isFocus) {
       _currentFocusIntervalStart = now;
@@ -882,23 +807,17 @@ class FocusProvider extends ChangeNotifier {
 
     _closeCurrentBreakInterval(now);
 
-    final isLastBlock =
-        _currentBlockIndex == _plan.length - 1;
+    final isLastBlock = _currentBlockIndex == _plan.length - 1;
 
     if (isLastBlock) {
-      _finishSession(
-        endAt: now,
-        completedNaturally: true,
-      );
+      _finishSession(endAt: now, completedNaturally: true);
 
       return;
     }
 
     _currentBlockIndex++;
 
-    _beginCurrentBlock(
-      startAt: now,
-    );
+    _beginCurrentBlock(startAt: now);
 
     _syncNativeFocusGuardPhase();
 
@@ -914,21 +833,15 @@ class FocusProvider extends ChangeNotifier {
       return;
     }
 
-    _finishSession(
-      endAt: _now(),
-      completedNaturally: false,
-    );
+    _finishSession(endAt: _now(), completedNaturally: false);
   }
 
   // ---------------------------------------------------------
   // INTERVAL TRACKING
   // ---------------------------------------------------------
 
-  void _closeCurrentFocusInterval(
-    DateTime endTime,
-  ) {
-    final startTime =
-        _currentFocusIntervalStart;
+  void _closeCurrentFocusInterval(DateTime endTime) {
+    final startTime = _currentFocusIntervalStart;
 
     if (startTime == null) {
       return;
@@ -936,21 +849,15 @@ class FocusProvider extends ChangeNotifier {
 
     if (endTime.isAfter(startTime)) {
       _focusIntervals.add(
-        FocusInterval(
-          startTime: startTime,
-          endTime: endTime,
-        ),
+        FocusInterval(startTime: startTime, endTime: endTime),
       );
     }
 
     _currentFocusIntervalStart = null;
   }
 
-  void _closeCurrentPauseInterval(
-    DateTime endTime,
-  ) {
-    final startTime =
-        _currentPauseIntervalStart;
+  void _closeCurrentPauseInterval(DateTime endTime) {
+    final startTime = _currentPauseIntervalStart;
 
     if (startTime == null) {
       return;
@@ -958,21 +865,15 @@ class FocusProvider extends ChangeNotifier {
 
     if (endTime.isAfter(startTime)) {
       _pauseIntervals.add(
-        FocusInterval(
-          startTime: startTime,
-          endTime: endTime,
-        ),
+        FocusInterval(startTime: startTime, endTime: endTime),
       );
     }
 
     _currentPauseIntervalStart = null;
   }
 
-  void _closeCurrentBreakInterval(
-    DateTime endTime,
-  ) {
-    final startTime =
-        _currentBreakIntervalStart;
+  void _closeCurrentBreakInterval(DateTime endTime) {
+    final startTime = _currentBreakIntervalStart;
 
     if (startTime == null) {
       return;
@@ -980,10 +881,7 @@ class FocusProvider extends ChangeNotifier {
 
     if (endTime.isAfter(startTime)) {
       _breakIntervals.add(
-        FocusInterval(
-          startTime: startTime,
-          endTime: endTime,
-        ),
+        FocusInterval(startTime: startTime, endTime: endTime),
       );
     }
 
@@ -1009,8 +907,7 @@ class FocusProvider extends ChangeNotifier {
       _closeCurrentBreakInterval(endAt);
     }
 
-    final startedAt =
-        _sessionStartedAt ?? endAt;
+    final startedAt = _sessionStartedAt ?? endAt;
 
     final session = FocusSession(
       id: _activeSessionId ?? startedAt.microsecondsSinceEpoch.toString(),
@@ -1021,27 +918,13 @@ class FocusProvider extends ChangeNotifier {
       taskScheduledEnd: _taskScheduledEnd,
       startedAt: startedAt,
       endedAt: endAt,
-      plannedFocusDuration:
-          _plannedFocusDuration,
-      plan: List<FocusBlock>.unmodifiable(
-        _plan,
-      ),
-      focusIntervals:
-          List<FocusInterval>.unmodifiable(
-        _focusIntervals,
-      ),
-      pauseIntervals:
-          List<FocusInterval>.unmodifiable(
-        _pauseIntervals,
-      ),
-      breakIntervals:
-          List<FocusInterval>.unmodifiable(
-        _breakIntervals,
-      ),
-      completedFocusBlocks:
-          _completedFocusBlocks,
-      completedNaturally:
-          completedNaturally,
+      plannedFocusDuration: _plannedFocusDuration,
+      plan: List<FocusBlock>.unmodifiable(_plan),
+      focusIntervals: List<FocusInterval>.unmodifiable(_focusIntervals),
+      pauseIntervals: List<FocusInterval>.unmodifiable(_pauseIntervals),
+      breakIntervals: List<FocusInterval>.unmodifiable(_breakIntervals),
+      completedFocusBlocks: _completedFocusBlocks,
+      completedNaturally: completedNaturally,
     );
 
     _lastSession = session;
@@ -1052,9 +935,10 @@ class FocusProvider extends ChangeNotifier {
     final onSessionFinished = _onSessionFinished;
     if (onSessionFinished != null) {
       unawaited(
-        Future<void>.sync(
-          () async => onSessionFinished(session),
-        ).catchError((Object error, StackTrace stackTrace) {
+        Future<void>.sync(() async => onSessionFinished(session)).catchError((
+          Object error,
+          StackTrace stackTrace,
+        ) {
           debugPrint(
             'Could not finalize linked task after focus session: $error',
           );
@@ -1074,10 +958,7 @@ class FocusProvider extends ChangeNotifier {
     _currentPauseIntervalStart = null;
     _currentBreakIntervalStart = null;
 
-    _runGuardAction(
-      _focusGuardController.stopFocusGuard,
-      refreshAfter: true,
-    );
+    _runGuardAction(_focusGuardController.stopFocusGuard, refreshAfter: true);
     _activeSessionId = null;
     _lastFocusGuardStatusRefreshAt = null;
 
@@ -1100,7 +981,7 @@ class FocusProvider extends ChangeNotifier {
         currentBlockIndex: _currentBlockIndex,
         remainingSeconds: _remainingSeconds,
         originDevice: 'android',
-        warningThresholdSeconds: 30,
+        warningThresholdSeconds: _guardWarningSeconds,
       ),
     );
   }
@@ -1140,8 +1021,7 @@ class FocusProvider extends ChangeNotifier {
         _focusGuardError = null;
 
         if (refreshAfter) {
-          _focusGuardStatus =
-              await _focusGuardController.getFocusGuardStatus();
+          _focusGuardStatus = await _focusGuardController.getFocusGuardStatus();
         }
       } catch (error) {
         _focusGuardError = 'Focus Guard could not synchronize: $error';
@@ -1151,12 +1031,8 @@ class FocusProvider extends ChangeNotifier {
     }());
   }
 
-  void _upsertHistory(
-    FocusSession session,
-  ) {
-    _sessionHistory.removeWhere(
-      (existing) => existing.id == session.id,
-    );
+  void _upsertHistory(FocusSession session) {
+    _sessionHistory.removeWhere((existing) => existing.id == session.id);
 
     _sessionHistory.add(session);
 
@@ -1164,14 +1040,10 @@ class FocusProvider extends ChangeNotifier {
   }
 
   void _sortSessionHistory() {
-    _sessionHistory.sort(
-      (a, b) => b.endedAt.compareTo(a.endedAt),
-    );
+    _sessionHistory.sort((a, b) => b.endedAt.compareTo(a.endedAt));
   }
 
-  void _queuePersistence(
-    FocusSession session,
-  ) {
+  void _queuePersistence(FocusSession session) {
     final storage = _storageService;
 
     if (storage == null) {
@@ -1179,10 +1051,7 @@ class FocusProvider extends ChangeNotifier {
     }
 
     final previousWrite = _pendingPersistence;
-    final currentWrite = _persistSession(
-      storage,
-      session,
-    );
+    final currentWrite = _persistSession(storage, session);
 
     // The current Hive write starts immediately. The combined future still
     // lets callers wait until every write that was pending at this point
@@ -1206,17 +1075,12 @@ class FocusProvider extends ChangeNotifier {
       }
     } catch (error, stackTrace) {
       if (_lastSession?.id == session.id) {
-        _lastPersistenceError =
-            'Focus history could not be saved.';
+        _lastPersistenceError = 'Focus history could not be saved.';
         _lastPersistenceErrorSessionId = session.id;
       }
 
-      debugPrint(
-        'Focus session persistence failed: $error',
-      );
-      debugPrintStack(
-        stackTrace: stackTrace,
-      );
+      debugPrint('Focus session persistence failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
 
     notifyListeners();
@@ -1233,7 +1097,6 @@ DateTime _dateOnlyLocal(DateTime value) {
   final local = value.isUtc ? value.toLocal() : value;
   return DateTime(local.year, local.month, local.day);
 }
-
 
 bool _sameDateLocal(DateTime first, DateTime second) {
   final a = _dateOnlyLocal(first);

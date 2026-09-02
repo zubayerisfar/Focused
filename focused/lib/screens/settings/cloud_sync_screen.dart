@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/cloud_sync_provider.dart';
+import '../../services/cloud_sync_service.dart';
 
 class CloudSyncScreen extends StatelessWidget {
   const CloudSyncScreen({super.key});
@@ -96,10 +97,40 @@ class CloudSyncScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 18),
-          FilledButton.icon(
-            onPressed: sync.canSync ? () => _syncNow(context) : null,
-            icon: const Icon(Icons.sync_rounded),
-            label: Text(sync.isSyncing ? 'Syncing…' : 'Sync now'),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: sync.canSync
+                  ? () => _triggerSync(context, CloudSyncMode.bidirectional)
+                  : null,
+              icon: const Icon(Icons.sync_rounded),
+              label: Text(sync.isSyncing ? 'Syncing…' : 'Smart Sync (Bidirectional)'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: sync.canSync
+                      ? () => _triggerSync(context, CloudSyncMode.downloadOnly)
+                      : null,
+                  icon: const Icon(Icons.cloud_download_rounded, size: 18),
+                  label: const Text('Download Cloud'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: sync.canSync
+                      ? () => _triggerSync(context, CloudSyncMode.uploadOnly)
+                      : null,
+                  icon: const Icon(Icons.cloud_upload_rounded, size: 18),
+                  label: const Text('Upload Local'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           _InfoRow(label: 'Device', value: sync.deviceName ?? 'Focused device'),
@@ -134,23 +165,35 @@ class CloudSyncScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _syncNow(BuildContext context) async {
+  Future<void> _triggerSync(BuildContext context, CloudSyncMode mode) async {
     final messenger = ScaffoldMessenger.of(context);
+    final modeName = mode == CloudSyncMode.downloadOnly
+        ? 'Download'
+        : mode == CloudSyncMode.uploadOnly
+        ? 'Upload'
+        : 'Sync';
+
     try {
-      final result = await context.read<CloudSyncProvider>().syncNow();
+      final result = await context.read<CloudSyncProvider>().syncNow(
+        mode: mode,
+        isManual: true,
+      );
       if (!context.mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Synced: ${result.pushed} uploaded, ${result.pulled} downloaded.',
+            '$modeName complete: ${result.pushed} uploaded, ${result.pulled} downloaded.',
           ),
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!context.mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Cloud sync could not finish.')),
-      );
+      final errorText = e.toString();
+      final msg = errorText.contains('No internet connection')
+          ? 'No internet connection. Connect to the internet and try again.'
+          : (context.read<CloudSyncProvider>().errorMessage ??
+                'Cloud sync could not finish.');
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 }

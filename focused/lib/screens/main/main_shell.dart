@@ -8,10 +8,12 @@ import '../today/today_screen.dart';
 class MainShell extends StatefulWidget {
   final int initialIndex;
 
-  const MainShell({
-    super.key,
-    this.initialIndex = 0,
-  });
+  const MainShell({super.key, this.initialIndex = 0});
+
+  static void switchToTab(BuildContext context, int index) {
+    final state = context.findAncestorStateOfType<_MainShellState>();
+    state?.setIndex(index);
+  }
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -19,6 +21,12 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late int _currentIndex = _safeIndex(widget.initialIndex);
+
+  void setIndex(int index) {
+    setState(() {
+      _currentIndex = _safeIndex(index);
+    });
+  }
 
   final List<Widget> _screens = const [
     PrimaryScrollController.none(child: TodayScreen()),
@@ -40,10 +48,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: _FocusedBottomNavigation(
         currentIndex: _currentIndex,
         onSelected: (index) {
@@ -97,9 +102,7 @@ class _FocusedBottomNavigation extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surface,
-        border: Border(
-          top: BorderSide(color: Theme.of(context).dividerColor),
-        ),
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: SafeArea(
         top: false,
@@ -145,8 +148,9 @@ class _FocusedBottomNavigation extends StatelessWidget {
                           item.label,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight:
-                                selected ? FontWeight.w700 : FontWeight.w400,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w400,
                             color: selected
                                 ? scheme.primary
                                 : scheme.onSurfaceVariant,

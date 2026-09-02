@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/cloud_sync_provider.dart';
 import '../../services/cloud_sync_service.dart';
 import '../../theme/app_theme.dart';
+import 'device_summary_screen.dart';
 
 class DevicesScreen extends StatefulWidget {
   const DevicesScreen({super.key});
@@ -58,16 +59,17 @@ class _DevicesScreenState extends State<DevicesScreen> {
           children: [
             Text(
               'Your devices',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
               'Devices appear here after they sync with your Focused account.',
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.55),
               ),
             ),
             if (sync.errorMessage != null) ...[
@@ -80,10 +82,9 @@ class _DevicesScreenState extends State<DevicesScreen> {
             const SizedBox(height: 26),
             Text(
               'This device',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             if (current != null)
@@ -97,10 +98,9 @@ class _DevicesScreenState extends State<DevicesScreen> {
             const SizedBox(height: 28),
             Text(
               'Other devices',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             if (others.isEmpty)
@@ -160,7 +160,9 @@ class _PendingCurrentDeviceCard extends StatelessWidget {
                 Text(
                   deviceName?.trim().isNotEmpty == true
                       ? deviceName!.trim()
-                      : (newDevice ? 'New device detected' : 'Current installation'),
+                      : (newDevice
+                            ? 'New device detected'
+                            : 'Current installation'),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -203,63 +205,135 @@ class _DeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final summary = device.summary;
+
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Row(
-        children: [
-          _DeviceIcon(platform: device.platform),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  device.deviceName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) =>
+                  DeviceSummaryScreen(device: device, isCurrent: current),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: theme.dividerColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _DeviceIcon(platform: device.platform),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          device.deviceName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_platformLabel(device.platform)}${current ? ' • This device' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          device.lastSyncAt == null
+                              ? 'Registered ${_relativeTime(device.createdAt)}'
+                              : 'Last synced ${_relativeTime(device.lastSyncAt!)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${_platformLabel(device.platform)}${current ? ' • This device' : ''}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  device.lastSyncAt == null
-                      ? 'Registered ${_relativeTime(device.createdAt)}'
-                      : 'Last synced ${_relativeTime(device.lastSyncAt!)}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  const SizedBox(width: 10),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+              if (summary != null && summary.activeDaysCount > 0) ...[
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _QuickStatPill(
+                      icon: Icons.calendar_today_rounded,
+                      label: '${summary.activeDaysCount}d history',
+                    ),
+                    const SizedBox(width: 8),
+                    _QuickStatPill(
+                      icon: Icons.center_focus_strong_rounded,
+                      label: '${summary.totalFocusMinutes ~/ 60}h focus',
+                    ),
+                    const Spacer(),
+                    Text(
+                      'View data →',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppTheme.success.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              device.status == 'active' ? 'Active' : device.status,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppTheme.success,
-                fontWeight: FontWeight.w700,
-              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickStatPill extends StatelessWidget {
+  const _QuickStatPill({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 13,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -278,10 +352,10 @@ class _DeviceIcon extends StatelessWidget {
     final icon = normalized == 'windows'
         ? Icons.desktop_windows_rounded
         : normalized == 'macos'
-            ? Icons.laptop_mac_rounded
-            : normalized == 'ios'
-                ? Icons.phone_iphone_rounded
-                : Icons.smartphone_rounded;
+        ? Icons.laptop_mac_rounded
+        : normalized == 'ios'
+        ? Icons.phone_iphone_rounded
+        : Icons.smartphone_rounded;
     return Container(
       width: 54,
       height: 54,
@@ -318,7 +392,9 @@ class _InfoCard extends StatelessWidget {
               text,
               style: TextStyle(
                 height: 1.45,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.68),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.68),
               ),
             ),
           ),

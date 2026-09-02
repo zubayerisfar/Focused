@@ -17,9 +17,9 @@ class HabitProvider extends ChangeNotifier {
     HabitStore? storageService,
     HabitReminderScheduler? reminderScheduler,
     HabitAnalyticsService analyticsService = const HabitAnalyticsService(),
-  })  : _storageService = storageService,
-        _reminderScheduler = reminderScheduler,
-        _analyticsService = analyticsService;
+  }) : _storageService = storageService,
+       _reminderScheduler = reminderScheduler,
+       _analyticsService = analyticsService;
 
   final HabitStore? _storageService;
   final HabitReminderScheduler? _reminderScheduler;
@@ -49,11 +49,23 @@ class HabitProvider extends ChangeNotifier {
       ..clear()
       ..addAll(
         storage.loadProgress().where(
-              (item) => knownHabitIds.contains(item.habitId),
-            ),
+          (item) => knownHabitIds.contains(item.habitId),
+        ),
       );
 
     notifyListeners();
+  }
+
+  Set<DateTime> habitCompletionDates() {
+    final dates = <DateTime>{};
+    for (final habit in _habits) {
+      for (final p in _progress) {
+        if (p.habitId == habit.id && p.value >= habit.targetValue) {
+          dates.add(DateTime(p.date.year, p.date.month, p.date.day));
+        }
+      }
+    }
+    return dates;
   }
 
   Habit? getHabitById(String id) {
@@ -105,10 +117,7 @@ class HabitProvider extends ChangeNotifier {
     return habit;
   }
 
-  Future<void> updateHabit(
-    Habit updatedHabit, {
-    DateTime? updatedAt,
-  }) async {
+  Future<void> updateHabit(Habit updatedHabit, {DateTime? updatedAt}) async {
     final index = _habits.indexWhere((habit) => habit.id == updatedHabit.id);
     if (index == -1) {
       throw StateError('Cannot update a habit that does not exist.');
@@ -142,7 +151,9 @@ class HabitProvider extends ChangeNotifier {
     }
 
     final habit = _habits.removeAt(index);
-    final removedProgress = _progress.where((item) => item.habitId == habitId).toList();
+    final removedProgress = _progress
+        .where((item) => item.habitId == habitId)
+        .toList();
     _progress.removeWhere((item) => item.habitId == habitId);
     notifyListeners();
 
@@ -268,10 +279,7 @@ class HabitProvider extends ChangeNotifier {
     return List<HabitProgress>.unmodifiable(result);
   }
 
-  HabitAnalyticsSummary analyticsForHabit(
-    String habitId, {
-    DateTime? asOf,
-  }) {
+  HabitAnalyticsSummary analyticsForHabit(String habitId, {DateTime? asOf}) {
     final habit = getHabitById(habitId);
     if (habit == null) {
       throw StateError('Cannot analyze a habit that does not exist.');
@@ -279,10 +287,7 @@ class HabitProvider extends ChangeNotifier {
     return analyticsFor(habit, asOf: asOf);
   }
 
-  HabitAnalyticsSummary analyticsFor(
-    Habit habit, {
-    DateTime? asOf,
-  }) {
+  HabitAnalyticsSummary analyticsFor(Habit habit, {DateTime? asOf}) {
     return _analyticsService.analyze(
       habit: habit,
       progress: progressForHabit(habit.id),
@@ -317,7 +322,9 @@ class HabitProvider extends ChangeNotifier {
   }
 
   int completedHabitCountForDate(DateTime date) {
-    return habitsForDate(date).where((habit) => isCompletedForDate(habit, date)).length;
+    return habitsForDate(
+      date,
+    ).where((habit) => isCompletedForDate(habit, date)).length;
   }
 
   Habit _preserveDefinitionHistory({
@@ -325,7 +332,8 @@ class HabitProvider extends ChangeNotifier {
     required Habit updated,
     required DateTime changedAt,
   }) {
-    final definitionChanged = previous.targetValue != updated.targetValue ||
+    final definitionChanged =
+        previous.targetValue != updated.targetValue ||
         !_sameWeekdaySet(previous.weekdays, updated.weekdays);
 
     if (!definitionChanged) {
@@ -397,7 +405,8 @@ class HabitProvider extends ChangeNotifier {
     return 'habit_${now.microsecondsSinceEpoch}_${_random.nextInt(1 << 32)}';
   }
 
-  DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+  DateTime _dateOnly(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
 
   bool _sameDate(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

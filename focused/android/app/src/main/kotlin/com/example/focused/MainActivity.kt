@@ -26,6 +26,8 @@ class MainActivity : FlutterActivity() {
         private const val FOCUS_GUARD_CHANNEL = "focused/focus_guard"
         private const val NOTIFICATION_EVENTS_CHANNEL = "focused/notification_events"
         private const val INSTALLATION_INFO_CHANNEL = "focused/installation_info"
+        private const val HOME_WIDGET_CHANNEL = "focused/home_widget"
+        private const val USAGE_SUMMARY_CHANNEL = "focused/usage_summary"
         private const val NOTIFICATION_PERMISSION_REQUEST = 4401
         private const val DEFAULT_ICON_SIZE = 96
         private const val MAX_BATCH_SIZE = 200
@@ -227,6 +229,91 @@ class MainActivity : FlutterActivity() {
                     error.message ?: "Notification access operation failed.",
                     null,
                 )
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            HOME_WIDGET_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "updateWidgetData" -> {
+                    val arguments = call.arguments as? Map<*, *> ?: emptyMap<Any?, Any?>()
+                    try {
+                        val prefs = getSharedPreferences(
+                            FocusedLifestyleWidgetProvider.PREFS_NAME,
+                            Context.MODE_PRIVATE,
+                        )
+                        val editor = prefs.edit()
+
+                        (arguments["screenTime"] as? String)?.let { editor.putString("screen_time", it) }
+                        (arguments["comparison"] as? String)?.let { editor.putString("comparison", it) }
+                        (arguments["streak"] as? String)?.let { editor.putString("streak", it) }
+                        (arguments["focusHours"] as? String)?.let { editor.putString("focus_hours", it) }
+
+                        val tasks = arguments["tasks"] as? List<*>
+                        if (tasks != null) {
+                            editor.putInt("tasks_count", tasks.size)
+                            tasks.take(3).forEachIndexed { index, item ->
+                                val taskMap = item as? Map<*, *>
+                                val slot = index + 1
+                                editor.putString("task_${slot}_id", taskMap?.get("id") as? String)
+                                editor.putString("task_${slot}_title", taskMap?.get("title") as? String)
+                                editor.putBoolean("task_${slot}_done", taskMap?.get("isDone") as? Boolean ?: false)
+                            }
+                        }
+
+                        editor.apply()
+                        FocusedLifestyleWidgetProvider.updateAllWidgets(applicationContext)
+                        result.success(true)
+                    } catch (error: Throwable) {
+                        result.error(
+                            "WIDGET_UPDATE_FAILED",
+                            error.message ?: "Failed to update home widget.",
+                            null,
+                        )
+                    }
+                }
+
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            USAGE_SUMMARY_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "scheduleDailySummaries" -> {
+                    AppUsageSummaryScheduler.scheduleDailySummaries(applicationContext)
+                    result.success(true)
+                }
+
+                "cancelDailySummaries" -> {
+                    AppUsageSummaryScheduler.cancelDailySummaries(applicationContext)
+                    result.success(true)
+                }
+
+                "isEnabled" -> {
+                    val enabled = AppUsageSummaryScheduler.isEnabled(applicationContext)
+                    result.success(enabled)
+                }
+
+                "setEnabled" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: true
+                    AppUsageSummaryScheduler.setEnabled(applicationContext, enabled)
+                    result.success(true)
+                }
+
+                "showTestSummaryNow" -> {
+                    val intent = Intent(applicationContext, AppUsageSummaryNotificationReceiver::class.java).apply {
+                        action = AppUsageSummaryNotificationReceiver.ACTION_TEST_TRIGGER
+                    }
+                    applicationContext.sendBroadcast(intent)
+                    result.success(true)
+                }
+
+                else -> result.notImplemented()
             }
         }
     }

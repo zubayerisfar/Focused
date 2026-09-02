@@ -1,21 +1,33 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 
+import '../models/device_usage_summary.dart';
 import '../models/focus_session.dart';
 import '../models/habit.dart';
 import '../models/habit_progress.dart';
 import '../models/task.dart';
 import '../models/task_occurrence_completion.dart';
+import '../models/user_cloud_stats.dart';
 import '../models/user_profile.dart';
+import '../providers/theme_provider.dart';
+import 'achievement_service.dart';
+import 'device_usage_summary_service.dart';
 import 'focus_session_storage_service.dart';
 import 'habit_storage_service.dart';
+import 'productivity_streak_service.dart';
 import 'streak_goal_storage_service.dart';
 import 'sync_metadata_storage_service.dart';
 import 'task_occurrence_completion_storage_service.dart';
 import 'task_storage_service.dart';
+import 'usage_record_storage_service.dart';
+import 'user_cloud_stats_storage_service.dart';
 import 'user_profile_storage_service.dart';
+
+enum CloudSyncMode { bidirectional, downloadOnly, uploadOnly }
 
 class CloudSyncResult {
   const CloudSyncResult({
@@ -41,6 +53,10 @@ class CloudSyncService {
     required FocusSessionStorageService focusSessionStorage,
     required UserProfileStorageService userProfileStorage,
     required StreakGoalStorageService streakGoalStorage,
+    UserCloudStatsStorageService? userStatsStorage,
+    UsageRecordStore? usageRecordStorage,
+    ThemeProvider? themeProvider,
+    DeviceUsageSummaryService? summaryService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _metadataStorage = metadataStorage,
        _taskStorage = taskStorage,
@@ -48,7 +64,11 @@ class CloudSyncService {
        _habitStorage = habitStorage,
        _focusSessionStorage = focusSessionStorage,
        _userProfileStorage = userProfileStorage,
-       _streakGoalStorage = streakGoalStorage;
+       _streakGoalStorage = streakGoalStorage,
+       _userStatsStorage = userStatsStorage,
+       _usageRecordStorage = usageRecordStorage,
+       _themeProvider = themeProvider,
+       _summaryService = summaryService ?? const DeviceUsageSummaryService();
 
   final FirebaseFirestore _firestore;
   final SyncMetadataStorageService _metadataStorage;
@@ -58,11 +78,16 @@ class CloudSyncService {
   final FocusSessionStorageService _focusSessionStorage;
   final UserProfileStorageService _userProfileStorage;
   final StreakGoalStorageService _streakGoalStorage;
+  final UserCloudStatsStorageService? _userStatsStorage;
+  final UsageRecordStore? _usageRecordStorage;
+  final ThemeProvider? _themeProvider;
+  final DeviceUsageSummaryService _summaryService;
 
   Future<CloudSyncResult> sync({
     required String uid,
     required String deviceId,
     String? deviceName,
+    CloudSyncMode mode = CloudSyncMode.bidirectional,
   }) async {
     if (uid.trim().isEmpty) {
       throw ArgumentError('A signed-in Firebase UID is required for sync.');
@@ -80,11 +105,75 @@ class CloudSyncService {
       deviceName: deviceName,
     );
 
+    // Read and merge root user doc `users/{uid}` in Firestore so console edits are immediately applied
+    Map<String, dynamic>? rootDocData;
+    try {
+      final rootDocSnap = await _firestore.collection('users').doc(uid).get();
+      rootDocData = rootDocSnap.data();
+    } catch (e) {
+      debugPrint('Could not read root user doc: $e');
+    }
+
+    if (rootDocData != null && _userStatsStorage != null) {
+      final remoteStreak = (rootDocData['streakDays'] as num?)?.toInt() ?? 0;
+      final remoteLongest = (rootDocData['longestStreak'] as num?)?.toInt() ?? 0;
+      final remoteFocusMinutes = (rootDocData['totalFocusMinutes'] as num?)?.toInt() ?? 0;
+      final remoteSessions = (rootDocData['completedSessionsCount'] as num?)?.toInt() ?? 0;
+      final remoteBadges = (rootDocData['unlockedBadgeIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          <String>[];
+
+      final localStats = _userStatsStorage!.loadStats();
+      final effectiveStreak = math.max(localStats.streakDays, remoteStreak);
+      final effectiveLongest = math.max(
+        math.max(localStats.longestStreak, remoteLongest),
+        effectiveStreak,
+      );
+      final effectiveFocus = math.max(localStats.totalFocusMinutes, remoteFocusMinutes);
+      final effectiveSessions = math.max(localStats.completedSessionsCount, remoteSessions);
+      final mergedBadges = <String>{
+        ...localStats.unlockedBadgeIds,
+        ...remoteBadges,
+      };
+
+      if (effectiveStreak != localStats.streakDays ||
+          effectiveFocus != localStats.totalFocusMinutes ||
+          effectiveLongest != localStats.longestStreak ||
+          mergedBadges.length != localStats.unlockedBadgeIds.length) {
+        pulled++;
+        final updated = UserCloudStats(
+          streakDays: effectiveStreak,
+          longestStreak: effectiveLongest,
+          totalFocusMinutes: effectiveFocus,
+          completedSessionsCount: effectiveSessions,
+          unlockedBadgeIds: mergedBadges.toList(),
+          updatedAt: DateTime.now().toUtc(),
+        );
+        await _userStatsStorage!.saveStats(updated);
+      }
+
+      final remoteName = rootDocData['displayName'] as String?;
+      final remoteNationality = rootDocData['nationality'] as String?;
+      if ((remoteName != null && remoteName.isNotEmpty) ||
+          (remoteNationality != null && remoteNationality.isNotEmpty)) {
+        final currentProfile = _userProfileStorage.loadProfile();
+        if (currentProfile != null) {
+          final updatedProfile = currentProfile.copyWith(
+            displayName: remoteName ?? currentProfile.displayName,
+            nationality: remoteNationality ?? currentProfile.nationality,
+          );
+          await _userProfileStorage.saveProfile(updatedProfile);
+        }
+      }
+    }
+
     Future<void> syncCollection(_SyncCollectionAdapter adapter) async {
       final result = await _syncCollection(
         uid: uid,
         deviceId: deviceId,
         adapter: adapter,
+        mode: mode,
       );
       pushed += result.pushed;
       pulled += result.pulled;
@@ -194,23 +283,109 @@ class CloudSyncService {
     await syncCollection(
       _SyncCollectionAdapter(
         name: 'settings',
-        loadLocal: () => {
-          'main': {
-            'schemaVersion': 1,
-            'streakGoalDays': _streakGoalStorage.loadGoalDays(),
-          },
+        loadLocal: () {
+          final themeProvider = _themeProvider;
+          return {
+            'main': {
+              'schemaVersion': 1,
+              'streakGoalDays': _streakGoalStorage.loadGoalDays(),
+              if (themeProvider != null)
+                'themeMode': themeProvider.themeMode.name,
+            },
+          };
         },
         applyRemote: (id, payload) async {
           final value = payload['streakGoalDays'];
           if (value is num && value.toInt() > 0) {
             await _streakGoalStorage.saveGoalDays(value.toInt());
           }
+          final themeName = payload['themeMode'];
+          final themeProvider = _themeProvider;
+          if (themeName is String && themeProvider != null) {
+            final mode = ThemeMode.values.firstWhere(
+              (m) => m.name == themeName,
+              orElse: () => ThemeMode.system,
+            );
+            await themeProvider.setThemeMode(mode);
+          }
         },
         deleteLocal: (id) async {},
       ),
     );
 
+    if (_userStatsStorage != null) {
+      await syncCollection(
+        _SyncCollectionAdapter(
+          name: 'stats',
+          loadLocal: () {
+            final stats = _computeCurrentLocalStats();
+            return {'main': stats.toMap()};
+          },
+          applyRemote: (id, payload) async {
+            final statsStore = _userStatsStorage!;
+            final remoteStats = UserCloudStats.fromMap(payload);
+            final localStats = statsStore.loadStats();
+            final mergedBadges = <String>{
+              ...localStats.unlockedBadgeIds,
+              ...remoteStats.unlockedBadgeIds,
+            };
+            final effectiveStreak = math.max(
+              localStats.streakDays,
+              remoteStats.streakDays,
+            );
+            final effectiveLongest = math.max(
+              math.max(localStats.longestStreak, remoteStats.longestStreak),
+              effectiveStreak,
+            );
+            final merged = UserCloudStats(
+              streakDays: effectiveStreak,
+              longestStreak: effectiveLongest,
+              totalFocusMinutes: math.max(
+                localStats.totalFocusMinutes,
+                remoteStats.totalFocusMinutes,
+              ),
+              completedSessionsCount: math.max(
+                localStats.completedSessionsCount,
+                remoteStats.completedSessionsCount,
+              ),
+              unlockedBadgeIds: mergedBadges.toList(),
+              updatedAt: DateTime.now().toUtc(),
+            );
+            await statsStore.saveStats(merged);
+          },
+          deleteLocal: (id) async {},
+        ),
+      );
+    }
+
     final completedAt = DateTime.now().toUtc();
+    final profile = _userProfileStorage.loadProfile();
+    final currentStats =
+        _userStatsStorage?.loadStats() ?? _computeCurrentLocalStats();
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'uid': uid,
+        if (profile?.email != null && profile!.email.isNotEmpty)
+          'email': profile.email,
+        if (profile?.displayName != null && profile!.displayName.isNotEmpty)
+          'displayName': profile.displayName,
+        if (profile?.nationality != null && profile!.nationality.isNotEmpty)
+          'nationality': profile.nationality,
+        'streakDays': currentStats.streakDays,
+        'longestStreak': currentStats.longestStreak,
+        'totalFocusMinutes': currentStats.totalFocusMinutes,
+        'completedSessionsCount': currentStats.completedSessionsCount,
+        'unlockedBadgesCount': currentStats.unlockedBadgeIds.length,
+        'unlockedBadgeIds': currentStats.unlockedBadgeIds,
+        'lastSyncedAt': completedAt.toIso8601String(),
+        'lastSyncedDeviceId': deviceId,
+        if (deviceName != null) 'lastSyncedDeviceName': deviceName,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Could not update root user document: $e');
+    }
+
     await _registerDevice(
       uid: uid,
       deviceId: deviceId,
@@ -227,19 +402,93 @@ class CloudSyncService {
     );
   }
 
+  UserCloudStats _computeCurrentLocalStats() {
+    final now = DateTime.now();
+    final taskActivity = _taskCompletionStorage.loadCompletions().map(
+      (c) => c.occurrenceDate,
+    );
+    final focusActivity = _focusSessionStorage.loadSessions().map(
+      (s) => s.startedAt,
+    );
+    final habitActivity = _habitStorage
+        .loadProgress()
+        .where((p) => p.value > 0)
+        .map((p) => p.date);
+
+    final allDates = <DateTime>{
+      ...taskActivity,
+      ...focusActivity,
+      ...habitActivity,
+    };
+
+    const streakService = ProductivityStreakService();
+    final streak = streakService.calculateCurrentStreak(
+      now: now,
+      activityDates: allDates,
+    );
+    final longestStreak = streakService.calculateLongestStreak(
+      activityDates: allDates,
+    );
+
+    final sessions = _focusSessionStorage.loadSessions();
+    final totalFocusMinutes = sessions.fold<int>(
+      0,
+      (totalMinutes, session) =>
+          totalMinutes + session.actualFocusDuration.inMinutes,
+    );
+    final longestSession = sessions.fold<Duration>(
+      Duration.zero,
+      (maxDuration, session) =>
+          session.taskId != null && session.actualFocusDuration > maxDuration
+          ? session.actualFocusDuration
+          : maxDuration,
+    );
+
+    const achievementService = AchievementService();
+    final existingStats =
+        _userStatsStorage?.loadStats() ?? const UserCloudStats();
+    final badges = achievementService.buildBadges(
+      longestStreak: math.max(longestStreak, existingStats.longestStreak),
+      longestLinkedTaskSession: longestSession,
+      totalFocus: Duration(
+        minutes: math.max(totalFocusMinutes, existingStats.totalFocusMinutes),
+      ),
+      unlockedBadgeIds: existingStats.unlockedBadgeIds,
+    );
+
+    final unlockedBadgeIds =
+        badges.where((b) => b.achieved).map((b) => b.id).toSet()
+          ..addAll(existingStats.unlockedBadgeIds);
+
+    return UserCloudStats(
+      streakDays: math.max(streak, existingStats.streakDays),
+      longestStreak: math.max(
+        math.max(longestStreak, existingStats.longestStreak),
+        math.max(streak, existingStats.streakDays),
+      ),
+      totalFocusMinutes: math.max(
+        totalFocusMinutes,
+        existingStats.totalFocusMinutes,
+      ),
+      completedSessionsCount: math.max(
+        sessions.length,
+        existingStats.completedSessionsCount,
+      ),
+      unlockedBadgeIds: unlockedBadgeIds.toList(),
+      updatedAt: DateTime.now().toUtc(),
+    );
+  }
+
   Future<_CollectionSyncResult> _syncCollection({
     required String uid,
     required String deviceId,
     required _SyncCollectionAdapter adapter,
+    required CloudSyncMode mode,
   }) async {
     final now = DateTime.now().toUtc();
     final localRecords = adapter.loadLocal();
     final localMetadata = _metadataStorage.loadCollection(adapter.name);
 
-    // Read the cloud before assigning timestamps to records that have never
-    // been synced on this installation. This prevents a freshly-created local
-    // default (for example profile/settings) from appearing newer than an
-    // existing remote record during new-device restore.
     final collection = _firestore
         .collection('users')
         .doc(uid)
@@ -251,14 +500,72 @@ class CloudSyncService {
       if (parsed != null) remote[doc.id] = parsed;
     }
 
+    if (mode == CloudSyncMode.downloadOnly) {
+      var pulled = 0;
+      var deleted = 0;
+      for (final entry in remote.entries) {
+        final id = entry.key;
+        final remoteEnvelope = entry.value;
+        if (remoteEnvelope.deletedAt != null) {
+          if (localRecords.containsKey(id)) {
+            await adapter.deleteLocal(id);
+            deleted++;
+          }
+        } else if (remoteEnvelope.payload != null) {
+          await adapter.applyRemote(id, remoteEnvelope.payload!);
+          pulled++;
+        }
+        final metadata = LocalSyncMetadata(
+          collection: adapter.name,
+          id: id,
+          createdAt: remoteEnvelope.createdAt,
+          updatedAt: remoteEnvelope.updatedAt,
+          deletedAt: remoteEnvelope.deletedAt,
+          fingerprint: remoteEnvelope.payload == null
+              ? null
+              : _fingerprint(remoteEnvelope.payload!),
+          originDeviceId: remoteEnvelope.originDeviceId,
+        );
+        localMetadata[id] = metadata;
+        await _metadataStorage.save(metadata);
+      }
+      return _CollectionSyncResult(pushed: 0, pulled: pulled, deleted: deleted);
+    }
+
+    if (mode == CloudSyncMode.uploadOnly) {
+      var pushed = 0;
+      for (final entry in localRecords.entries) {
+        final id = entry.key;
+        final payload = entry.value;
+        final fingerprint = _fingerprint(payload);
+        final meta =
+            localMetadata[id] ??
+            LocalSyncMetadata(
+              collection: adapter.name,
+              id: id,
+              createdAt: now,
+              updatedAt: now,
+              fingerprint: fingerprint,
+              originDeviceId: deviceId,
+            );
+        await _pushEnvelope(
+          collection: collection,
+          metadata: meta,
+          payload: payload,
+          deviceId: deviceId,
+        );
+        localMetadata[id] = meta;
+        await _metadataStorage.save(meta);
+        pushed++;
+      }
+      return _CollectionSyncResult(pushed: pushed, pulled: 0, deleted: 0);
+    }
+
     for (final entry in localRecords.entries) {
       final id = entry.key;
       final fingerprint = _fingerprint(entry.value);
       final previous = localMetadata[id];
       if (previous == null) {
-        // If the cloud already knows this id and this installation has no
-        // sync metadata, treat cloud as authoritative for the first merge.
-        // Local-only ids still get a new local timestamp and upload normally.
         if (remote.containsKey(id)) continue;
         final metadata = LocalSyncMetadata(
           collection: adapter.name,
@@ -306,8 +613,6 @@ class CloudSyncService {
 
       if (localMeta == null && remoteEnvelope != null) {
         if (remoteEnvelope.deletedAt != null) {
-          // A cloud tombstone must also remove an unsynced local default that
-          // happens to share this id.
           if (localRecords.containsKey(id)) {
             await adapter.deleteLocal(id);
             deleted++;
@@ -334,8 +639,7 @@ class CloudSyncService {
 
       if (localMeta == null) continue;
 
-      if (remoteEnvelope == null ||
-          localMeta.updatedAt.isAfter(remoteEnvelope.updatedAt)) {
+      if (remoteEnvelope == null) {
         await _pushEnvelope(
           collection: collection,
           metadata: localMeta,
@@ -348,7 +652,61 @@ class CloudSyncService {
         continue;
       }
 
-      if (remoteEnvelope.updatedAt.isAfter(localMeta.updatedAt)) {
+      if (adapter.name == 'stats') {
+        if (remoteEnvelope.payload != null) {
+          await adapter.applyRemote(id, remoteEnvelope.payload!);
+          pulled++;
+        }
+        final mergedStats = _computeCurrentLocalStats();
+        final mergedFingerprint = _fingerprint(mergedStats.toMap());
+        final remoteFingerprint = remoteEnvelope.payload == null
+            ? null
+            : _fingerprint(remoteEnvelope.payload!);
+
+        if (mergedFingerprint != remoteFingerprint) {
+          final updatedMeta = localMeta.copyWith(
+            updatedAt: now,
+            fingerprint: mergedFingerprint,
+            originDeviceId: deviceId,
+          );
+          localMetadata[id] = updatedMeta;
+          await _metadataStorage.save(updatedMeta);
+          await _pushEnvelope(
+            collection: collection,
+            metadata: updatedMeta,
+            payload: mergedStats.toMap(),
+            deviceId: deviceId,
+          );
+          pushed++;
+        }
+        continue;
+      }
+
+      final localPayload = localMeta.isDeleted
+          ? null
+          : localRecords[id] ?? adapter.loadLocal()[id];
+      final localFingerprint = localPayload == null
+          ? null
+          : _fingerprint(localPayload);
+      final remotePayload = remoteEnvelope.deletedAt != null
+          ? null
+          : remoteEnvelope.payload;
+      final remoteFingerprint = remotePayload == null
+          ? null
+          : _fingerprint(remotePayload);
+
+      if (localFingerprint == remoteFingerprint &&
+          localMeta.isDeleted == (remoteEnvelope.deletedAt != null)) {
+        continue;
+      }
+
+      final remoteChangedSinceLastSync =
+          remoteFingerprint != localMeta.fingerprint;
+      final localChangedSinceLastSync =
+          localFingerprint != localMeta.fingerprint;
+
+      if (remoteEnvelope.updatedAt.isAfter(localMeta.updatedAt) ||
+          (remoteChangedSinceLastSync && !localChangedSinceLastSync)) {
         if (remoteEnvelope.deletedAt != null) {
           await adapter.deleteLocal(id);
           deleted++;
@@ -363,13 +721,19 @@ class CloudSyncService {
           createdAt: remoteEnvelope.createdAt,
           updatedAt: remoteEnvelope.updatedAt,
           deletedAt: remoteEnvelope.deletedAt,
-          fingerprint: remoteEnvelope.payload == null
-              ? null
-              : _fingerprint(remoteEnvelope.payload!),
+          fingerprint: remoteFingerprint,
           originDeviceId: remoteEnvelope.originDeviceId,
         );
         localMetadata[id] = localMeta;
         await _metadataStorage.save(localMeta);
+      } else {
+        await _pushEnvelope(
+          collection: collection,
+          metadata: localMeta,
+          payload: localPayload,
+          deviceId: deviceId,
+        );
+        pushed++;
       }
     }
 
@@ -429,6 +793,18 @@ class CloudSyncService {
     return List<CloudDevice>.unmodifiable(devices);
   }
 
+  Future<void> deleteDevice({
+    required String uid,
+    required String deviceId,
+  }) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('devices')
+        .doc(deviceId)
+        .delete();
+  }
+
   Future<void> _registerDevice({
     required String uid,
     required String deviceId,
@@ -443,6 +819,17 @@ class CloudSyncService {
         .collection('devices')
         .doc(deviceId);
     final existing = await ref.get();
+
+    DeviceUsageSummary? summary;
+    try {
+      summary = await _summaryService.generateSummary(
+        usageRecordStorage: _usageRecordStorage,
+        focusSessionStorage: _focusSessionStorage,
+      );
+    } catch (e) {
+      debugPrint('Could not compute device usage summary: $e');
+    }
+
     await ref.set({
       'deviceId': deviceId,
       'platform': platform,
@@ -453,6 +840,7 @@ class CloudSyncService {
       if (lastSyncAt != null)
         'lastSyncAt': Timestamp.fromDate(lastSyncAt.toUtc()),
       'status': 'active',
+      if (summary != null) 'usageSummary': summary.toMap(),
     }, SetOptions(merge: true));
   }
 
@@ -486,6 +874,7 @@ class CloudDevice {
     required this.createdAt,
     required this.lastSyncAt,
     required this.status,
+    this.summary,
   });
 
   final String deviceId;
@@ -494,11 +883,13 @@ class CloudDevice {
   final DateTime createdAt;
   final DateTime? lastSyncAt;
   final String status;
+  final DeviceUsageSummary? summary;
 
   static CloudDevice? tryParse(String id, Map<String, dynamic> map) {
     final createdRaw = map['createdAt'];
     if (createdRaw is! Timestamp) return null;
     final lastSyncRaw = map['lastSyncAt'];
+    final summaryRaw = map['usageSummary'];
     return CloudDevice(
       deviceId: map['deviceId'] is String ? map['deviceId'] as String : id,
       platform: map['platform'] is String
@@ -512,6 +903,9 @@ class CloudDevice {
           ? lastSyncRaw.toDate().toLocal()
           : null,
       status: map['status'] is String ? map['status'] as String : 'active',
+      summary: summaryRaw is Map
+          ? DeviceUsageSummary.fromMap(summaryRaw)
+          : null,
     );
   }
 }

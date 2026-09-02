@@ -38,6 +38,7 @@ class Task {
   final TaskRecurrence recurrence;
   final Set<int> customWeekdays;
   final int? reminderMinutesBefore;
+  final int guardWarningSeconds;
   final bool isCompleted;
   final DateTime createdAt;
   final DateTime? completedAt;
@@ -70,11 +71,12 @@ class Task {
     this.recurrence = TaskRecurrence.none,
     this.customWeekdays = const {},
     this.reminderMinutesBefore,
+    this.guardWarningSeconds = 30,
     this.isCompleted = false,
     required this.createdAt,
     this.completedAt,
-  })  : id = id.trim(),
-        title = title.trim() {
+  }) : id = id.trim(),
+       title = title.trim() {
     if (this.id.isEmpty) throw ArgumentError('Task ID cannot be empty.');
     if (this.title.isEmpty) throw ArgumentError('Task title cannot be empty.');
 
@@ -136,6 +138,7 @@ class Task {
       recurrence: recurrence,
       customWeekdays: Set<int>.from(customWeekdays),
       reminderMinutesBefore: reminderMinutesBefore,
+      guardWarningSeconds: guardWarningSeconds,
       isCompleted: true,
       createdAt: createdAt,
       completedAt: time,
@@ -156,6 +159,7 @@ class Task {
       recurrence: recurrence,
       customWeekdays: Set<int>.from(customWeekdays),
       reminderMinutesBefore: reminderMinutesBefore,
+      guardWarningSeconds: guardWarningSeconds,
       isCompleted: false,
       createdAt: createdAt,
       completedAt: null,
@@ -176,6 +180,7 @@ class Task {
       'recurrence': recurrence.name,
       'customWeekdays': customWeekdays.toList()..sort(),
       'reminderMinutesBefore': reminderMinutesBefore,
+      'guardWarningSeconds': guardWarningSeconds,
       'isCompleted': isCompleted,
       'createdAt': createdAt.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
@@ -195,7 +200,9 @@ class Task {
     return Task(
       id: _requiredString(map, 'id'),
       title: _requiredString(map, 'title'),
-      description: map['description'] is String ? map['description'] as String : '',
+      description: map['description'] is String
+          ? map['description'] as String
+          : '',
       priority: matches.first,
       plannedDate: _optionalDate(map['plannedDate']),
       deadline: _optionalDate(map['deadline']),
@@ -206,7 +213,12 @@ class Task {
       reminderMinutesBefore: map['reminderMinutesBefore'] is num
           ? (map['reminderMinutesBefore'] as num).toInt()
           : null,
-      isCompleted: map['isCompleted'] is bool ? map['isCompleted'] as bool : false,
+      guardWarningSeconds: map['guardWarningSeconds'] is num
+          ? (map['guardWarningSeconds'] as num).toInt()
+          : 30,
+      isCompleted: map['isCompleted'] is bool
+          ? map['isCompleted'] as bool
+          : false,
       createdAt: _requiredDate(map, 'createdAt'),
       completedAt: _optionalDate(map['completedAt']),
     );
@@ -248,5 +260,6 @@ DateTime _requiredDate(Map<dynamic, dynamic> map, String key) {
 DateTime? _optionalDate(dynamic value) {
   if (value == null) return null;
   if (value is! String) throw const FormatException('Invalid date value.');
-  return DateTime.tryParse(value) ?? (throw FormatException('Invalid date: $value'));
+  return DateTime.tryParse(value) ??
+      (throw FormatException('Invalid date: $value'));
 }

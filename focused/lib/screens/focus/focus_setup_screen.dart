@@ -31,6 +31,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
   int _focusMinutes = 50;
   int _breakMinutes = 10;
+  int _guardWarningSeconds = 30;
 
   bool _didInitializeFromTask = false;
 
@@ -63,10 +64,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       final candidate = taskProvider.getTaskById(_selectedTaskId!);
 
       if (candidate != null &&
-          !taskProvider.isTaskCompletedForDate(
-            candidate,
-            _occurrenceDate,
-          )) {
+          !taskProvider.isTaskCompletedForDate(candidate, _occurrenceDate)) {
         task = candidate;
       }
     }
@@ -91,6 +89,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       }
 
       _totalMinutes = _focusMinutesForTask(task);
+      _guardWarningSeconds = task.guardWarningSeconds;
     }
   }
 
@@ -104,10 +103,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       final candidate = taskProvider.getTaskById(_selectedTaskId!);
 
       if (candidate != null &&
-          !taskProvider.isTaskCompletedForDate(
-            candidate,
-            _occurrenceDate,
-          )) {
+          !taskProvider.isTaskCompletedForDate(candidate, _occurrenceDate)) {
         selectedTask = candidate;
       }
     }
@@ -125,10 +121,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
     final selectedOccurrence = selectedTask == null
         ? null
-        : taskProvider.occurrenceForTaskOnDate(
-            selectedTask,
-            _occurrenceDate,
-          );
+        : taskProvider.occurrenceForTaskOnDate(selectedTask, _occurrenceDate);
     final sessionPlan = _buildSessionPlan();
 
     return Scaffold(
@@ -245,6 +238,14 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   value: '$_breakMinutes min',
                   onTap: _showBreakDurationPicker,
                 ),
+
+                const Divider(height: 1),
+
+                _SettingRow(
+                  title: 'Distraction alert',
+                  value: '$_guardWarningSeconds sec',
+                  onTap: _showGuardDelayPicker,
+                ),
               ],
             ),
           ),
@@ -357,6 +358,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                         totalFocusMinutes: _totalMinutes,
                         focusBlockMinutes: _focusMinutes,
                         breakMinutes: _breakMinutes,
+                        guardWarningSeconds: _guardWarningSeconds,
                       );
 
                       context.push('/focus/session');
@@ -408,18 +410,13 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   void _showTaskPicker() {
     final taskProvider = context.read<TaskProvider>();
     final tasks = widget.initialOccurrenceDate != null
-        ? taskProvider.tasksForDate(
-            _occurrenceDate,
-            includeCompleted: false,
-          )
+        ? taskProvider.tasksForDate(_occurrenceDate, includeCompleted: false)
         : taskProvider.incompleteTasks
-            .where(
-              (task) => !taskProvider.isTaskCompletedForDate(
-                task,
-                _occurrenceDate,
-              ),
-            )
-            .toList();
+              .where(
+                (task) =>
+                    !taskProvider.isTaskCompletedForDate(task, _occurrenceDate),
+              )
+              .toList();
 
     if (tasks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -554,6 +551,20 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     );
   }
 
+  void _showGuardDelayPicker() {
+    _showOptions(
+      title: 'Distraction alert delay',
+      options: const ['10', '15', '30', '45', '60', '120'],
+      displayText: (value) =>
+          '$value sec${value == '30' ? ' (Recommended)' : ''}',
+      onSelected: (value) {
+        setState(() {
+          _guardWarningSeconds = int.parse(value);
+        });
+      },
+    );
+  }
+
   void _showOptions({
     required String title,
     required List<String> options,
@@ -646,9 +657,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     final now = DateTime.now();
     final day = DateTime(start.year, start.month, start.day);
     final today = DateTime(now.year, now.month, now.day);
-    final dayLabel = day == today
-        ? 'Today'
-        : '${day.month}/${day.day}';
+    final dayLabel = day == today ? 'Today' : '${day.month}/${day.day}';
     final startText = TimeOfDay.fromDateTime(start).format(context);
     final endText = TimeOfDay.fromDateTime(end).format(context);
     return '$dayLabel $startText–$endText';
@@ -706,13 +715,11 @@ class _AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: child,
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(22),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }

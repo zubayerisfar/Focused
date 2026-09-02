@@ -46,6 +46,30 @@
             android:name=".FocusGuardAlarmReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".AppUsageSummaryNotificationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="com.example.focused.USAGE_SUMMARY_5PM" />
+                <action android:name="com.example.focused.USAGE_SUMMARY_11PM" />
+                <action android:name="com.example.focused.USAGE_SUMMARY_TEST" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".FocusedLifestyleWidgetProvider"
+            android:label="Focused Lifestyle"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/focused_lifestyle_widget_info" />
+        </receiver>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -64,11 +88,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="focused" />
+            </intent-filter>
         </activity>
 
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Google AdMob Application ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-7510036527454914~7432248901" />
     </application>
 
     <queries>

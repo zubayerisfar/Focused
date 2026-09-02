@@ -100,6 +100,14 @@ class WellbeingScreen extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            _EntryCard(
+              icon: FontAwesomeIcons.hourglassHalf,
+              title: 'App Limits & Timers',
+              subtitle: 'Set daily screen time limits and over-usage warnings',
+              accent: const Color(0xFFF59E0B),
+              onTap: () => context.push('/wellbeing/limits'),
+            ),
             const SizedBox(height: 28),
             Row(
               children: [
@@ -460,9 +468,9 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
   void initState() {
     super.initState();
     _future = context.read<UsageProvider>().loadDailyUsageHistory(
-          days: 7,
-          includeMissingDays: false,
-        );
+      days: 7,
+      includeMissingDays: false,
+    );
   }
 
   @override

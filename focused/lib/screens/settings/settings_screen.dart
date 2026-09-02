@@ -10,6 +10,7 @@ import '../../providers/cloud_sync_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../services/app_usage_summary_service.dart';
 import '../../services/notification_access_service.dart';
 import 'deactivate_account_sheet.dart';
 import 'delete_account_dialog.dart';
@@ -42,6 +43,159 @@ class SettingsScreen extends StatelessWidget {
         ),
       );
     }
+  }
+
+  Future<void> _openDailySummariesDialog(BuildContext context) async {
+    const service = AppUsageSummaryService();
+    final isEnabled = await service.isEnabled();
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        var enabled = isEnabled;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final scheme = Theme.of(context).colorScheme;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: scheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        color: scheme.primary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Daily App Summaries',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Get rich snapshots of your app usage and longest continuous app sessions delivered twice a day:',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Text('📊', style: TextStyle(fontSize: 18)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '5:00 PM • Afternoon Snapshot',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Review what took your attention during work hours',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 20),
+                        Row(
+                          children: [
+                            const Text('🌙', style: TextStyle(fontSize: 18)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '11:00 PM • Daily Wrap-up',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Full day screen time & top apps breakdown',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'Enable scheduled notifications',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text(
+                        'Fires daily at 5:00 PM and 11:00 PM',
+                      ),
+                      value: enabled,
+                      onChanged: (val) async {
+                        setState(() => enabled = val);
+                        await service.setEnabled(val);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -89,6 +243,12 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Notification permission',
                 subtitle: 'Allow reminders and focus notifications',
                 onTap: () => _openAppNotificationSettings(context),
+              ),
+              _SettingsTile(
+                icon: FontAwesomeIcons.clockRotateLeft,
+                title: 'Daily App Summaries',
+                subtitle: '5:00 PM snapshot & 11:00 PM wrap-up',
+                onTap: () => _openDailySummariesDialog(context),
               ),
             ],
           ),
@@ -428,41 +588,42 @@ class _SettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      elevation: 0,
-      color: scheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Theme.of(context).dividerColor),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        initiallyExpanded: initiallyExpanded,
-        maintainState: true,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        childrenPadding: const EdgeInsets.only(bottom: 6),
-        leading: SizedBox(
-          width: 34,
-          height: 34,
-          child: Center(
-            child: IconTheme(
-              data: IconThemeData(color: scheme.primary),
-              child: icon,
+      child: Material(
+        color: scheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          maintainState: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+          childrenPadding: const EdgeInsets.only(bottom: 6),
+          leading: SizedBox(
+            width: 34,
+            height: 34,
+            child: Center(
+              child: IconTheme(
+                data: IconThemeData(color: scheme.primary),
+                child: icon,
+              ),
             ),
           ),
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+          ),
+          children: children,
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          subtitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-        ),
-        children: children,
       ),
     );
   }
@@ -559,12 +720,15 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: FaIcon(icon, size: 18),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle),
-      trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
-      onTap: onTap,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        leading: FaIcon(icon, size: 18),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle),
+        trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
+      ),
     );
   }
 }
@@ -592,22 +756,28 @@ class _AppearanceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>();
-    return ListTile(
-      leading: const FaIcon(FontAwesomeIcons.circleHalfStroke, size: 18),
-      title: const Text('Theme', style: TextStyle(fontWeight: FontWeight.w600)),
-      trailing: DropdownButton<ThemeMode>(
-        value: theme.themeMode,
-        underline: const SizedBox.shrink(),
-        onChanged: (value) {
-          if (value != null) {
-            context.read<ThemeProvider>().setThemeMode(value);
-          }
-        },
-        items: const [
-          DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
-          DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-          DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
-        ],
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        leading: const FaIcon(FontAwesomeIcons.circleHalfStroke, size: 18),
+        title: const Text(
+          'Theme',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        trailing: DropdownButton<ThemeMode>(
+          value: theme.themeMode,
+          underline: const SizedBox.shrink(),
+          onChanged: (value) {
+            if (value != null) {
+              context.read<ThemeProvider>().setThemeMode(value);
+            }
+          },
+          items: const [
+            DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
+            DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
+            DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
+          ],
+        ),
       ),
     );
   }

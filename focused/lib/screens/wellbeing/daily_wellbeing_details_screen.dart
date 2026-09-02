@@ -7,6 +7,7 @@ import '../../models/daily_usage_metrics.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_banner_ad_widget.dart';
 import '../../widgets/app_icon.dart';
 
 class DailyWellbeingDetailsScreen extends StatefulWidget {
@@ -26,9 +27,9 @@ class _DailyWellbeingDetailsScreenState
   void initState() {
     super.initState();
     _future = context.read<UsageProvider>().loadDailyUsageHistory(
-          days: 1,
-          endDay: widget.date,
-        );
+      days: 1,
+      endDay: widget.date,
+    );
   }
 
   @override
@@ -99,18 +100,18 @@ class _DailyWellbeingDetailsScreenState
                   child: Text(
                     'No local screen-time measurement exists for this date on this device.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          height: 1.4,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
               const SizedBox(height: 24),
               Text(
                 'Top apps',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 10),
               if (day == null || day.topApps.isEmpty)
@@ -148,6 +149,9 @@ class _DailyWellbeingDetailsScreenState
                     ),
                   ),
                 ),
+              const SizedBox(height: 14),
+              const AppBannerAdWidget(),
+              const SizedBox(height: 14),
             ],
           );
         },
@@ -208,9 +212,9 @@ class _DayMetricGrid extends StatelessWidget {
                         Text(
                           item.label,
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],

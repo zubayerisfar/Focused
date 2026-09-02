@@ -1,9 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/achievement_badge.dart';
 import '../../providers/focus_provider.dart';
+import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/user_stats_provider.dart';
 import '../../services/achievement_service.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../widgets/achievement_badge_art.dart';
@@ -18,18 +22,33 @@ class BadgesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final tasks = context.watch<TaskProvider>();
     final focus = context.watch<FocusProvider>();
+    final habits = context.watch<HabitProvider>();
+    final userStats = context.watch<UserStatsProvider>();
+
     final activityDates = <DateTime>{
       ...tasks.completionActivityDates(),
       ...focus.focusActivityDates(),
+      ...habits.habitCompletionDates(),
     };
 
-    final longestStreak = _streakService.calculateLongestStreak(
+    final localLongest = _streakService.calculateLongestStreak(
       activityDates: activityDates,
     );
+    final effectiveLongestStreak = math.max(
+      math.max(localLongest, userStats.syncedLongestStreak),
+      userStats.syncedStreakDays,
+    );
+
+    final localTotalFocus = focus.totalStoredFocusDuration;
+    final effectiveTotalFocus = localTotalFocus > userStats.syncedFocusDuration
+        ? localTotalFocus
+        : userStats.syncedFocusDuration;
+
     final badges = _achievementService.buildBadges(
-      longestStreak: longestStreak,
+      longestStreak: effectiveLongestStreak,
       longestLinkedTaskSession: focus.longestLinkedTaskSessionFocusDuration,
-      totalFocus: focus.totalStoredFocusDuration,
+      totalFocus: effectiveTotalFocus,
+      unlockedBadgeIds: userStats.unlockedBadgeIds,
     );
     final earned = badges.where((badge) => badge.achieved).length;
 
@@ -56,8 +75,8 @@ class BadgesScreen extends StatelessWidget {
                       Text(
                         '$earned / ${badges.length} unlocked',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -77,21 +96,29 @@ class BadgesScreen extends StatelessWidget {
           _BadgeSection(
             title: 'Streak badges',
             badges: badges
-                .where((badge) => badge.category == AchievementBadgeCategory.streak)
+                .where(
+                  (badge) => badge.category == AchievementBadgeCategory.streak,
+                )
                 .toList(growable: false),
           ),
           const SizedBox(height: 28),
           _BadgeSection(
             title: 'Task-session badges',
             badges: badges
-                .where((badge) => badge.category == AchievementBadgeCategory.focusSession)
+                .where(
+                  (badge) =>
+                      badge.category == AchievementBadgeCategory.focusSession,
+                )
                 .toList(growable: false),
           ),
           const SizedBox(height: 28),
           _BadgeSection(
             title: 'Total focus badges',
             badges: badges
-                .where((badge) => badge.category == AchievementBadgeCategory.totalFocus)
+                .where(
+                  (badge) =>
+                      badge.category == AchievementBadgeCategory.totalFocus,
+                )
                 .toList(growable: false),
           ),
         ],
@@ -113,9 +140,9 @@ class _BadgeSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         GridView.builder(
@@ -149,7 +176,9 @@ class _BadgeCard extends StatelessWidget {
         color: scheme.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: badge.achieved ? scheme.primary.withOpacity(0.34) : Theme.of(context).dividerColor,
+          color: badge.achieved
+              ? scheme.primary.withOpacity(0.34)
+              : Theme.of(context).dividerColor,
         ),
       ),
       child: Column(

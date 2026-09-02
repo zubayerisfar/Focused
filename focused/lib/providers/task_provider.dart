@@ -30,9 +30,9 @@ class TaskProvider extends ChangeNotifier {
     TaskStorageService? storageService,
     TaskNotificationService? notificationService,
     TaskOccurrenceCompletionStorageService? occurrenceCompletionStorage,
-  })  : _storageService = storageService,
-        _notificationService = notificationService,
-        _occurrenceCompletionStorage = occurrenceCompletionStorage;
+  }) : _storageService = storageService,
+       _notificationService = notificationService,
+       _occurrenceCompletionStorage = occurrenceCompletionStorage;
 
   List<Task> get tasks => List.unmodifiable(_tasks);
 
@@ -68,6 +68,7 @@ class TaskProvider extends ChangeNotifier {
     TaskRecurrence recurrence = TaskRecurrence.none,
     Set<int> customWeekdays = const {},
     int? reminderMinutesBefore,
+    int guardWarningSeconds = 30,
     DateTime? createdAt,
   }) async {
     final creationTime = createdAt ?? DateTime.now();
@@ -84,6 +85,7 @@ class TaskProvider extends ChangeNotifier {
       recurrence: recurrence,
       customWeekdays: Set<int>.from(customWeekdays),
       reminderMinutesBefore: reminderMinutesBefore,
+      guardWarningSeconds: guardWarningSeconds,
       createdAt: creationTime,
     );
 
@@ -105,16 +107,13 @@ class TaskProvider extends ChangeNotifier {
     final completionStorage = _occurrenceCompletionStorage;
 
     if (completionStorage != null) {
-      final tasksById = {
-        for (final task in _tasks) task.id: task,
-      };
+      final tasksById = {for (final task in _tasks) task.id: task};
       final validCompletions = <TaskOccurrenceCompletion>[];
 
       for (final completion in completionStorage.loadCompletions()) {
         final task = tasksById[completion.taskId];
 
-        if (task != null &&
-            task.recurrence != TaskRecurrence.none) {
+        if (task != null && task.recurrence != TaskRecurrence.none) {
           validCompletions.add(completion);
           continue;
         }
@@ -174,9 +173,7 @@ class TaskProvider extends ChangeNotifier {
 
       if (previousTask.recurrence != TaskRecurrence.none &&
           updatedTask.recurrence == TaskRecurrence.none) {
-        await _occurrenceCompletionStorage?.deleteForTask(
-          updatedTask.id,
-        );
+        await _occurrenceCompletionStorage?.deleteForTask(updatedTask.id);
         _occurrenceCompletions.removeWhere(
           (completion) => completion.taskId == updatedTask.id,
         );
@@ -194,14 +191,10 @@ class TaskProvider extends ChangeNotifier {
       try {
         await _storageService?.saveTask(previousTask);
         for (final completion in previousCompletions) {
-          await _occurrenceCompletionStorage?.saveCompletion(
-            completion,
-          );
+          await _occurrenceCompletionStorage?.saveCompletion(completion);
         }
       } catch (rollbackError, rollbackStackTrace) {
-        debugPrint(
-          'Could not fully roll back task update: $rollbackError',
-        );
+        debugPrint('Could not fully roll back task update: $rollbackError');
         debugPrintStack(stackTrace: rollbackStackTrace);
       }
 
@@ -223,9 +216,7 @@ class TaskProvider extends ChangeNotifier {
         .where((completion) => completion.taskId == id)
         .toList();
 
-    _occurrenceCompletions.removeWhere(
-      (completion) => completion.taskId == id,
-    );
+    _occurrenceCompletions.removeWhere((completion) => completion.taskId == id);
     notifyListeners();
 
     try {
@@ -252,11 +243,7 @@ class TaskProvider extends ChangeNotifier {
     await _cancelReminderSafely(id);
   }
 
-  Future<void> setCompleted(
-    String id,
-    bool completed, {
-    DateTime? time,
-  }) async {
+  Future<void> setCompleted(String id, bool completed, {DateTime? time}) async {
     final index = _tasks.indexWhere((task) => task.id == id);
 
     if (index == -1) {
@@ -298,7 +285,6 @@ class TaskProvider extends ChangeNotifier {
     }
   }
 
-
   Future<void> setCompletedForDate(
     String taskId,
     DateTime occurrenceDate,
@@ -312,11 +298,7 @@ class TaskProvider extends ChangeNotifier {
     }
 
     if (task.recurrence == TaskRecurrence.none) {
-      await setCompleted(
-        taskId,
-        completed,
-        time: completedAt,
-      );
+      await setCompleted(taskId, completed, time: completedAt);
       return;
     }
 
@@ -329,28 +311,14 @@ class TaskProvider extends ChangeNotifier {
     }
 
     if (completed) {
-      await _completeOccurrence(
-        task,
-        day,
-        completedAt ?? DateTime.now(),
-      );
+      await _completeOccurrence(task, day, completedAt ?? DateTime.now());
     } else {
-      await _uncompleteOccurrence(
-        task,
-        day,
-      );
+      await _uncompleteOccurrence(task, day);
     }
   }
 
-  bool isOccurrenceCompleted(
-    String taskId,
-    DateTime occurrenceDate,
-  ) {
-    return occurrenceCompletionFor(
-          taskId,
-          occurrenceDate,
-        ) !=
-        null;
+  bool isOccurrenceCompleted(String taskId, DateTime occurrenceDate) {
+    return occurrenceCompletionFor(taskId, occurrenceDate) != null;
   }
 
   TaskOccurrenceCompletion? occurrenceCompletionFor(
@@ -369,10 +337,7 @@ class TaskProvider extends ChangeNotifier {
     return null;
   }
 
-  bool isTaskCompletedForDate(
-    Task task,
-    DateTime date,
-  ) {
+  bool isTaskCompletedForDate(Task task, DateTime date) {
     if (task.recurrence == TaskRecurrence.none) {
       return task.isCompleted;
     }
@@ -384,35 +349,23 @@ class TaskProvider extends ChangeNotifier {
     return isOccurrenceCompleted(task.id, date);
   }
 
-  DateTime? completedAtForDate(
-    Task task,
-    DateTime date,
-  ) {
+  DateTime? completedAtForDate(Task task, DateTime date) {
     if (task.recurrence == TaskRecurrence.none) {
       return task.completedAt;
     }
 
-    return occurrenceCompletionFor(
-      task.id,
-      date,
-    )?.completedAt;
+    return occurrenceCompletionFor(task.id, date)?.completedAt;
   }
 
   /// Number of tasks that belong to the selected date.
   ///
   /// A recurring master contributes at most one occurrence for the day.
   int taskCountForDate(DateTime date) {
-    return tasksForDate(
-      date,
-      includeCompleted: true,
-    ).length;
+    return tasksForDate(date, includeCompleted: true).length;
   }
 
   int completedTaskCountForDate(DateTime date) {
-    final dateTasks = tasksForDate(
-      date,
-      includeCompleted: true,
-    );
+    final dateTasks = tasksForDate(date, includeCompleted: true);
 
     return dateTasks.where((task) {
       return isTaskCompletedForDate(task, date);
@@ -447,20 +400,11 @@ class TaskProvider extends ChangeNotifier {
     return Set<DateTime>.unmodifiable(result);
   }
 
-  DateTime? nextOccurrenceStartForTask(
-    Task task,
-    DateTime after,
-  ) {
-    return _scheduleService.nextOccurrenceStart(
-      task,
-      after,
-    );
+  DateTime? nextOccurrenceStartForTask(Task task, DateTime after) {
+    return _scheduleService.nextOccurrenceStart(task, after);
   }
 
-  TaskOccurrence? occurrenceForTaskOnDate(
-    Task task,
-    DateTime date,
-  ) {
+  TaskOccurrence? occurrenceForTaskOnDate(Task task, DateTime date) {
     final occurrence = _scheduleService.occurrenceForDate(task, date);
     if (occurrence == null) return null;
 
@@ -483,10 +427,7 @@ class TaskProvider extends ChangeNotifier {
     var day = start;
     while (day.isBefore(end)) {
       result.addAll(
-        scheduledOccurrencesForDate(
-          day,
-          includeCompleted: includeCompleted,
-        ),
+        scheduledOccurrencesForDate(day, includeCompleted: includeCompleted),
       );
       day = DateTime(day.year, day.month, day.day + 1);
     }
@@ -501,15 +442,11 @@ class TaskProvider extends ChangeNotifier {
     for (final completion in _occurrenceCompletions) {
       final task = getTaskById(completion.taskId);
 
-      if (task == null ||
-          task.recurrence == TaskRecurrence.none) {
+      if (task == null || task.recurrence == TaskRecurrence.none) {
         continue;
       }
 
-      final occurrence = _occurrenceFromCompletion(
-        task,
-        completion,
-      );
+      final occurrence = _occurrenceFromCompletion(task, completion);
 
       if (occurrence != null) {
         result.add(occurrence);
@@ -536,9 +473,7 @@ class TaskProvider extends ChangeNotifier {
       return null;
     }
 
-    final day = _dateOnlyLocal(
-      completion.occurrenceDate,
-    );
+    final day = _dateOnlyLocal(completion.occurrenceDate);
     final start = DateTime(
       day.year,
       day.month,
@@ -553,9 +488,7 @@ class TaskProvider extends ChangeNotifier {
     return TaskOccurrence(
       task: task,
       start: start,
-      end: start.add(
-        scheduledEnd.difference(scheduledStart),
-      ),
+      end: start.add(scheduledEnd.difference(scheduledStart)),
       isCompleted: true,
       completedAt: completion.completedAt,
     );
@@ -566,10 +499,7 @@ class TaskProvider extends ChangeNotifier {
     DateTime occurrenceDate,
     DateTime completedAt,
   ) async {
-    final existing = occurrenceCompletionFor(
-      task.id,
-      occurrenceDate,
-    );
+    final existing = occurrenceCompletionFor(task.id, occurrenceDate);
 
     if (existing != null) {
       return;
@@ -585,9 +515,7 @@ class TaskProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _occurrenceCompletionStorage?.saveCompletion(
-        completion,
-      );
+      await _occurrenceCompletionStorage?.saveCompletion(completion);
     } catch (_) {
       _occurrenceCompletions.removeWhere(
         (item) => item.storageKey == completion.storageKey,
@@ -596,20 +524,11 @@ class TaskProvider extends ChangeNotifier {
       rethrow;
     }
 
-    await _rescheduleReminderAfterOccurrenceCompletion(
-      task,
-      occurrenceDate,
-    );
+    await _rescheduleReminderAfterOccurrenceCompletion(task, occurrenceDate);
   }
 
-  Future<void> _uncompleteOccurrence(
-    Task task,
-    DateTime occurrenceDate,
-  ) async {
-    final existing = occurrenceCompletionFor(
-      task.id,
-      occurrenceDate,
-    );
+  Future<void> _uncompleteOccurrence(Task task, DateTime occurrenceDate) async {
+    final existing = occurrenceCompletionFor(task.id, occurrenceDate);
 
     if (existing == null) {
       return;
@@ -652,10 +571,7 @@ class TaskProvider extends ChangeNotifier {
       return;
     }
 
-    final occurrence = _scheduleService.occurrenceForDate(
-      task,
-      occurrenceDate,
-    );
+    final occurrence = _scheduleService.occurrenceForDate(task, occurrenceDate);
 
     if (occurrence == null) {
       return;
@@ -713,16 +629,10 @@ class TaskProvider extends ChangeNotifier {
     final result = <TaskOccurrence>[];
 
     for (final task in _tasks) {
-      final occurrence = _scheduleService.occurrenceForDate(
-        task,
-        date,
-      );
+      final occurrence = _scheduleService.occurrenceForDate(task, date);
 
       if (occurrence != null) {
-        final isCompleted = isTaskCompletedForDate(
-          task,
-          occurrence.start,
-        );
+        final isCompleted = isTaskCompletedForDate(task, occurrence.start);
 
         if (!includeCompleted && isCompleted) {
           continue;
@@ -731,24 +641,17 @@ class TaskProvider extends ChangeNotifier {
         result.add(
           occurrence.withCompletion(
             isCompleted: isCompleted,
-            completedAt: completedAtForDate(
-              task,
-              occurrence.start,
-            ),
+            completedAt: completedAtForDate(task, occurrence.start),
           ),
         );
         continue;
       }
 
-      if (!includeCompleted ||
-          task.recurrence == TaskRecurrence.none) {
+      if (!includeCompleted || task.recurrence == TaskRecurrence.none) {
         continue;
       }
 
-      final historicalCompletion = occurrenceCompletionFor(
-        task.id,
-        date,
-      );
+      final historicalCompletion = occurrenceCompletionFor(task.id, date);
 
       if (historicalCompletion == null) {
         continue;
@@ -768,13 +671,9 @@ class TaskProvider extends ChangeNotifier {
     return List.unmodifiable(result);
   }
 
-  List<Task> tasksForDate(
-    DateTime date, {
-    bool includeCompleted = true,
-  }) {
+  List<Task> tasksForDate(DateTime date, {bool includeCompleted = true}) {
     final result = _tasks.where((task) {
-      if (!includeCompleted &&
-          isTaskCompletedForDate(task, date)) {
+      if (!includeCompleted && isTaskCompletedForDate(task, date)) {
         return false;
       }
 
@@ -783,7 +682,8 @@ class TaskProvider extends ChangeNotifier {
         return true;
       }
 
-      if (task.scheduledStart != null && _sameDate(task.scheduledStart!, date)) {
+      if (task.scheduledStart != null &&
+          _sameDate(task.scheduledStart!, date)) {
         return true;
       }
 
@@ -802,10 +702,7 @@ class TaskProvider extends ChangeNotifier {
     DateTime date, {
     bool includeCompleted = false,
   }) {
-    final dateTasks = tasksForDate(
-      date,
-      includeCompleted: includeCompleted,
-    );
+    final dateTasks = tasksForDate(date, includeCompleted: includeCompleted);
 
     return {
       for (final priority in TaskPriority.values)
@@ -1028,8 +925,7 @@ class TaskProvider extends ChangeNotifier {
   bool _isActiveScheduledTask(Task task, DateTime now) {
     final occurrence = _scheduleService.occurrenceForDate(task, now);
 
-    if (occurrence == null ||
-        isTaskCompletedForDate(task, occurrence.start)) {
+    if (occurrence == null || isTaskCompletedForDate(task, occurrence.start)) {
       return false;
     }
 
@@ -1069,7 +965,8 @@ class TaskProvider extends ChangeNotifier {
     final today = _dateOnly(currentTime);
     final candidates = <DateTime>[];
 
-    if (task.scheduledStart != null && task.scheduledStart!.isAfter(currentTime)) {
+    if (task.scheduledStart != null &&
+        task.scheduledStart!.isAfter(currentTime)) {
       candidates.add(task.scheduledStart!);
     }
 
@@ -1139,16 +1036,18 @@ class TaskProvider extends ChangeNotifier {
   }
 
   int _compareTasks(Task first, Task second) {
-    final priorityComparison =
-        first.priority.sortOrder.compareTo(second.priority.sortOrder);
+    final priorityComparison = first.priority.sortOrder.compareTo(
+      second.priority.sortOrder,
+    );
 
     if (priorityComparison != 0) {
       return priorityComparison;
     }
 
     if (first.scheduledStart != null && second.scheduledStart != null) {
-      final scheduleComparison =
-          first.scheduledStart!.compareTo(second.scheduledStart!);
+      final scheduleComparison = first.scheduledStart!.compareTo(
+        second.scheduledStart!,
+      );
       if (scheduleComparison != 0) {
         return scheduleComparison;
       }
@@ -1184,7 +1083,6 @@ class TaskProvider extends ChangeNotifier {
       debugPrintStack(stackTrace: stackTrace);
     }
   }
-
 
   Future<bool> requestNotificationPermission() async {
     final service = _notificationService;

@@ -7,6 +7,7 @@ import '../../models/task_recurrence.dart';
 import '../../models/task_reminder_result.dart';
 import '../../models/task_schedule_conflict.dart';
 import '../../providers/task_provider.dart';
+import '../../services/ad_service.dart';
 import '../../theme/app_theme.dart';
 
 class TaskEditScreen extends StatefulWidget {
@@ -36,6 +37,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
   TaskRecurrence _recurrence = TaskRecurrence.none;
   Set<int> _customWeekdays = <int>{};
   int? _reminderMinutesBefore;
+  int _guardWarningSeconds = 30;
 
   bool _isSaving = false;
   bool _didLoadExistingTask = false;
@@ -84,6 +86,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     _recurrence = task.recurrence;
     _customWeekdays = Set<int>.from(task.customWeekdays);
     _reminderMinutesBefore = task.reminderMinutesBefore;
+    _guardWarningSeconds = task.guardWarningSeconds;
 
     if (task.scheduledStart != null && task.scheduledEnd != null) {
       _scheduleOnCalendar = true;
@@ -353,6 +356,27 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
               ),
             ],
           ],
+          const SizedBox(height: 24),
+          const _SectionTitle('Focus Guard Protection'),
+          const SizedBox(height: 6),
+          Text(
+            'How long to wait after switching to a distracting app before alerting you.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SettingsCard(
+            children: [
+              _SettingRow(
+                icon: Icons.shield_outlined,
+                title: 'Distraction Warning Delay',
+                value: '$_guardWarningSeconds seconds',
+                onTap: _showGuardDelayPicker,
+              ),
+            ],
+          ),
           const SizedBox(height: 30),
           SizedBox(
             height: 58,
@@ -535,6 +559,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           recurrence: recurrence,
           customWeekdays: customWeekdays,
           reminderMinutesBefore: reminder,
+          guardWarningSeconds: _guardWarningSeconds,
           isCompleted: original.isCompleted,
           createdAt: original.createdAt,
           completedAt: original.completedAt,
@@ -554,6 +579,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           recurrence: recurrence,
           customWeekdays: customWeekdays,
           reminderMinutesBefore: reminder,
+          guardWarningSeconds: _guardWarningSeconds,
         );
 
         savedTaskId = createdTask.id;
@@ -576,7 +602,13 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         return;
       }
 
-      Navigator.of(context).pop();
+      AdService.instance.showInterstitialAd(
+        onAdClosed: () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -935,6 +967,55 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 ),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showGuardDelayPicker() {
+    final options = [10, 15, 30, 45, 60, 120];
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final scheme = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.only(bottom: 16),
+            children: [
+              ListTile(
+                title: Text(
+                  'Distraction Warning Delay',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: const Text(
+                  'How long before Focus Guard warns you when using distracting apps.',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+              ...options.map(
+                (sec) => ListTile(
+                  title: Text(
+                    '$sec seconds${sec == 30 ? ' (Recommended)' : ''}',
+                    style: TextStyle(color: scheme.onSurface),
+                  ),
+                  trailing: sec == _guardWarningSeconds
+                      ? Icon(Icons.check_rounded, color: scheme.primary)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _guardWarningSeconds = sec;
+                    });
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+              ),
+            ],
           ),
         );
       },

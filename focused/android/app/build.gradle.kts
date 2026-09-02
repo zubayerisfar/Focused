@@ -30,7 +30,7 @@ if (releaseTaskRequested && !hasReleaseKeystore) {
 android {
     namespace = "com.example.focused"
 
-    compileSdk = 37
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

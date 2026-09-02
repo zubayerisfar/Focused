@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../services/android_installation_info_service.dart';
 import '../services/cloud_sync_service.dart';
+import '../services/network_connectivity_service.dart';
 import '../services/sync_metadata_storage_service.dart';
 import 'account_provider.dart';
 
@@ -13,15 +14,19 @@ class CloudSyncProvider extends ChangeNotifier {
     required CloudSyncService syncService,
     required SyncMetadataStorageService metadataStorage,
     required Future<void> Function() refreshLocalProviders,
+    NetworkConnectivityService connectivityService =
+        const NetworkConnectivityService(),
   }) : _accountProvider = accountProvider,
        _syncService = syncService,
        _metadataStorage = metadataStorage,
-       _refreshLocalProviders = refreshLocalProviders;
+       _refreshLocalProviders = refreshLocalProviders,
+       _connectivityService = connectivityService;
 
   final AccountProvider _accountProvider;
   final CloudSyncService _syncService;
   final SyncMetadataStorageService _metadataStorage;
   final Future<void> Function() _refreshLocalProviders;
+  final NetworkConnectivityService _connectivityService;
 
   String? _deviceId;
   String? _deviceName;
@@ -30,6 +35,7 @@ class CloudSyncProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _syncing = false;
   bool _initialized = false;
+  bool _isOffline = false;
   String? _observedUid;
   bool _isNewDevice = false;
   List<CloudDevice> _devices = const <CloudDevice>[];
@@ -41,6 +47,7 @@ class CloudSyncProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isSyncing => _syncing;
   bool get isInitialized => _initialized;
+  bool get isOffline => _isOffline;
   bool get canSync => _accountProvider.isSignedIn && !_syncing;
   bool get isNewDevice => _isNewDevice;
   List<CloudDevice> get devices => List<CloudDevice>.unmodifiable(_devices);
@@ -48,6 +55,7 @@ class CloudSyncProvider extends ChangeNotifier {
   String get statusLabel {
     if (!_accountProvider.isSignedIn) return 'Sign in to sync';
     if (_syncing) return 'Syncing…';
+    if (_isOffline) return 'Offline (changes saved locally)';
     if (_errorMessage != null) return 'Sync needs attention';
     if (_lastSyncAt == null) return 'Ready to sync';
     return 'Synced';
@@ -65,7 +73,7 @@ class CloudSyncProvider extends ChangeNotifier {
 
     if (_accountProvider.isSignedIn) {
       unawaited(
-        syncNow().catchError((e) {
+        syncNow(isManual: false).catchError((e) {
           debugPrint('Automated startup cloud sync: $e');
           return _lastResult ??
               CloudSyncResult(
@@ -79,7 +87,10 @@ class CloudSyncProvider extends ChangeNotifier {
     }
   }
 
-  Future<CloudSyncResult> syncNow() async {
+  Future<CloudSyncResult> syncNow({
+    CloudSyncMode mode = CloudSyncMode.bidirectional,
+    bool isManual = true,
+  }) async {
     if (_syncing) {
       final existing = _lastResult;
       if (existing != null) return existing;
@@ -91,6 +102,30 @@ class CloudSyncProvider extends ChangeNotifier {
       throw StateError('Sign in before syncing your Focused workspace.');
     }
 
+    // Check internet connectivity first
+    final hasInternet = await _connectivityService.hasInternetConnection();
+    if (!hasInternet) {
+      _isOffline = true;
+      if (!isManual) {
+        debugPrint('Skipping automatic cloud sync: Device is offline.');
+        notifyListeners();
+        return _lastResult ??
+            CloudSyncResult(
+              pushed: 0,
+              pulled: 0,
+              deleted: 0,
+              syncedAt: _lastSyncAt ?? DateTime.now(),
+            );
+      }
+      _errorMessage =
+          'No internet connection. Please connect to the internet to sync from Settings.';
+      notifyListeners();
+      throw StateError(
+        'No internet connection. Please connect to the internet to sync from Settings.',
+      );
+    }
+
+    _isOffline = false;
     final deviceId = _deviceId ?? await _metadataStorage.getOrCreateDeviceId();
     _deviceId = deviceId;
     _syncing = true;
@@ -103,6 +138,7 @@ class CloudSyncProvider extends ChangeNotifier {
         uid: user.uid,
         deviceId: deviceId,
         deviceName: _deviceName,
+        mode: mode,
       );
       await _refreshLocalProviders();
       _lastResult = result;
@@ -129,7 +165,7 @@ class CloudSyncProvider extends ChangeNotifier {
     unawaited(
       _refreshRegistrationState().then((_) {
         if (wasSignedOut && _accountProvider.isSignedIn && !_syncing) {
-          syncNow().catchError((e) {
+          syncNow(isManual: false).catchError((e) {
             debugPrint('Automated post-login cloud sync: $e');
             return _lastResult ??
                 CloudSyncResult(
@@ -197,6 +233,22 @@ class CloudSyncProvider extends ChangeNotifier {
       _errorMessage = _friendlyError(error);
     }
     notifyListeners();
+  }
+
+  Future<void> deleteDevice(String deviceId) async {
+    final user = _accountProvider.user;
+    if (user == null) {
+      throw StateError('Sign in before managing devices.');
+    }
+    try {
+      await _syncService.deleteDevice(uid: user.uid, deviceId: deviceId);
+      _devices = await _syncService.loadDevices(uid: user.uid);
+      notifyListeners();
+    } catch (error) {
+      _errorMessage = _friendlyError(error);
+      notifyListeners();
+      rethrow;
+    }
   }
 
   void clearError() {

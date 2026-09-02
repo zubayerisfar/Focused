@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -5,8 +7,10 @@ import 'package:provider/provider.dart';
 
 import '../../models/achievement_badge.dart';
 import '../../providers/focus_provider.dart';
+import '../../providers/habit_provider.dart';
 import '../../providers/streak_goal_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/user_stats_provider.dart';
 import '../../services/achievement_service.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../widgets/achievement_badge_art.dart';
@@ -31,30 +35,43 @@ class _StreakScreenState extends State<StreakScreen> {
   Widget build(BuildContext context) {
     final tasks = context.watch<TaskProvider>();
     final focus = context.watch<FocusProvider>();
+    final habits = context.watch<HabitProvider>();
     final goal = context.watch<StreakGoalProvider>();
+    final userStats = context.watch<UserStatsProvider>();
     final now = DateTime.now();
 
     final activityDates = <DateTime>{
       ...tasks.completionActivityDates(),
       ...focus.focusActivityDates(),
+      ...habits.habitCompletionDates(),
     };
     final normalizedActivity = activityDates
         .map((date) => DateTime(date.year, date.month, date.day))
         .toSet();
 
-    final current = _streakService.calculateCurrentStreak(
+    final localCurrent = _streakService.calculateCurrentStreak(
       now: now,
       activityDates: activityDates,
     );
-    final longest = _streakService.calculateLongestStreak(
+    final localLongest = _streakService.calculateLongestStreak(
       activityDates: activityDates,
     );
+    final current = math.max(localCurrent, userStats.syncedStreakDays);
+    final longest = math.max(
+      math.max(localLongest, userStats.syncedLongestStreak),
+      current,
+    );
+
+    final localTotalFocus = focus.totalStoredFocusDuration;
+    final effectiveTotalFocus = localTotalFocus > userStats.syncedFocusDuration
+        ? localTotalFocus
+        : userStats.syncedFocusDuration;
 
     final badges = _achievementService.buildBadges(
       longestStreak: longest,
-      longestLinkedTaskSession:
-          focus.longestLinkedTaskSessionFocusDuration,
-      totalFocus: focus.totalStoredFocusDuration,
+      longestLinkedTaskSession: focus.longestLinkedTaskSessionFocusDuration,
+      totalFocus: effectiveTotalFocus,
+      unlockedBadgeIds: userStats.unlockedBadgeIds,
     );
     final streakBadges = badges
         .where((badge) => badge.category == AchievementBadgeCategory.streak)
@@ -104,9 +121,9 @@ class _StreakScreenState extends State<StreakScreen> {
               Expanded(
                 child: Text(
                   'Streak badges',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               TextButton(
@@ -154,14 +171,16 @@ class _StreakScreenState extends State<StreakScreen> {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: StreakGoalProvider.allowedGoals.map((days) {
-                    final selected = days == provider.goalDays;
-                    return ChoiceChip(
-                      label: Text('$days days'),
-                      selected: selected,
-                      onSelected: (_) => Navigator.pop(sheetContext, days),
-                    );
-                  }).toList(growable: false),
+                  children: StreakGoalProvider.allowedGoals
+                      .map((days) {
+                        final selected = days == provider.goalDays;
+                        return ChoiceChip(
+                          label: Text('$days days'),
+                          selected: selected,
+                          onSelected: (_) => Navigator.pop(sheetContext, days),
+                        );
+                      })
+                      .toList(growable: false),
                 ),
               ],
             ),
@@ -201,15 +220,15 @@ class _StreakHero extends StatelessWidget {
                 Text(
                   '$current',
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFF7A45),
-                      ),
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFFF7A45),
+                  ),
                 ),
                 Text(
                   'day streak',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -281,15 +300,24 @@ class _MonthCalendar extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconButton(onPressed: onPrevious, icon: const Icon(Icons.chevron_left_rounded)),
+              IconButton(
+                onPressed: onPrevious,
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
               Expanded(
                 child: Text(
                   DateFormat('MMMM yyyy').format(month),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
-              IconButton(onPressed: onNext, icon: const Icon(Icons.chevron_right_rounded)),
+              IconButton(
+                onPressed: onNext,
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -338,8 +366,8 @@ class _MonthCalendar extends StatelessWidget {
                   color: active
                       ? const Color(0xFFFFA629)
                       : today
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : Colors.transparent,
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Colors.transparent,
                   border: today && !active
                       ? Border.all(color: Theme.of(context).colorScheme.primary)
                       : null,
@@ -349,7 +377,9 @@ class _MonthCalendar extends StatelessWidget {
                   '$day',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: active || today ? FontWeight.w700 : FontWeight.w400,
+                    fontWeight: active || today
+                        ? FontWeight.w700
+                        : FontWeight.w400,
                     color: active
                         ? Colors.black87
                         : Theme.of(context).colorScheme.onSurface,
@@ -397,8 +427,8 @@ class _GoalCard extends StatelessWidget {
                 child: Text(
                   'Streak goal',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               TextButton(onPressed: onChangeGoal, child: const Text('Change')),
@@ -410,7 +440,9 @@ class _GoalCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 14,
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
             ),
           ),
           const SizedBox(height: 10),

@@ -42,21 +42,20 @@ class UsageProvider extends ChangeNotifier {
     FocusGuardController? focusGuardController,
     NotificationAccessService? notificationAccessService,
     DateTime? historyStartedAt,
-  })  : _usageStatsService = usageStatsService ?? AndroidUsageStatsService(),
-        _storageService = storageService,
-        _categoryStorageService = categoryStorageService,
-        _focusAnalysisStorageService = focusAnalysisStorageService,
-        _appMetadataService =
-            appMetadataService ?? AndroidAppMetadataService(),
-        _appMetadataStorageService = appMetadataStorageService,
-        _usageAnalyzer = usageAnalyzer ?? UsageAnalyzer(),
-        _focusInterruptionAnalyzer =
-            focusInterruptionAnalyzer ?? FocusInterruptionAnalyzer(),
-        _focusGuardController =
-            focusGuardController ?? const NoopFocusGuardController(),
-        _notificationAccessService =
-            notificationAccessService ?? NotificationAccessService(),
-        _historyStartedAt = historyStartedAt?.toLocal();
+  }) : _usageStatsService = usageStatsService ?? AndroidUsageStatsService(),
+       _storageService = storageService,
+       _categoryStorageService = categoryStorageService,
+       _focusAnalysisStorageService = focusAnalysisStorageService,
+       _appMetadataService = appMetadataService ?? AndroidAppMetadataService(),
+       _appMetadataStorageService = appMetadataStorageService,
+       _usageAnalyzer = usageAnalyzer ?? UsageAnalyzer(),
+       _focusInterruptionAnalyzer =
+           focusInterruptionAnalyzer ?? FocusInterruptionAnalyzer(),
+       _focusGuardController =
+           focusGuardController ?? const NoopFocusGuardController(),
+       _notificationAccessService =
+           notificationAccessService ?? NotificationAccessService(),
+       _historyStartedAt = historyStartedAt?.toLocal();
 
   final UsageStatsService _usageStatsService;
   final UsageRecordStore? _storageService;
@@ -69,6 +68,8 @@ class UsageProvider extends ChangeNotifier {
   final FocusGuardController _focusGuardController;
   final NotificationAccessService _notificationAccessService;
   final DateTime? _historyStartedAt;
+
+  void Function(Map<String, Duration> todayUsageByPackage)? onUsageUpdated;
 
   // Package ids are the stable key for real Android data. A few legacy labels
   // are retained as aliases so existing analyzer tests/data remain meaningful.
@@ -149,16 +150,11 @@ class UsageProvider extends ChangeNotifier {
     return _appMetadataById[appId];
   }
 
-  String resolveDisplayName(
-    String appId, {
-    String? fallback,
-  }) {
+  String resolveDisplayName(String appId, {String? fallback}) {
     final metadata = _appMetadataById[appId];
     final nativeName = metadata?.displayName.trim();
 
-    if (nativeName != null &&
-        nativeName.isNotEmpty &&
-        nativeName != appId) {
+    if (nativeName != null && nativeName.isNotEmpty && nativeName != appId) {
       return nativeName;
     }
 
@@ -183,14 +179,8 @@ class UsageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> ensureAppMetadata(
-    String appId, {
-    bool force = false,
-  }) {
-    return ensureAppMetadataForPackages(
-      [appId],
-      force: force,
-    );
+  Future<void> ensureAppMetadata(String appId, {bool force = false}) {
+    return ensureAppMetadataForPackages([appId], force: force);
   }
 
   Future<void> ensureAppMetadataForPackages(
@@ -207,29 +197,32 @@ class UsageProvider extends ChangeNotifier {
         .where((value) => value.isNotEmpty)
         .toSet();
 
-    final candidates = requested.where((packageName) {
-      if (_metadataLoadsInFlight.contains(packageName)) {
-        return false;
-      }
+    final candidates = requested
+        .where((packageName) {
+          if (_metadataLoadsInFlight.contains(packageName)) {
+            return false;
+          }
 
-      if (force) {
-        return true;
-      }
+          if (force) {
+            return true;
+          }
 
-      final cached = _appMetadataById[packageName];
-      if (cached == null) {
-        return true;
-      }
+          final cached = _appMetadataById[packageName];
+          if (cached == null) {
+            return true;
+          }
 
-      final age = now.difference(cached.updatedAt);
-      if (age.isNegative) {
-        return true;
-      }
+          final age = now.difference(cached.updatedAt);
+          if (age.isNegative) {
+            return true;
+          }
 
-      final refreshAge =
-          cached.hasIcon ? _metadataRefreshAge : _metadataMissingRetryAge;
-      return age >= refreshAge;
-    }).toList(growable: false);
+          final refreshAge = cached.hasIcon
+              ? _metadataRefreshAge
+              : _metadataMissingRetryAge;
+          return age >= refreshAge;
+        })
+        .toList(growable: false);
 
     if (candidates.isEmpty) {
       return;
@@ -241,8 +234,7 @@ class UsageProvider extends ChangeNotifier {
       final resolved = <AppMetadata>[];
       const batchSize = 80;
       for (var offset = 0; offset < candidates.length; offset += batchSize) {
-        final end =
-            (offset + batchSize).clamp(0, candidates.length).toInt();
+        final end = (offset + batchSize).clamp(0, candidates.length).toInt();
         resolved.addAll(
           await _appMetadataService.loadMetadata(
             candidates.sublist(offset, end),
@@ -251,9 +243,7 @@ class UsageProvider extends ChangeNotifier {
       }
 
       _appMetadataError = null;
-      final byPackage = {
-        for (final item in resolved) item.packageName: item,
-      };
+      final byPackage = {for (final item in resolved) item.packageName: item};
 
       final updates = <AppMetadata>[];
       for (final packageName in candidates) {
@@ -262,21 +252,21 @@ class UsageProvider extends ChangeNotifier {
 
         final item = resolvedItem == null
             ? (existing?.copyWith(updatedAt: now) ??
-                AppMetadata(
-                  packageName: packageName,
-                  displayName: packageName,
-                  iconBytes: null,
-                  isInstalled: false,
-                  updatedAt: now,
-                ))
+                  AppMetadata(
+                    packageName: packageName,
+                    displayName: packageName,
+                    iconBytes: null,
+                    isInstalled: false,
+                    updatedAt: now,
+                  ))
             : AppMetadata(
                 packageName: packageName,
                 displayName:
                     resolvedItem.displayName == packageName &&
-                            existing != null &&
-                            existing.displayName != packageName
-                        ? existing.displayName
-                        : resolvedItem.displayName,
+                        existing != null &&
+                        existing.displayName != packageName
+                    ? existing.displayName
+                    : resolvedItem.displayName,
                 iconBytes: resolvedItem.iconBytes ?? existing?.iconBytes,
                 isInstalled: resolvedItem.isInstalled,
                 updatedAt: resolvedItem.updatedAt,
@@ -354,10 +344,7 @@ class UsageProvider extends ChangeNotifier {
     await _cacheFocusGuardAllowedPackages();
   }
 
-  Future<void> setAppCategory(
-    String appId,
-    AppCategory category,
-  ) async {
+  Future<void> setAppCategory(String appId, AppCategory category) async {
     final normalized = appId.trim();
     if (normalized.isEmpty) {
       return;
@@ -447,10 +434,7 @@ class UsageProvider extends ChangeNotifier {
       );
       if (records.isNotEmpty) {
         _todayRecords = List.of(records);
-        _todaySummary = _usageAnalyzer.buildDailySummary(
-          today,
-          _todayRecords,
-        );
+        _todaySummary = _usageAnalyzer.buildDailySummary(today, _todayRecords);
         _lastUpdatedAt = todaySnapshot.updatedAt;
         _todayProvenance = UsageDataProvenance.focusedStorage;
       }
@@ -471,26 +455,18 @@ class UsageProvider extends ChangeNotifier {
       }
     }
 
-    _ensureMetadataForRecords([
-      ..._todayRecords,
-      ..._yesterdayRecords,
-    ]);
+    _ensureMetadataForRecords([..._todayRecords, ..._yesterdayRecords]);
+    _dispatchUsageUpdate();
     notifyListeners();
   }
 
-  Future<void> refreshPermissionAndUsage({
-    DateTime? now,
-    bool force = false,
-  }) {
+  Future<void> refreshPermissionAndUsage({DateTime? now, bool force = false}) {
     final inFlight = _permissionRefreshInFlight;
     if (inFlight != null) {
       return inFlight;
     }
 
-    final future = _refreshPermissionAndUsageInternal(
-      now: now,
-      force: force,
-    );
+    final future = _refreshPermissionAndUsageInternal(now: now, force: force);
 
     _permissionRefreshInFlight = future;
     return future.whenComplete(() {
@@ -564,10 +540,7 @@ class UsageProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshUsage({
-    DateTime? now,
-    bool force = false,
-  }) {
+  Future<void> refreshUsage({DateTime? now, bool force = false}) {
     final inFlight = _usageRefreshInFlight;
     if (inFlight != null) {
       return inFlight;
@@ -636,11 +609,7 @@ class UsageProvider extends ChangeNotifier {
         if (_todayRecords.isEmpty) {
           await store.deleteDay(today);
         } else {
-          await store.saveDay(
-            today,
-            _todayRecords,
-            updatedAt: effectiveNow,
-          );
+          await store.saveDay(today, _todayRecords, updatedAt: effectiveNow);
         }
       }
     } catch (error) {
@@ -688,10 +657,7 @@ class UsageProvider extends ChangeNotifier {
       }
     }
 
-    _ensureMetadataForRecords([
-      ..._todayRecords,
-      ..._yesterdayRecords,
-    ]);
+    _ensureMetadataForRecords([..._todayRecords, ..._yesterdayRecords]);
 
     _isRefreshing = false;
 
@@ -699,7 +665,14 @@ class UsageProvider extends ChangeNotifier {
       _lastError = 'Usage refresh was incomplete. ${errors.join(' ')}';
     }
 
+    _dispatchUsageUpdate();
     notifyListeners();
+  }
+
+  void _dispatchUsageUpdate() {
+    final summary = _todaySummary;
+    if (summary == null || onUsageUpdated == null) return;
+    onUsageUpdated!(summary.appUsage);
   }
 
   Future<void> analyzeCompletedFocusSession(FocusSession session) async {
@@ -786,8 +759,7 @@ class UsageProvider extends ChangeNotifier {
     }
 
     final todaySeconds = todaySummary.appUsage[appName]?.inSeconds ?? 0;
-    final yesterdaySeconds =
-        yesterdaySummary.appUsage[appName]?.inSeconds ?? 0;
+    final yesterdaySeconds = yesterdaySummary.appUsage[appName]?.inSeconds ?? 0;
 
     if (yesterdaySeconds == 0) {
       return todaySeconds == 0 ? 0 : null;
@@ -809,9 +781,7 @@ class UsageProvider extends ChangeNotifier {
     final entries = _todaySummary!.appUsage.entries.toList()
       ..sort((first, second) => second.value.compareTo(first.value));
 
-    return List<MapEntry<String, Duration>>.unmodifiable(
-      entries.take(limit),
-    );
+    return List<MapEntry<String, Duration>>.unmodifiable(entries.take(limit));
   }
 
   /// Unique usage time for one app category today.
@@ -830,7 +800,8 @@ class UsageProvider extends ChangeNotifier {
       final defaultByPackage = _defaultAppCategories[record.appId];
       final defaultByName = _defaultAppCategories[record.appName];
 
-      final resolved = userByPackage ??
+      final resolved =
+          userByPackage ??
           userByName ??
           defaultByPackage ??
           defaultByName ??
@@ -843,15 +814,11 @@ class UsageProvider extends ChangeNotifier {
       return Duration.zero;
     }
 
-    return _usageAnalyzer
-        .buildDailySummary(summary.date, filtered)
-        .totalUsage;
+    return _usageAnalyzer.buildDailySummary(summary.date, filtered).totalUsage;
   }
 
   String? get topDistractingAppToday {
-    final entries = topAppEntriesToday(
-      limit: _todayRecords.length,
-    );
+    final entries = topAppEntriesToday(limit: _todayRecords.length);
 
     for (final entry in entries) {
       final resolved =
@@ -885,10 +852,7 @@ class UsageProvider extends ChangeNotifier {
     return null;
   }
 
-  String resolveAppName(
-    String appId, {
-    String? fallback,
-  }) {
+  String resolveAppName(String appId, {String? fallback}) {
     for (final record in _todayRecords) {
       if (record.appId == appId) {
         return record.appName;
@@ -1028,11 +992,7 @@ class UsageProvider extends ChangeNotifier {
       result.add(
         AppUsageHistoryPoint(
           day: day,
-          usage: _usageForAppInRecords(
-            appId,
-            day,
-            resolved.snapshot.records,
-          ),
+          usage: _usageForAppInRecords(appId, day, resolved.snapshot.records),
           measured: true,
           completeDay: resolved.completeDay,
           provenance: resolved.provenance,
@@ -1063,8 +1023,10 @@ class UsageProvider extends ChangeNotifier {
     final granted = await _usageStatsService.hasUsageAccess();
     if (!granted) return const <AppOpenEvent>[];
 
-    final events =
-        await _usageStatsService.queryAppOpenEvents(effectiveStart, end);
+    final events = await _usageStatsService.queryAppOpenEvents(
+      effectiveStart,
+      end,
+    );
     if (appId == null || appId.trim().isEmpty) {
       return events;
     }
@@ -1113,11 +1075,7 @@ class UsageProvider extends ChangeNotifier {
       appRecords,
     );
 
-    final values = List<Duration>.filled(
-      24,
-      Duration.zero,
-      growable: false,
-    );
+    final values = List<Duration>.filled(24, Duration.zero, growable: false);
     for (final hour in appSummary.hourlyUsage) {
       final index = hour.hourStart.hour;
       if (index >= 0 && index < values.length) {
@@ -1240,9 +1198,7 @@ class UsageProvider extends ChangeNotifier {
     return List<DailyUsageMetrics>.unmodifiable(values);
   }
 
-  UsageDataCoverage coverageForAppHistory(
-    List<AppUsageHistoryPoint> points,
-  ) {
+  UsageDataCoverage coverageForAppHistory(List<AppUsageHistoryPoint> points) {
     return UsageDataCoverage.fromMeasurements(
       points.map(
         (point) => UsageCoverageSample(
@@ -1253,9 +1209,7 @@ class UsageProvider extends ChangeNotifier {
     );
   }
 
-  UsageDataCoverage coverageForDailyUsage(
-    List<DailyUsageMetrics> days,
-  ) {
+  UsageDataCoverage coverageForDailyUsage(List<DailyUsageMetrics> days) {
     return UsageDataCoverage.fromMeasurements(
       days.map(
         (day) => UsageCoverageSample(
@@ -1289,8 +1243,7 @@ class UsageProvider extends ChangeNotifier {
       return current.inSeconds == 0 ? 0 : null;
     }
 
-    return ((current.inSeconds - previous.inSeconds) /
-            previous.inSeconds) *
+    return ((current.inSeconds - previous.inSeconds) / previous.inSeconds) *
         100;
   }
 
@@ -1550,11 +1503,7 @@ class UsageProvider extends ChangeNotifier {
       );
 
       if (store != null) {
-        await store.saveDay(
-          normalizedDay,
-          records,
-          updatedAt: now,
-        );
+        await store.saveDay(normalizedDay, records, updatedAt: now);
       }
 
       if (_sameDate(normalizedDay, normalizedToday)) {
@@ -1726,9 +1675,7 @@ class UsageProvider extends ChangeNotifier {
 
   /// Compares the average of the newer half of measured days with the older
   /// half. An odd middle point is ignored so both halves have equal weight.
-  double? usageTrendPercent(
-    List<AppUsageHistoryPoint> points,
-  ) {
+  double? usageTrendPercent(List<AppUsageHistoryPoint> points) {
     final coverage = coverageForAppHistory(points);
     if (!coverage.isSufficientForTrend) {
       return null;
@@ -1821,9 +1768,7 @@ class UsageProvider extends ChangeNotifier {
     DateTime day,
     List<AppUsageRecord> records,
   ) {
-    final filtered = records
-        .where((record) => record.appId == appId)
-        .toList();
+    final filtered = records.where((record) => record.appId == appId).toList();
 
     if (filtered.isEmpty) {
       return Duration.zero;
@@ -1863,8 +1808,9 @@ class _UsageTimeRange {
 }
 
 List<_UsageTimeRange> _mergeUsageRanges(List<_UsageTimeRange> ranges) {
-  final values = ranges.where((range) => range.end.isAfter(range.start)).toList()
-    ..sort((a, b) => a.start.compareTo(b.start));
+  final values =
+      ranges.where((range) => range.end.isAfter(range.start)).toList()
+        ..sort((a, b) => a.start.compareTo(b.start));
 
   if (values.isEmpty) {
     return const <_UsageTimeRange>[];
@@ -1897,8 +1843,6 @@ Duration _sumMergedRanges(List<_UsageTimeRange> ranges) {
   }
   return total;
 }
-
-
 
 bool _looksLikeAndroidPackage(String value) {
   final trimmed = value.trim();

@@ -22,6 +22,7 @@ import '../screens/settings/settings_screen.dart';
 import '../screens/streak/streak_screen.dart';
 import '../screens/tasks/task_details_screen.dart';
 import '../screens/tasks/task_edit_screen.dart';
+import '../screens/wellbeing/app_limits_screen.dart';
 import '../screens/wellbeing/app_usage_app_details_screen.dart';
 import '../screens/wellbeing/app_usage_details_screen.dart';
 import '../screens/wellbeing/daily_wellbeing_details_screen.dart';
@@ -35,10 +36,7 @@ GoRouter createAppRouter({
   required AccountProvider accountProvider,
   required OnboardingProvider onboardingProvider,
 }) {
-  final refresh = _RouterRefreshNotifier([
-    accountProvider,
-    onboardingProvider,
-  ]);
+  final refresh = _RouterRefreshNotifier([accountProvider, onboardingProvider]);
 
   return GoRouter(
     initialLocation: '/',
@@ -62,24 +60,46 @@ GoRouter createAppRouter({
         return '/';
       }
 
+      final uri = state.uri;
+      if (uri.scheme == 'focused') {
+        final host = uri.host;
+        final rawPath = host.isNotEmpty ? '/$host${uri.path}' : uri.path;
+        if (rawPath.startsWith('/tasks/edit') ||
+            rawPath.startsWith('/task/new') ||
+            rawPath == '/task') {
+          return '/task/new';
+        }
+        if (rawPath.startsWith('/tasks/detail') ||
+            rawPath.startsWith('/task/')) {
+          final id =
+              uri.queryParameters['id'] ??
+              (uri.pathSegments.length > 1 ? uri.pathSegments[1] : null);
+          return (id != null && id.isNotEmpty) ? '/task/$id' : '/task/new';
+        }
+        if (rawPath.startsWith('/focus/setup')) {
+          return '/focus/setup';
+        }
+        if (rawPath.startsWith('/today') || rawPath == '/' || rawPath.isEmpty) {
+          return '/';
+        }
+        return rawPath;
+      }
+
       return null;
     },
     routes: [
       GoRoute(
         path: '/intro',
-        builder: (context, state) =>
-            const IntroSequenceScreen(),
+        builder: (context, state) => const IntroSequenceScreen(),
       ),
       GoRoute(
         path: '/',
         builder: (context, state) => MainShell(
+          key: ValueKey(state.uri.toString()),
           initialIndex: _mainTabIndex(state.uri.queryParameters['tab']),
         ),
       ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
@@ -98,18 +118,15 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: '/settings/cloud-sync',
-        builder: (context, state) =>
-            const CloudSyncScreen(),
+        builder: (context, state) => const CloudSyncScreen(),
       ),
       GoRoute(
         path: '/settings/notification-permission',
-        builder: (context, state) =>
-            const NotificationPermissionScreen(),
+        builder: (context, state) => const NotificationPermissionScreen(),
       ),
       GoRoute(
         path: '/settings/notification-access',
-        builder: (context, state) =>
-            const NotificationAccessScreen(),
+        builder: (context, state) => const NotificationAccessScreen(),
       ),
       GoRoute(
         path: '/wellbeing',
@@ -135,6 +152,22 @@ GoRouter createAppRouter({
         builder: (context, state) => const TaskEditScreen(),
       ),
       GoRoute(
+        path: '/tasks/edit',
+        builder: (context, state) => const TaskEditScreen(),
+      ),
+      GoRoute(
+        path: '/tasks/detail',
+        builder: (context, state) {
+          final id =
+              state.uri.queryParameters['id'] ??
+              state.uri.queryParameters['taskId'];
+          if (id != null && id.isNotEmpty) {
+            return TaskDetailsScreen(taskId: id);
+          }
+          return const TaskEditScreen();
+        },
+      ),
+      GoRoute(
         path: '/task/:taskId',
         builder: (context, state) => TaskDetailsScreen(
           taskId: Uri.decodeComponent(state.pathParameters['taskId']!),
@@ -143,9 +176,8 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: '/task/edit/:taskId',
-        builder: (context, state) => TaskEditScreen(
-          taskId: state.pathParameters['taskId'],
-        ),
+        builder: (context, state) =>
+            TaskEditScreen(taskId: state.pathParameters['taskId']),
       ),
       GoRoute(
         path: '/habit/new',
@@ -153,15 +185,13 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: '/habit/:habitId',
-        builder: (context, state) => HabitDetailsScreen(
-          habitId: state.pathParameters['habitId']!,
-        ),
+        builder: (context, state) =>
+            HabitDetailsScreen(habitId: state.pathParameters['habitId']!),
       ),
       GoRoute(
         path: '/habit/edit/:habitId',
-        builder: (context, state) => HabitEditScreen(
-          habitId: state.pathParameters['habitId'],
-        ),
+        builder: (context, state) =>
+            HabitEditScreen(habitId: state.pathParameters['habitId']),
       ),
       GoRoute(
         path: '/focus/setup',
@@ -192,39 +222,34 @@ GoRouter createAppRouter({
       ),
       GoRoute(
         path: '/wellbeing/analytics',
-        builder: (context, state) =>
-            const WeeklyWellbeingScreen(),
+        builder: (context, state) => const WeeklyWellbeingScreen(),
       ),
       GoRoute(
         path: '/wellbeing/app-usage',
-        builder: (context, state) =>
-            const AppUsageDetailsScreen(),
+        builder: (context, state) => const AppUsageDetailsScreen(),
       ),
       GoRoute(
         path: '/wellbeing/app/:appId',
-        builder: (context, state) =>
-            AppUsageAppDetailsScreen(
-          appId: Uri.decodeComponent(
-            state.pathParameters['appId']!,
-          ),
-          initialAppName:
-              state.uri.queryParameters['name'],
+        builder: (context, state) => AppUsageAppDetailsScreen(
+          appId: Uri.decodeComponent(state.pathParameters['appId']!),
+          initialAppName: state.uri.queryParameters['name'],
         ),
       ),
       GoRoute(
         path: '/wellbeing/focus-interruptions',
-        builder: (context, state) =>
-            const FocusInterruptionDetailsScreen(),
+        builder: (context, state) => const FocusInterruptionDetailsScreen(),
       ),
       GoRoute(
         path: '/wellbeing/permission',
-        builder: (context, state) =>
-            const UsagePermissionScreen(),
+        builder: (context, state) => const UsagePermissionScreen(),
+      ),
+      GoRoute(
+        path: '/wellbeing/limits',
+        builder: (context, state) => const AppLimitsScreen(),
       ),
     ],
   );
 }
-
 
 int _mainTabIndex(String? raw) {
   switch (raw) {

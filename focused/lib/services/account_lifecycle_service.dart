@@ -10,6 +10,7 @@ import 'sync_metadata_storage_service.dart';
 import 'task_occurrence_completion_storage_service.dart';
 import 'task_storage_service.dart';
 import 'usage_record_storage_service.dart';
+import 'user_cloud_stats_storage_service.dart';
 import 'user_profile_storage_service.dart';
 
 enum AccountStatus { active, deactivated, deleted }
@@ -36,6 +37,7 @@ class AccountLifecycleService {
     required UserProfileStorageService userProfileStorage,
     required StreakGoalStorageService streakGoalStorage,
     required SyncMetadataStorageService syncMetadataStorage,
+    UserCloudStatsStorageService? userStatsStorage,
     UsageRecordStorageService? usageRecordStorage,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _taskStorage = taskStorage,
@@ -46,6 +48,7 @@ class AccountLifecycleService {
        _userProfileStorage = userProfileStorage,
        _streakGoalStorage = streakGoalStorage,
        _syncMetadataStorage = syncMetadataStorage,
+       _userStatsStorage = userStatsStorage,
        _usageRecordStorage = usageRecordStorage;
 
   final FirebaseFirestore _firestore;
@@ -57,6 +60,7 @@ class AccountLifecycleService {
   final UserProfileStorageService _userProfileStorage;
   final StreakGoalStorageService _streakGoalStorage;
   final SyncMetadataStorageService _syncMetadataStorage;
+  final UserCloudStatsStorageService? _userStatsStorage;
   final UsageRecordStorageService? _usageRecordStorage;
 
   /// Checks whether an account is active or has been marked deactivated.
@@ -207,6 +211,12 @@ class AccountLifecycleService {
       await _syncMetadataStorage.clearBoundAccountUid();
     } catch (e) {
       debugPrint('Error clearing sync metadata: $e');
+    }
+
+    try {
+      await _userStatsStorage?.clearAll();
+    } catch (e) {
+      debugPrint('Error clearing user stats: $e');
     }
 
     if (wipeAllUsage && _usageRecordStorage != null) {

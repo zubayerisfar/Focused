@@ -18,6 +18,7 @@ abstract class UsageRecordStore {
   Future<void> init();
 
   Future<UsageDaySnapshot?> loadDay(DateTime day);
+  Future<List<UsageDaySnapshot>> loadAllDays();
 
   Future<void> saveDay(
     DateTime day,
@@ -111,6 +112,26 @@ class UsageRecordStorageService implements UsageRecordStore {
       updatedAt: updatedAt,
       records: List.unmodifiable(records),
     );
+  }
+
+  @override
+  Future<List<UsageDaySnapshot>> loadAllDays() async {
+    final box = _requiredBox;
+    final results = <UsageDaySnapshot>[];
+    for (final key in box.keys) {
+      if (key is! String) continue;
+      final parts = key.split('-');
+      if (parts.length != 3) continue;
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final day = int.tryParse(parts[2]);
+      if (year == null || month == null || day == null) continue;
+      final snapshot = await loadDay(DateTime(year, month, day));
+      if (snapshot != null) {
+        results.add(snapshot);
+      }
+    }
+    return results;
   }
 
   @override

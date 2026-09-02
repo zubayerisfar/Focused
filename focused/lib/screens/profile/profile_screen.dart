@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -7,8 +9,10 @@ import 'package:provider/provider.dart';
 import '../../models/achievement_badge.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
+import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../providers/user_stats_provider.dart';
 import '../../services/achievement_service.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../widgets/achievement_badge_art.dart';
@@ -25,21 +29,37 @@ class ProfileScreen extends StatelessWidget {
     final localProfile = context.watch<UserProfileProvider>().profile;
     final tasks = context.watch<TaskProvider>();
     final focus = context.watch<FocusProvider>();
+    final habits = context.watch<HabitProvider>();
+    final userStats = context.watch<UserStatsProvider>();
     final photo = account.photoUrl;
 
     final activityDates = <DateTime>{
       ...tasks.completionActivityDates(),
       ...focus.focusActivityDates(),
+      ...habits.habitCompletionDates(),
     };
-    final longestStreak = _streakService.calculateLongestStreak(
+    final localLongest = _streakService.calculateLongestStreak(
       activityDates: activityDates,
     );
-    final badges = _achievementService.buildBadges(
-      longestStreak: longestStreak,
-      longestLinkedTaskSession: focus.longestLinkedTaskSessionFocusDuration,
-      totalFocus: focus.totalStoredFocusDuration,
+    final effectiveLongestStreak = math.max(
+      math.max(localLongest, userStats.syncedLongestStreak),
+      userStats.syncedStreakDays,
     );
-    final earned = badges.where((badge) => badge.achieved).toList(growable: false);
+
+    final localTotalFocus = focus.totalStoredFocusDuration;
+    final effectiveTotalFocus = localTotalFocus > userStats.syncedFocusDuration
+        ? localTotalFocus
+        : userStats.syncedFocusDuration;
+
+    final badges = _achievementService.buildBadges(
+      longestStreak: effectiveLongestStreak,
+      longestLinkedTaskSession: focus.longestLinkedTaskSessionFocusDuration,
+      totalFocus: effectiveTotalFocus,
+      unlockedBadgeIds: userStats.unlockedBadgeIds,
+    );
+    final earned = badges
+        .where((badge) => badge.achieved)
+        .toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -65,9 +85,9 @@ class ProfileScreen extends StatelessWidget {
           Text(
             account.displayName,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
@@ -91,9 +111,9 @@ class ProfileScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Achievements',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               Text(
@@ -159,11 +179,7 @@ class _UnlockedBadgeStrip extends StatelessWidget {
             width: 84,
             child: Column(
               children: [
-                AchievementBadgeArt(
-                  badge: badge,
-                  size: 68,
-                  showLock: false,
-                ),
+                AchievementBadgeArt(badge: badge, size: 68, showLock: false),
                 const SizedBox(height: 5),
                 Text(
                   badge.title,
@@ -201,12 +217,13 @@ class _AccountInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        side: BorderSide(color: Theme.of(context).dividerColor),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           _ProfileRow(
@@ -230,7 +247,9 @@ class _AccountInfoCard extends StatelessWidget {
           _ProfileRow(
             icon: FontAwesomeIcons.cakeCandles,
             label: 'Birthday',
-            value: birthday == null ? '—' : DateFormat('MMM d').format(birthday!),
+            value: birthday == null
+                ? '—'
+                : DateFormat('MMM d').format(birthday!),
           ),
           _divider(context),
           _ProfileRow(
@@ -261,17 +280,20 @@ class _ProfileRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: FaIcon(icon, size: 17),
-      title: Text(label),
-      trailing: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 170),
-        child: Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.right,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        leading: FaIcon(icon, size: 17),
+        title: Text(label),
+        trailing: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 170),
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );
