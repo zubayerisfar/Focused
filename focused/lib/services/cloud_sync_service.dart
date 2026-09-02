@@ -63,7 +63,6 @@ class CloudSyncService {
     required String uid,
     required String deviceId,
     String? deviceName,
-    String? deviceFingerprint,
   }) async {
     if (uid.trim().isEmpty) {
       throw ArgumentError('A signed-in Firebase UID is required for sync.');
@@ -79,7 +78,6 @@ class CloudSyncService {
       deviceId: deviceId,
       firstSeenAt: startedAt,
       deviceName: deviceName,
-      deviceFingerprint: deviceFingerprint,
     );
 
     Future<void> syncCollection(_SyncCollectionAdapter adapter) async {
@@ -219,7 +217,6 @@ class CloudSyncService {
       firstSeenAt: startedAt,
       lastSyncAt: completedAt,
       deviceName: deviceName,
-      deviceFingerprint: deviceFingerprint,
     );
 
     return CloudSyncResult(
@@ -438,30 +435,16 @@ class CloudSyncService {
     required DateTime firstSeenAt,
     DateTime? lastSyncAt,
     String? deviceName,
-    String? deviceFingerprint,
   }) async {
     final platform = kIsWeb ? 'web' : defaultTargetPlatform.name;
-    final devices = _firestore
+    final ref = _firestore
         .collection('users')
         .doc(uid)
-        .collection('devices');
-
-    // Reuse an existing physical device record after app data reset.
-    DocumentReference<Map<String, dynamic>> ref = devices.doc(deviceId);
-    if (deviceFingerprint != null && deviceFingerprint.trim().isNotEmpty) {
-      final matches = await devices
-          .where('deviceFingerprint', isEqualTo: deviceFingerprint)
-          .limit(1)
-          .get();
-      if (matches.docs.isNotEmpty) {
-        ref = matches.docs.first.reference;
-      }
-    }
-
+        .collection('devices')
+        .doc(deviceId);
     final existing = await ref.get();
     await ref.set({
-      'deviceId': ref.id,
-      'deviceFingerprint': deviceFingerprint,
+      'deviceId': deviceId,
       'platform': platform,
       'deviceName':
           _cleanDeviceName(deviceName) ?? _friendlyDeviceName(platform),

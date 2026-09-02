@@ -18,6 +18,7 @@ import 'providers/theme_provider.dart';
 import 'providers/usage_provider.dart';
 import 'providers/user_profile_provider.dart';
 import 'router/app_router.dart';
+import 'services/account_lifecycle_service.dart';
 import 'services/android_installation_info_service.dart';
 import 'services/android_usage_stats_service.dart';
 import 'services/app_category_storage_service.dart';
@@ -165,7 +166,33 @@ Future<void> main() async {
   );
   await streakGoalProvider.load();
 
-  final accountProvider = AccountProvider(authService: AuthService());
+  final accountLifecycleService = AccountLifecycleService(
+    taskStorage: taskStorageService,
+    taskCompletionStorage: occurrenceCompletionStorage,
+    habitStorage: habitStorageService,
+    focusSessionStorage: focusSessionStorageService,
+    focusAnalysisStorage: focusAnalysisStorageService,
+    userProfileStorage: userProfileStorageService,
+    streakGoalStorage: streakGoalStorageService,
+    syncMetadataStorage: syncMetadataStorageService,
+    usageRecordStorage: usageRecordStorageService,
+  );
+
+  late final AccountProvider accountProvider;
+  accountProvider = AccountProvider(
+    authService: AuthService(),
+    lifecycleService: accountLifecycleService,
+    onSignOutOrAccountWiped: () async {
+      await taskNotificationService.cancelAllTaskReminders();
+      await habitNotificationService.cancelAllHabitReminders();
+      await accountLifecycleService.clearLocalWorkspaceData();
+      await taskProvider.loadStoredTasks();
+      await focusProvider.loadStoredSessions();
+      await habitProvider.loadStoredHabits();
+      await userProfileProvider.resetProfile();
+      await streakGoalProvider.load();
+    },
+  );
   await accountProvider.initialize();
 
   if (accountProvider.isSignedIn) {

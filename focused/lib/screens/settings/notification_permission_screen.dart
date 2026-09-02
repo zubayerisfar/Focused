@@ -174,7 +174,7 @@ class _NotificationPermissionScreenState
           ],
           const SizedBox(height: 12),
           Text(
-            'Notification permission lets Focused send task reminders, habit reminders and focus alerts.',
+            'Notification permission lets Focused send task reminders, habit reminders and focus alerts. Notification Access is a separate permission used only to count notifications posted by other apps.',
             style: TextStyle(color: scheme.onSurfaceVariant, height: 1.45),
           ),
         ],

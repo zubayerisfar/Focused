@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -14,21 +13,6 @@ class AndroidDeviceIdentity {
   final String brand;
   final String model;
 
-  String get fingerprint {
-    final value =
-        '${manufacturer.trim().toLowerCase()}|${brand.trim().toLowerCase()}|${model.trim().toLowerCase()}';
-    return _simpleHash(value);
-  }
-
-  static String _simpleHash(String value) {
-    var hash = 2166136261;
-    for (final byte in utf8.encode(value)) {
-      hash ^= byte;
-      hash = (hash * 16777619) & 0xffffffff;
-    }
-    return hash.toRadixString(16);
-  }
-
   String get friendlyName {
     final cleanModel = model.trim();
     final cleanManufacturer = manufacturer.trim();
@@ -41,7 +25,9 @@ class AndroidDeviceIdentity {
       return fallback.isEmpty ? 'Android device' : _capitalized(fallback);
     }
 
-    final maker = cleanManufacturer.isNotEmpty ? cleanManufacturer : cleanBrand;
+    final maker = cleanManufacturer.isNotEmpty
+        ? cleanManufacturer
+        : cleanBrand;
     if (maker.isEmpty) return cleanModel;
 
     final modelLower = cleanModel.toLowerCase();
@@ -75,9 +61,7 @@ class AndroidInstallationInfoService {
     if (!Platform.isAndroid) return null;
 
     try {
-      final millis = await _channel.invokeMethod<int>(
-        'getFirstInstallTimeMillis',
-      );
+      final millis = await _channel.invokeMethod<int>('getFirstInstallTimeMillis');
       if (millis == null || millis <= 0) return null;
       return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
     } on PlatformException {

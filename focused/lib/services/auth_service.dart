@@ -1,5 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart'
-    show FirebaseAuth, GoogleAuthProvider, User, UserCredential;
+    show
+        EmailAuthProvider,
+        FirebaseAuth,
+        GoogleAuthProvider,
+        User,
+        UserCredential;
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -142,6 +147,54 @@ class AuthService {
 
     await user.updateDisplayName(cleanName);
     await user.reload();
+  }
+
+  Future<void> reauthenticateWithPassword(String password) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null || user.email == null) {
+      throw StateError('No signed-in user to reauthenticate.');
+    }
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  Future<void> reauthenticateWithGoogle() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw StateError('No signed-in user to reauthenticate.');
+    }
+
+    await _initializeGoogleIfNeeded();
+
+    if (!GoogleSignIn.instance.supportsAuthenticate()) {
+      throw UnsupportedError(
+        'Google Sign-In cannot start an interactive login on this platform.',
+      );
+    }
+
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleAuthentication = googleUser.authentication;
+    final idToken = googleAuthentication.idToken;
+
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError(
+        'Google Sign-In completed without returning an ID token.',
+      );
+    }
+
+    final firebaseCredential = GoogleAuthProvider.credential(idToken: idToken);
+    await user.reauthenticateWithCredential(firebaseCredential);
+  }
+
+  Future<void> deleteCurrentUser() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw StateError('No signed-in user to delete.');
+    }
+    await user.delete();
   }
 
   Future<void> signOut() async {

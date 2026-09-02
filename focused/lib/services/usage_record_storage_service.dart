@@ -26,6 +26,7 @@ abstract class UsageRecordStore {
   });
 
   Future<void> deleteDay(DateTime day);
+  Future<void> clearAll();
 }
 
 class UsageRecordStorageService implements UsageRecordStore {
@@ -42,7 +43,9 @@ class UsageRecordStorageService implements UsageRecordStore {
   Box<dynamic> get _requiredBox {
     final box = _box;
     if (box == null) {
-      throw StateError('UsageRecordStorageService.init() must be called first.');
+      throw StateError(
+        'UsageRecordStorageService.init() must be called first.',
+      );
     }
     return box;
   }
@@ -123,29 +126,35 @@ class UsageRecordStorageService implements UsageRecordStore {
       normalizedDay.day + 1,
     );
 
-    final validRecords = records
-        .where(
-          (record) =>
-              record.endTime.isAfter(record.startTime) &&
-              record.startTime.isBefore(dayEnd) &&
-              record.endTime.isAfter(normalizedDay),
-        )
-        .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    final validRecords =
+        records
+            .where(
+              (record) =>
+                  record.endTime.isAfter(record.startTime) &&
+                  record.startTime.isBefore(dayEnd) &&
+                  record.endTime.isAfter(normalizedDay),
+            )
+            .toList()
+          ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
-    await _requiredBox.put(
-      _dayKey(day),
-      {
-        'schemaVersion': _schemaVersion,
-        'updatedAt': (updatedAt ?? DateTime.now()).toIso8601String(),
-        'records': validRecords.map((record) => record.toMap()).toList(),
-      },
-    );
+    await _requiredBox.put(_dayKey(day), {
+      'schemaVersion': _schemaVersion,
+      'updatedAt': (updatedAt ?? DateTime.now()).toIso8601String(),
+      'records': validRecords.map((record) => record.toMap()).toList(),
+    });
   }
 
   @override
   Future<void> deleteDay(DateTime day) async {
     await _requiredBox.delete(_dayKey(day));
+  }
+
+  @override
+  Future<void> clearAll() async {
+    final box = _box;
+    if (box != null && box.isOpen) {
+      await box.clear();
+    }
   }
 
   String _dayKey(DateTime day) {

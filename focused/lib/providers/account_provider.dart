@@ -6,14 +6,21 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart'
     show GoogleSignInException, GoogleSignInExceptionCode;
 
+import '../services/account_lifecycle_service.dart';
 import '../services/auth_service.dart';
 
 class AccountProvider extends ChangeNotifier {
   AccountProvider({
     required AuthService authService,
-  }) : _authService = authService;
+    AccountLifecycleService? lifecycleService,
+    Future<void> Function()? onSignOutOrAccountWiped,
+  }) : _authService = authService,
+       _lifecycleService = lifecycleService,
+       _onSignOutOrAccountWiped = onSignOutOrAccountWiped;
 
   final AuthService _authService;
+  final AccountLifecycleService? _lifecycleService;
+  final Future<void> Function()? _onSignOutOrAccountWiped;
 
   StreamSubscription<User?>? _subscription;
 
@@ -43,22 +50,15 @@ class AccountProvider extends ChangeNotifier {
   String? get photoUrl {
     final value = _user?.photoURL?.trim();
 
-    return value == null || value.isEmpty
-        ? null
-        : value;
+    return value == null || value.isEmpty ? null : value;
   }
 
-  bool get emailVerified =>
-      _user?.emailVerified ?? false;
+  bool get emailVerified => _user?.emailVerified ?? false;
 
   bool get signedInWithGoogle {
-    final providers =
-        _user?.providerData ?? const [];
+    final providers = _user?.providerData ?? const [];
 
-    return providers.any(
-      (provider) =>
-          provider.providerId == 'google.com',
-    );
+    return providers.any((provider) => provider.providerId == 'google.com');
   }
 
   Future<void> initialize() async {
@@ -66,16 +66,34 @@ class AccountProvider extends ChangeNotifier {
     // initialized only when the user actually taps Continue with Google,
     // so a Google OAuth configuration issue can never block email login
     // or app startup.
-    _user = _authService.currentUser;
+    final currentUser = _authService.currentUser;
+    if (currentUser != null) {
+      try {
+        await _checkActiveStatusOrSignOut(currentUser);
+        _user = currentUser;
+      } catch (e) {
+        _user = null;
+        _errorMessage = e.toString();
+      }
+    } else {
+      _user = null;
+    }
     _initialized = true;
 
-    _subscription =
-        _authService.authStateChanges.listen(
-      (user) {
-        _user = user;
-        notifyListeners();
-      },
-    );
+    _subscription = _authService.authStateChanges.listen((user) async {
+      if (user != null) {
+        try {
+          await _checkActiveStatusOrSignOut(user);
+          _user = user;
+        } catch (e) {
+          _user = null;
+          _errorMessage = e.toString();
+        }
+      } else {
+        _user = null;
+      }
+      notifyListeners();
+    });
   }
 
   Future<User> registerWithEmail({
@@ -84,8 +102,7 @@ class AccountProvider extends ChangeNotifier {
     required String password,
   }) {
     return _runAuthAction(() async {
-      final credential =
-          await _authService.registerWithEmail(
+      final credential = await _authService.registerWithEmail(
         name: name,
         email: email,
         password: password,
@@ -93,15 +110,13 @@ class AccountProvider extends ChangeNotifier {
 
       await _authService.reloadCurrentUser();
 
-      final user =
-          _authService.currentUser ??
-          credential.user;
+      final user = _authService.currentUser ?? credential.user;
 
       if (user == null) {
-        throw StateError(
-          'Firebase did not return a user.',
-        );
+        throw StateError('Firebase did not return a user.');
       }
+
+      await _checkActiveStatusOrSignOut(user);
 
       _user = user;
       notifyListeners();
@@ -115,8 +130,7 @@ class AccountProvider extends ChangeNotifier {
     required String password,
   }) {
     return _runAuthAction(() async {
-      final credential =
-          await _authService.signInWithEmail(
+      final credential = await _authService.signInWithEmail(
         email: email,
         password: password,
       );
@@ -124,10 +138,10 @@ class AccountProvider extends ChangeNotifier {
       final user = credential.user;
 
       if (user == null) {
-        throw StateError(
-          'Firebase did not return a user.',
-        );
+        throw StateError('Firebase did not return a user.');
       }
+
+      await _checkActiveStatusOrSignOut(user);
 
       _user = user;
       notifyListeners();
@@ -141,30 +155,27 @@ class AccountProvider extends ChangeNotifier {
     _errorMessage = null;
 
     try {
-      final credential =
-          await _authService.signInWithGoogle();
+      final credential = await _authService.signInWithGoogle();
 
       final user = credential.user;
 
       if (user == null) {
-        throw StateError(
-          'Firebase did not return a Google user.',
-        );
+        throw StateError('Firebase did not return a Google user.');
       }
+
+      await _checkActiveStatusOrSignOut(user);
 
       _user = user;
       notifyListeners();
 
       return user;
     } on GoogleSignInException catch (error) {
-      final description =
-          (error.description ?? '').toLowerCase();
+      final description = (error.description ?? '').toLowerCase();
 
       // On Android Credential Manager, some OAuth configuration errors
       // unfortunately arrive as "canceled". A genuine back/cancel usually
       // has no useful description, while reauth/configuration failures do.
-      if (error.code ==
-          GoogleSignInExceptionCode.canceled) {
+      if (error.code == GoogleSignInExceptionCode.canceled) {
         final looksLikeConfigurationFailure =
             description.contains('reauth') ||
             description.contains('configuration') ||
@@ -182,21 +193,21 @@ class AccountProvider extends ChangeNotifier {
             'a fresh google-services.json. The file must also contain a Web '
             'OAuth client (client_type 3).';
       } else {
-        _errorMessage =
-            _friendlyGoogleMessage(error);
+        _errorMessage = _friendlyGoogleMessage(error);
       }
 
       notifyListeners();
       rethrow;
     } on FirebaseAuthException catch (error) {
-      _errorMessage =
-          _friendlyFirebaseMessage(error);
+      _errorMessage = _friendlyFirebaseMessage(error);
+      notifyListeners();
+      rethrow;
+    } on DeactivatedAccountException catch (error) {
+      _errorMessage = error.message;
       notifyListeners();
       rethrow;
     } catch (error) {
-      _errorMessage = error
-          .toString()
-          .replaceFirst('Exception: ', '');
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       rethrow;
     } finally {
@@ -204,17 +215,13 @@ class AccountProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> sendPasswordReset(
-    String email,
-  ) async {
+  Future<void> sendPasswordReset(String email) async {
     _errorMessage = null;
 
     try {
-      await _authService
-          .sendPasswordReset(email);
+      await _authService.sendPasswordReset(email);
     } on FirebaseAuthException catch (error) {
-      _errorMessage =
-          _friendlyFirebaseMessage(error);
+      _errorMessage = _friendlyFirebaseMessage(error);
       notifyListeners();
       rethrow;
     }
@@ -224,11 +231,9 @@ class AccountProvider extends ChangeNotifier {
     _errorMessage = null;
 
     try {
-      await _authService
-          .sendVerificationEmail();
+      await _authService.sendVerificationEmail();
     } on FirebaseAuthException catch (error) {
-      _errorMessage =
-          _friendlyFirebaseMessage(error);
+      _errorMessage = _friendlyFirebaseMessage(error);
       notifyListeners();
       rethrow;
     }
@@ -240,21 +245,115 @@ class AccountProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateDisplayName(
-    String name,
-  ) async {
+  Future<void> updateDisplayName(String name) async {
     _setBusy(true);
     _errorMessage = null;
 
     try {
-      await _authService
-          .updateDisplayName(name);
+      await _authService.updateDisplayName(name);
 
       _user = _authService.currentUser;
       notifyListeners();
     } on FirebaseAuthException catch (error) {
-      _errorMessage =
-          _friendlyFirebaseMessage(error);
+      _errorMessage = _friendlyFirebaseMessage(error);
+      notifyListeners();
+      rethrow;
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  Future<void> deactivateAccount({required String reason}) async {
+    final currentUser = _user;
+    if (currentUser == null) {
+      throw StateError('Must be signed in to deactivate an account.');
+    }
+
+    _setBusy(true);
+    _errorMessage = null;
+
+    try {
+      if (_lifecycleService != null) {
+        await _lifecycleService!.deactivateAccount(
+          uid: currentUser.uid,
+          reason: reason,
+        );
+      }
+      await _onSignOutOrAccountWiped?.call();
+      await _authService.signOut();
+      _user = null;
+      notifyListeners();
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      rethrow;
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  Future<void> deleteAccount({String? password}) async {
+    final currentUser = _user;
+    if (currentUser == null) {
+      throw StateError('Must be signed in to delete an account.');
+    }
+
+    _setBusy(true);
+    _errorMessage = null;
+
+    try {
+      if (!signedInWithGoogle &&
+          password != null &&
+          password.trim().isNotEmpty) {
+        await _authService.reauthenticateWithPassword(password.trim());
+      }
+
+      try {
+        if (_lifecycleService != null) {
+          await _lifecycleService!.deleteAccount(
+            uid: currentUser.uid,
+            firebaseUser: currentUser,
+          );
+        } else {
+          await _authService.deleteCurrentUser();
+        }
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'requires-recent-login' && signedInWithGoogle) {
+          // Token expired; perform interactive reauth and retry deletion once.
+          await _authService.reauthenticateWithGoogle();
+          if (_lifecycleService != null) {
+            await _lifecycleService!.deleteAccount(
+              uid: currentUser.uid,
+              firebaseUser: currentUser,
+            );
+          } else {
+            await _authService.deleteCurrentUser();
+          }
+        } else {
+          rethrow;
+        }
+      }
+
+      await _onSignOutOrAccountWiped?.call();
+      _user = null;
+      notifyListeners();
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'requires-recent-login') {
+        _errorMessage =
+            'For security, please sign out and sign back in before deleting your account.';
+      } else {
+        _errorMessage = _friendlyFirebaseMessage(error);
+      }
+      notifyListeners();
+      rethrow;
+    } catch (error) {
+      final text = error.toString().toLowerCase();
+      if (text.contains('canceled') || text.contains('cancelled')) {
+        _errorMessage =
+            'Google confirmation was cancelled. Please select your Google account to confirm account deletion.';
+      } else {
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      }
       notifyListeners();
       rethrow;
     } finally {
@@ -267,11 +366,23 @@ class AccountProvider extends ChangeNotifier {
     _errorMessage = null;
 
     try {
+      await _onSignOutOrAccountWiped?.call();
       await _authService.signOut();
       _user = null;
       notifyListeners();
     } finally {
       _setBusy(false);
+    }
+  }
+
+  Future<void> _checkActiveStatusOrSignOut(User user) async {
+    final lifecycle = _lifecycleService;
+    if (lifecycle == null) return;
+    final status = await lifecycle.checkAccountStatus(user.uid);
+    if (status == AccountStatus.deactivated) {
+      await _authService.signOut();
+      _user = null;
+      throw const DeactivatedAccountException();
     }
   }
 
@@ -282,23 +393,18 @@ class AccountProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<T> _runAuthAction<T>(
-    Future<T> Function() action,
-  ) async {
+  Future<T> _runAuthAction<T>(Future<T> Function() action) async {
     _setBusy(true);
     _errorMessage = null;
 
     try {
       return await action();
     } on FirebaseAuthException catch (error) {
-      _errorMessage =
-          _friendlyFirebaseMessage(error);
+      _errorMessage = _friendlyFirebaseMessage(error);
       notifyListeners();
       rethrow;
     } catch (error) {
-      _errorMessage = error
-          .toString()
-          .replaceFirst('Exception: ', '');
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       rethrow;
     } finally {
@@ -313,17 +419,14 @@ class AccountProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  static String displayNameFromEmail(
-    String? email,
-  ) {
+  static String displayNameFromEmail(String? email) {
     final cleanEmail = email?.trim() ?? '';
 
     if (cleanEmail.isEmpty) {
       return 'Focused User';
     }
 
-    final localPart =
-        cleanEmail.split('@').first.trim();
+    final localPart = cleanEmail.split('@').first.trim();
 
     if (localPart.isEmpty) {
       return 'Focused User';
@@ -337,23 +440,17 @@ class AccountProvider extends ChangeNotifier {
           (word) => word.length == 1
               ? word.toUpperCase()
               : '${word[0].toUpperCase()}'
-                  '${word.substring(1)}',
+                    '${word.substring(1)}',
         )
         .toList();
 
-    return words.isEmpty
-        ? 'Focused User'
-        : words.join(' ');
+    return words.isEmpty ? 'Focused User' : words.join(' ');
   }
 
-  static String _friendlyGoogleMessage(
-    GoogleSignInException error,
-  ) {
+  static String _friendlyGoogleMessage(GoogleSignInException error) {
     switch (error.code) {
-      case GoogleSignInExceptionCode
-            .clientConfigurationError:
-      case GoogleSignInExceptionCode
-            .providerConfigurationError:
+      case GoogleSignInExceptionCode.clientConfigurationError:
+      case GoogleSignInExceptionCode.providerConfigurationError:
         return 'Google Sign-In is not configured correctly for this '
             'Android build. Register the signing certificate SHA-1/SHA-256 '
             'in Firebase and confirm the Web OAuth client is present.';
@@ -365,14 +462,11 @@ class AccountProvider extends ChangeNotifier {
         return 'Google returned a different account than expected. '
             'Sign out and try again.';
       default:
-        return error.description ??
-            'Google Sign-In failed. Please try again.';
+        return error.description ?? 'Google Sign-In failed. Please try again.';
     }
   }
 
-  static String _friendlyFirebaseMessage(
-    FirebaseAuthException error,
-  ) {
+  static String _friendlyFirebaseMessage(FirebaseAuthException error) {
     switch (error.code) {
       case 'invalid-email':
         return 'Enter a valid email address.';
@@ -395,8 +489,7 @@ class AccountProvider extends ChangeNotifier {
         return 'This sign-in method is not enabled in Firebase '
             'Authentication.';
       default:
-        return error.message ??
-            'Authentication failed. Please try again.';
+        return error.message ?? 'Authentication failed. Please try again.';
     }
   }
 

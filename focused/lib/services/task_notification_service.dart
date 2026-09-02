@@ -18,9 +18,8 @@ class TaskNotificationService {
   TaskNotificationService({
     FlutterLocalNotificationsPlugin? notifications,
     TaskReminderPlanner planner = const TaskReminderPlanner(),
-  })  : _notifications =
-            notifications ?? FlutterLocalNotificationsPlugin(),
-        _planner = planner;
+  }) : _notifications = notifications ?? FlutterLocalNotificationsPlugin(),
+       _planner = planner;
 
   String? get timeZoneName => _timeZoneName;
 
@@ -31,15 +30,12 @@ class TaskNotificationService {
 
     tz.initializeTimeZones();
 
-    final deviceTimeZone =
-        await FlutterTimezone.getLocalTimezone();
+    final deviceTimeZone = await FlutterTimezone.getLocalTimezone();
 
     _timeZoneName = deviceTimeZone.identifier;
 
     try {
-      tz.setLocalLocation(
-        tz.getLocation(deviceTimeZone.identifier),
-      );
+      tz.setLocalLocation(tz.getLocation(deviceTimeZone.identifier));
     } catch (error) {
       throw StateError(
         'Focused could not resolve the device timezone '
@@ -49,9 +45,7 @@ class TaskNotificationService {
     }
 
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings(
-        '@mipmap/ic_launcher',
-      ),
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -64,16 +58,12 @@ class TaskNotificationService {
       ),
     );
 
-    await _notifications.initialize(
-      settings,
-    );
+    await _notifications.initialize(settings);
 
     _initialized = true;
   }
 
-  Future<TaskReminderScheduleResult> scheduleForTask(
-    Task task,
-  ) async {
+  Future<TaskReminderScheduleResult> scheduleForTask(Task task) async {
     try {
       await init();
 
@@ -82,8 +72,7 @@ class TaskNotificationService {
 
       final start = task.scheduledStart;
       final end = task.scheduledEnd;
-      final reminderMinutes =
-          task.reminderMinutesBefore;
+      final reminderMinutes = task.reminderMinutesBefore;
 
       if (task.isCompleted ||
           start == null ||
@@ -91,10 +80,8 @@ class TaskNotificationService {
           reminderMinutes == null) {
         return TaskReminderScheduleResult(
           taskId: task.id,
-          status:
-              TaskReminderScheduleStatus.noReminder,
-          message:
-              'This task does not currently need a reminder.',
+          status: TaskReminderScheduleStatus.noReminder,
+          message: 'This task does not currently need a reminder.',
           notificationPermissionGranted: true,
           exactAlarmPermissionGranted: true,
           shownImmediately: false,
@@ -109,14 +96,11 @@ class TaskNotificationService {
         reminderMinutes: reminderMinutes,
       );
 
-      if (!plan.showNow &&
-          plan.schedules.isEmpty) {
+      if (!plan.showNow && plan.schedules.isEmpty) {
         return TaskReminderScheduleResult(
           taskId: task.id,
-          status:
-              TaskReminderScheduleStatus.expired,
-          message:
-              'The reminder time and task time have already passed.',
+          status: TaskReminderScheduleStatus.expired,
+          message: 'The reminder time and task time have already passed.',
           notificationPermissionGranted: true,
           exactAlarmPermissionGranted: true,
           shownImmediately: false,
@@ -130,8 +114,7 @@ class TaskNotificationService {
       if (!notificationPermissionGranted) {
         return TaskReminderScheduleResult(
           taskId: task.id,
-          status: TaskReminderScheduleStatus
-              .permissionDenied,
+          status: TaskReminderScheduleStatus.permissionDenied,
           message:
               'Task saved, but Android notification permission is disabled. '
               'Enable notifications for Focused to receive reminders.',
@@ -145,10 +128,7 @@ class TaskNotificationService {
       var shownImmediately = false;
 
       if (plan.showNow) {
-        await _showImmediateReminder(
-          task,
-          reminderMinutes,
-        );
+        await _showImmediateReminder(task, reminderMinutes);
         shownImmediately = true;
       }
 
@@ -158,116 +138,84 @@ class TaskNotificationService {
       if (plan.schedules.isNotEmpty) {
         final android = _notifications
             .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>();
+              AndroidFlutterLocalNotificationsPlugin
+            >();
 
         if (android != null) {
           exactAlarmPermissionGranted =
-              await android.requestExactAlarmsPermission() ??
-                  false;
+              await android.requestExactAlarmsPermission() ?? false;
 
-          useExactScheduling =
-              exactAlarmPermissionGranted;
+          useExactScheduling = exactAlarmPermissionGranted;
         }
 
-        for (final schedule
-            in plan.schedules) {
+        for (final schedule in plan.schedules) {
           await _notifications.zonedSchedule(
-            _notificationId(
-              task.id,
-              schedule.slot,
-            ),
+            _notificationId(task.id, schedule.slot),
             task.title,
             _body(task, reminderMinutes),
-            _toLocalTz(
-              schedule.firstReminderAt,
-            ),
+            _toLocalTz(schedule.firstReminderAt),
             _details,
-            androidScheduleMode:
-                useExactScheduling
-                    ? AndroidScheduleMode
-                        .exactAllowWhileIdle
-                    : AndroidScheduleMode
-                        .inexactAllowWhileIdle,
-            matchDateTimeComponents:
-                schedule.matchDateTimeComponents,
+            androidScheduleMode: useExactScheduling
+                ? AndroidScheduleMode.exactAllowWhileIdle
+                : AndroidScheduleMode.inexactAllowWhileIdle,
+            matchDateTimeComponents: schedule.matchDateTimeComponents,
             payload: task.id,
           );
         }
       }
 
-      final pendingCount =
-          await pendingReminderCountForTask(
-        task.id,
-      );
+      final pendingCount = await pendingReminderCountForTask(task.id);
 
-      if (plan.schedules.isNotEmpty &&
-          pendingCount == 0) {
+      if (plan.schedules.isNotEmpty && pendingCount == 0) {
         return TaskReminderScheduleResult(
           taskId: task.id,
-          status:
-              TaskReminderScheduleStatus.error,
+          status: TaskReminderScheduleStatus.error,
           message:
               'Focused tried to schedule the reminder, but Android reported '
               'no pending reminder afterwards. Check the AndroidManifest '
               'scheduled-notification receivers.',
           notificationPermissionGranted: true,
-          exactAlarmPermissionGranted:
-              exactAlarmPermissionGranted,
-          shownImmediately:
-              shownImmediately,
+          exactAlarmPermissionGranted: exactAlarmPermissionGranted,
+          shownImmediately: shownImmediately,
           pendingRequestCount: 0,
-          scheduledReminderTimes: plan
-              .schedules
-              .map(
-                (item) =>
-                    item.firstReminderAt,
-              )
+          scheduledReminderTimes: plan.schedules
+              .map((item) => item.firstReminderAt)
               .toList(),
         );
       }
 
-      final status =
-          _successStatus(
+      final status = _successStatus(
         exact: useExactScheduling,
-        shownImmediately:
-            shownImmediately,
-        hasFutureSchedules:
-            plan.schedules.isNotEmpty,
+        shownImmediately: shownImmediately,
+        hasFutureSchedules: plan.schedules.isNotEmpty,
       );
 
       final message = useExactScheduling
           ? shownImmediately
-              ? 'Reminder shown now and future reminders are scheduled exactly.'
-              : 'Reminder scheduled successfully.'
+                ? 'Reminder shown now and future reminders are scheduled exactly.'
+                : 'Reminder scheduled successfully.'
           : shownImmediately
-              ? 'Reminder shown now. Future reminders are scheduled, but '
-                  'Android may deliver them late because exact alarms are disabled.'
-              : 'Reminder scheduled, but Android may deliver it late because '
-                  'exact alarms are disabled.';
+          ? 'Reminder shown now. Future reminders are scheduled, but '
+                'Android may deliver them late because exact alarms are disabled.'
+          : 'Reminder scheduled, but Android may deliver it late because '
+                'exact alarms are disabled.';
 
       return TaskReminderScheduleResult(
         taskId: task.id,
         status: status,
         message: message,
         notificationPermissionGranted: true,
-        exactAlarmPermissionGranted:
-            exactAlarmPermissionGranted,
-        shownImmediately:
-            shownImmediately,
+        exactAlarmPermissionGranted: exactAlarmPermissionGranted,
+        shownImmediately: shownImmediately,
         pendingRequestCount: pendingCount,
-        scheduledReminderTimes: plan
-            .schedules
-            .map(
-              (item) =>
-                  item.firstReminderAt,
-            )
+        scheduledReminderTimes: plan.schedules
+            .map((item) => item.firstReminderAt)
             .toList(),
       );
     } catch (error) {
       return TaskReminderScheduleResult.error(
         taskId: task.id,
-        message:
-            'Reminder scheduling failed: $error',
+        message: 'Reminder scheduling failed: $error',
       );
     }
   }
@@ -275,8 +223,7 @@ class TaskNotificationService {
   Future<bool> sendTestNotification() async {
     await init();
 
-    final permissionGranted =
-        await _requestNotificationPermission();
+    final permissionGranted = await _requestNotificationPermission();
 
     if (!permissionGranted) {
       return false;
@@ -296,48 +243,34 @@ class TaskNotificationService {
   Future<int> pendingReminderCount() async {
     await init();
 
-    final pending =
-        await _notifications
-            .pendingNotificationRequests();
+    final pending = await _notifications.pendingNotificationRequests();
 
     return pending.length;
   }
 
-  Future<int> pendingReminderCountForTask(
-    String taskId,
-  ) async {
+  Future<int> pendingReminderCountForTask(String taskId) async {
     await init();
 
     final expectedIds = <int>{
-      for (var slot = 0; slot <= 9; slot++)
-        _notificationId(taskId, slot),
+      for (var slot = 0; slot <= 9; slot++) _notificationId(taskId, slot),
     };
 
-    final pending =
-        await _notifications
-            .pendingNotificationRequests();
+    final pending = await _notifications.pendingNotificationRequests();
 
-    return pending
-        .where(
-          (request) =>
-              expectedIds.contains(request.id),
-        )
-        .length;
+    return pending.where((request) => expectedIds.contains(request.id)).length;
   }
 
-  Future<void> cancelForTask(
-    String taskId,
-  ) async {
+  Future<void> cancelForTask(String taskId) async {
     await init();
 
     for (var slot = 0; slot <= 9; slot++) {
-      await _notifications.cancel(
-        _notificationId(
-          taskId,
-          slot,
-        ),
-      );
+      await _notifications.cancel(_notificationId(taskId, slot));
     }
+  }
+
+  Future<void> cancelAllTaskReminders() async {
+    await init();
+    await _notifications.cancelAll();
   }
 
   _TaskPlatformPlan _buildPlan({
@@ -350,86 +283,67 @@ class TaskNotificationService {
 
     switch (task.recurrence) {
       case TaskRecurrence.none:
-        final timing =
-            _planner.planOneTime(
+        final timing = _planner.planOneTime(
           scheduledStart: start,
           scheduledEnd: end,
-          reminderMinutesBefore:
-              reminderMinutes,
+          reminderMinutesBefore: reminderMinutes,
           now: now,
         );
 
         return _TaskPlatformPlan(
           showNow: timing.showNow,
-          schedules:
-              timing.nextReminderAt == null
-                  ? const []
-                  : [
-                      _ReminderSchedule(
-                        slot: 0,
-                        firstReminderAt:
-                            timing
-                                .nextReminderAt!,
-                      ),
-                    ],
+          schedules: timing.nextReminderAt == null
+              ? const []
+              : [
+                  _ReminderSchedule(
+                    slot: 0,
+                    firstReminderAt: timing.nextReminderAt!,
+                  ),
+                ],
         );
 
       case TaskRecurrence.daily:
-        final timing =
-            _planner.planDaily(
+        final timing = _planner.planDaily(
           anchorStart: start,
           anchorEnd: end,
-          reminderMinutesBefore:
-              reminderMinutes,
+          reminderMinutesBefore: reminderMinutes,
           now: now,
         );
 
         return _TaskPlatformPlan(
           showNow: timing.showNow,
-          schedules:
-              timing.nextReminderAt == null
-                  ? const []
-                  : [
-                      _ReminderSchedule(
-                        slot: 0,
-                        firstReminderAt:
-                            timing
-                                .nextReminderAt!,
-                        matchDateTimeComponents:
-                            DateTimeComponents
-                                .time,
-                      ),
-                    ],
+          schedules: timing.nextReminderAt == null
+              ? const []
+              : [
+                  _ReminderSchedule(
+                    slot: 0,
+                    firstReminderAt: timing.nextReminderAt!,
+                    matchDateTimeComponents: DateTimeComponents.time,
+                  ),
+                ],
         );
 
       case TaskRecurrence.weekly:
-        final timing =
-            _planner.planWeeklyDay(
+        final timing = _planner.planWeeklyDay(
           anchorStart: start,
           anchorEnd: end,
-          occurrenceWeekday:
-              start.weekday,
-          reminderMinutesBefore:
-              reminderMinutes,
+          occurrenceWeekday: start.weekday,
+          reminderMinutesBefore: reminderMinutes,
           now: now,
         );
 
         return _TaskPlatformPlan(
           showNow: timing.showNow,
-          schedules:
-              timing.nextReminderAt == null
-                  ? const []
-                  : [
-                      _ReminderSchedule(
-                        slot: 1,
-                        firstReminderAt:
-                            timing
-                                .nextReminderAt!,
-                        matchDateTimeComponents:
-                            DateTimeComponents
-                                .dayOfWeekAndTime,
-                      ),
-                    ],
+          schedules: timing.nextReminderAt == null
+              ? const []
+              : [
+                  _ReminderSchedule(
+                    slot: 1,
+                    firstReminderAt: timing.nextReminderAt!,
+                    matchDateTimeComponents:
+                        DateTimeComponents.dayOfWeekAndTime,
+                  ),
+                ],
         );
 
       case TaskRecurrence.weekdays:
@@ -442,18 +356,15 @@ class TaskNotificationService {
             DateTime.thursday,
             DateTime.friday,
           },
-          reminderMinutes:
-              reminderMinutes,
+          reminderMinutes: reminderMinutes,
           now: now,
         );
 
       case TaskRecurrence.customDays:
         return _weeklyPatternPlan(
           task: task,
-          weekdays:
-              task.customWeekdays,
-          reminderMinutes:
-              reminderMinutes,
+          weekdays: task.customWeekdays,
+          reminderMinutes: reminderMinutes,
           now: now,
         );
     }
@@ -465,25 +376,19 @@ class TaskNotificationService {
     required int reminderMinutes,
     required DateTime now,
   }) {
-    final schedules =
-        <_ReminderSchedule>[];
+    final schedules = <_ReminderSchedule>[];
     var showNow = false;
 
-    for (final weekday
-        in weekdays.toList()..sort()) {
-      final timing =
-          _planner.planWeeklyDay(
-        anchorStart:
-            task.scheduledStart!,
+    for (final weekday in weekdays.toList()..sort()) {
+      final timing = _planner.planWeeklyDay(
+        anchorStart: task.scheduledStart!,
         anchorEnd: task.scheduledEnd!,
         occurrenceWeekday: weekday,
-        reminderMinutesBefore:
-            reminderMinutes,
+        reminderMinutesBefore: reminderMinutes,
         now: now,
       );
 
-      showNow =
-          showNow || timing.showNow;
+      showNow = showNow || timing.showNow;
 
       if (timing.nextReminderAt != null) {
         schedules.add(
@@ -491,22 +396,15 @@ class TaskNotificationService {
             // Weekday is already 1...7, which gives
             // every repeating day a stable slot.
             slot: weekday,
-            firstReminderAt:
-                timing.nextReminderAt!,
-            matchDateTimeComponents:
-                DateTimeComponents
-                    .dayOfWeekAndTime,
+            firstReminderAt: timing.nextReminderAt!,
+            matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
           ),
         );
       }
     }
 
-    return _TaskPlatformPlan(
-      showNow: showNow,
-      schedules: schedules,
-    );
+    return _TaskPlatformPlan(showNow: showNow, schedules: schedules);
   }
-
 
   Future<bool> requestNotificationPermission() async {
     await init();
@@ -517,7 +415,8 @@ class TaskNotificationService {
     await init();
     final android = _notifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       return android.areNotificationsEnabled();
     }
@@ -579,21 +478,20 @@ class TaskNotificationService {
     return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
   }
 
-  Future<bool>
-      _requestNotificationPermission() async {
+  Future<bool> _requestNotificationPermission() async {
     final android = _notifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
     if (android != null) {
-      return await android
-              .requestNotificationsPermission() ??
-          false;
+      return await android.requestNotificationsPermission() ?? false;
     }
 
     final ios = _notifications
         .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
+          IOSFlutterLocalNotificationsPlugin
+        >();
 
     if (ios != null) {
       return await ios.requestPermissions(
@@ -606,7 +504,8 @@ class TaskNotificationService {
 
     final mac = _notifications
         .resolvePlatformSpecificImplementation<
-            MacOSFlutterLocalNotificationsPlugin>();
+          MacOSFlutterLocalNotificationsPlugin
+        >();
 
     if (mac != null) {
       return await mac.requestPermissions(
@@ -620,25 +519,20 @@ class TaskNotificationService {
     return true;
   }
 
-  Future<void> _showImmediateReminder(
-    Task task,
-    int reminderMinutes,
-  ) async {
+  Future<void> _showImmediateReminder(Task task, int reminderMinutes) async {
     await _notifications.show(
       _notificationId(task.id, 9),
       task.title,
       reminderMinutes == 0
           ? 'Your scheduled task starts now.'
           : 'Your reminder time has already passed. '
-              'Your scheduled task is starting soon.',
+                'Your scheduled task is starting soon.',
       _details,
       payload: task.id,
     );
   }
 
-  tz.TZDateTime _toLocalTz(
-    DateTime value,
-  ) {
+  tz.TZDateTime _toLocalTz(DateTime value) {
     // Reconstruct using wall-clock components. The Task model stores the
     // user's local calendar/time choice; converting the instant with
     // TZDateTime.from() can shift the displayed clock if the source DateTime
@@ -656,37 +550,27 @@ class TaskNotificationService {
     );
   }
 
-  TaskReminderScheduleStatus
-      _successStatus({
+  TaskReminderScheduleStatus _successStatus({
     required bool exact,
     required bool shownImmediately,
     required bool hasFutureSchedules,
   }) {
-    if (!hasFutureSchedules &&
-        shownImmediately) {
-      return TaskReminderScheduleStatus
-          .shownImmediately;
+    if (!hasFutureSchedules && shownImmediately) {
+      return TaskReminderScheduleStatus.shownImmediately;
     }
 
     if (exact) {
       return shownImmediately
-          ? TaskReminderScheduleStatus
-              .scheduledExactAndShownImmediately
-          : TaskReminderScheduleStatus
-              .scheduledExact;
+          ? TaskReminderScheduleStatus.scheduledExactAndShownImmediately
+          : TaskReminderScheduleStatus.scheduledExact;
     }
 
     return shownImmediately
-        ? TaskReminderScheduleStatus
-            .scheduledInexactAndShownImmediately
-        : TaskReminderScheduleStatus
-            .scheduledInexact;
+        ? TaskReminderScheduleStatus.scheduledInexactAndShownImmediately
+        : TaskReminderScheduleStatus.scheduledInexact;
   }
 
-  String _body(
-    Task task,
-    int reminderMinutes,
-  ) {
+  String _body(Task task, int reminderMinutes) {
     if (reminderMinutes == 0) {
       return 'Your scheduled task starts now.';
     }
@@ -694,23 +578,16 @@ class TaskNotificationService {
     return 'Starts in $reminderMinutes minutes.';
   }
 
-  int _notificationId(
-    String taskId,
-    int slot,
-  ) {
+  int _notificationId(String taskId, int slot) {
     var hash = 2166136261;
 
     for (final unit in taskId.codeUnits) {
       hash ^= unit;
-      hash =
-          (hash * 16777619) & 0x7fffffff;
+      hash = (hash * 16777619) & 0x7fffffff;
     }
 
-    return ((hash % 100000000) * 10 +
-            slot) &
-        0x7fffffff;
+    return ((hash % 100000000) * 10 + slot) & 0x7fffffff;
   }
-
 
   static const int _birthdayNotificationId = 904220;
 
@@ -724,36 +601,22 @@ class TaskNotificationService {
       playSound: true,
       enableVibration: true,
     ),
-    iOS: DarwinNotificationDetails(
-      presentAlert: true,
-      presentSound: true,
-    ),
-    macOS: DarwinNotificationDetails(
-      presentAlert: true,
-      presentSound: true,
-    ),
+    iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    macOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
   );
 
-  static const NotificationDetails
-      _details = NotificationDetails(
+  static const NotificationDetails _details = NotificationDetails(
     android: AndroidNotificationDetails(
       'task_reminders_v2',
       'Task reminders',
-      channelDescription:
-          'Reminders for scheduled Focused tasks',
+      channelDescription: 'Reminders for scheduled Focused tasks',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
     ),
-    iOS: DarwinNotificationDetails(
-      presentAlert: true,
-      presentSound: true,
-    ),
-    macOS: DarwinNotificationDetails(
-      presentAlert: true,
-      presentSound: true,
-    ),
+    iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    macOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
   );
 }
 
@@ -761,17 +624,13 @@ class _TaskPlatformPlan {
   final bool showNow;
   final List<_ReminderSchedule> schedules;
 
-  const _TaskPlatformPlan({
-    required this.showNow,
-    required this.schedules,
-  });
+  const _TaskPlatformPlan({required this.showNow, required this.schedules});
 }
 
 class _ReminderSchedule {
   final int slot;
   final DateTime firstReminderAt;
-  final DateTimeComponents?
-      matchDateTimeComponents;
+  final DateTimeComponents? matchDateTimeComponents;
 
   const _ReminderSchedule({
     required this.slot,

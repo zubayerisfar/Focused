@@ -11,6 +11,7 @@ abstract class HabitStore {
   Future<void> saveProgress(HabitProgress progress);
   Future<void> deleteProgress(String habitId, DateTime date);
   Future<void> deleteProgressForHabit(String habitId);
+  Future<void> clearAll();
 }
 
 class HabitStorageService implements HabitStore {
@@ -104,5 +105,11 @@ class HabitStorageService implements HabitStore {
     if (keys.isNotEmpty) {
       await _progress.deleteAll(keys);
     }
+  }
+
+  @override
+  Future<void> clearAll() async {
+    await _habits.clear();
+    await _progress.clear();
   }
 }

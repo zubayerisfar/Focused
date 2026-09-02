@@ -27,4 +27,11 @@ class StreakGoalStorageService {
     }
     await box.put(_goalKey, days);
   }
+
+  Future<void> clearGoalDays() async {
+    final box = _box;
+    if (box != null && box.isOpen) {
+      await box.clear();
+    }
+  }
 }

@@ -15,6 +15,7 @@ import '../screens/main/main_shell.dart';
 import '../screens/onboarding/intro_sequence_screen.dart';
 import '../screens/profile/badges_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/settings/notification_access_screen.dart';
 import '../screens/settings/notification_permission_screen.dart';
 import '../screens/settings/cloud_sync_screen.dart';
 import '../screens/settings/settings_screen.dart';
@@ -104,6 +105,11 @@ GoRouter createAppRouter({
         path: '/settings/notification-permission',
         builder: (context, state) =>
             const NotificationPermissionScreen(),
+      ),
+      GoRoute(
+        path: '/settings/notification-access',
+        builder: (context, state) =>
+            const NotificationAccessScreen(),
       ),
       GoRoute(
         path: '/wellbeing',

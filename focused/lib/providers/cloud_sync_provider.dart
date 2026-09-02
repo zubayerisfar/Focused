@@ -25,7 +25,6 @@ class CloudSyncProvider extends ChangeNotifier {
 
   String? _deviceId;
   String? _deviceName;
-  String? _deviceFingerprint;
   DateTime? _lastSyncAt;
   CloudSyncResult? _lastResult;
   String? _errorMessage;
@@ -57,15 +56,27 @@ class CloudSyncProvider extends ChangeNotifier {
   Future<void> initialize() async {
     if (_initialized) return;
     _deviceId = await _metadataStorage.getOrCreateDeviceId();
-    final identityService = AndroidInstallationInfoService();
-    final identity = await identityService.deviceIdentity();
-    _deviceName = identity?.friendlyName;
-    _deviceFingerprint = identity?.fingerprint;
+    _deviceName = await AndroidInstallationInfoService().friendlyDeviceName();
     _observedUid = _accountProvider.user?.uid;
     _accountProvider.addListener(_handleAccountChanged);
     await _refreshRegistrationState();
     _initialized = true;
     notifyListeners();
+
+    if (_accountProvider.isSignedIn) {
+      unawaited(
+        syncNow().catchError((e) {
+          debugPrint('Automated startup cloud sync: $e');
+          return _lastResult ??
+              CloudSyncResult(
+                pushed: 0,
+                pulled: 0,
+                deleted: 0,
+                syncedAt: DateTime.now(),
+              );
+        }),
+      );
+    }
   }
 
   Future<CloudSyncResult> syncNow() async {
@@ -92,7 +103,6 @@ class CloudSyncProvider extends ChangeNotifier {
         uid: user.uid,
         deviceId: deviceId,
         deviceName: _deviceName,
-        deviceFingerprint: _deviceFingerprint,
       );
       await _refreshLocalProviders();
       _lastResult = result;
@@ -114,8 +124,24 @@ class CloudSyncProvider extends ChangeNotifier {
   void _handleAccountChanged() {
     final uid = _accountProvider.user?.uid;
     if (uid == _observedUid) return;
+    final wasSignedOut = _observedUid == null && uid != null;
     _observedUid = uid;
-    unawaited(_refreshRegistrationState());
+    unawaited(
+      _refreshRegistrationState().then((_) {
+        if (wasSignedOut && _accountProvider.isSignedIn && !_syncing) {
+          syncNow().catchError((e) {
+            debugPrint('Automated post-login cloud sync: $e');
+            return _lastResult ??
+                CloudSyncResult(
+                  pushed: 0,
+                  pulled: 0,
+                  deleted: 0,
+                  syncedAt: DateTime.now(),
+                );
+          });
+        }
+      }),
+    );
   }
 
   Future<void> _refreshRegistrationState() async {

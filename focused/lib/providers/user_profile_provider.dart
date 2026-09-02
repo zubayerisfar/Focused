@@ -8,8 +8,8 @@ class UserProfileProvider extends ChangeNotifier {
   UserProfileProvider({
     UserProfileStore? storageService,
     TaskNotificationService? notificationService,
-  })  : _storageService = storageService,
-        _notificationService = notificationService;
+  }) : _storageService = storageService,
+       _notificationService = notificationService;
 
   final UserProfileStore? _storageService;
   final TaskNotificationService? _notificationService;
@@ -68,5 +68,13 @@ class UserProfileProvider extends ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  Future<void> resetProfile() async {
+    _profile = const UserProfile(displayName: 'Focused User', email: '');
+    notifyListeners();
+    try {
+      await _notificationService?.cancelBirthdayNotification();
+    } catch (_) {}
   }
 }

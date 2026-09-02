@@ -10,11 +10,39 @@ import '../../providers/cloud_sync_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../services/notification_access_service.dart';
+import 'deactivate_account_sheet.dart';
+import 'delete_account_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   final bool embedded;
 
   const SettingsScreen({super.key, this.embedded = false});
+
+  Future<void> _openAppNotificationSettings(BuildContext context) async {
+    final service = NotificationAccessService();
+    if (!service.isSupported) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification settings are available on Android.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await service.openAppNotificationSettings();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open Android notification settings: $error'),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +84,12 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 onTap: () => context.push('/wellbeing/permission'),
               ),
+              _SettingsTile(
+                icon: FontAwesomeIcons.bell,
+                title: 'Notification permission',
+                subtitle: 'Allow reminders and focus notifications',
+                onTap: () => _openAppNotificationSettings(context),
+              ),
             ],
           ),
           _SettingsSection(
@@ -96,25 +130,6 @@ class SettingsScreen extends StatelessWidget {
                       : 'Not verified yet',
                   onTap: () => _handleEmailVerification(context),
                 ),
-            ],
-          ),
-          _SettingsSection(
-            title: 'Session & account actions',
-            subtitle: 'Manage your Focused account',
-            icon: const FaIcon(FontAwesomeIcons.userShield, size: 18),
-            children: [
-              _SettingsTile(
-                icon: FontAwesomeIcons.pause,
-                title: 'Deactivate account',
-                subtitle: 'Pause your account for 24 hours',
-                onTap: () => context.push('/settings/deactivate-account'),
-              ),
-              _SettingsTile(
-                icon: FontAwesomeIcons.trash,
-                title: 'Delete account',
-                subtitle: 'Permanently remove your account',
-                onTap: () => context.push('/settings/delete-account'),
-              ),
             ],
           ),
           _SettingsSection(
@@ -162,16 +177,17 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: 'Sign out on this device',
                 onTap: () => _signOut(context),
               ),
-              const _DisabledAccountTile(
+              _SettingsTile(
                 icon: FontAwesomeIcons.circlePause,
                 title: 'Deactivate account',
-                subtitle: 'Not implemented yet',
+                subtitle: 'Pause account & sign out',
+                onTap: () => DeactivateAccountSheet.show(context),
               ),
-              const _DisabledAccountTile(
+              _SettingsTile(
                 icon: FontAwesomeIcons.trash,
                 title: 'Delete account',
-                subtitle: 'Not implemented yet',
-                destructive: true,
+                subtitle: 'Permanently wipe account & data',
+                onTap: () => DeleteAccountDialog.show(context),
               ),
             ],
           ),
@@ -566,33 +582,6 @@ class _StatusDot extends StatelessWidget {
         shape: BoxShape.circle,
         color: active ? Colors.green : Theme.of(context).colorScheme.outline,
       ),
-    );
-  }
-}
-
-class _DisabledAccountTile extends StatelessWidget {
-  const _DisabledAccountTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.destructive = false,
-  });
-
-  final FaIconData icon;
-  final String title;
-  final String subtitle;
-  final bool destructive;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = destructive
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-    return ListTile(
-      enabled: false,
-      leading: FaIcon(icon, size: 18, color: color),
-      title: Text(title, style: TextStyle(color: color)),
-      subtitle: Text(subtitle),
     );
   }
 }

@@ -37,10 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final account = context.watch<AccountProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF050914),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
@@ -51,11 +53,11 @@ class _LoginScreenState extends State<LoginScreen> {
               _isRegister
                   ? 'Create your private\nFocused account.'
                   : 'Welcome back.',
-              style: const TextStyle(
-                color: Color(0xFFF3F7FF),
-                fontSize: 33,
-                height: 1.07,
-                fontWeight: FontWeight.w700,
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontSize: 32,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
                 letterSpacing: -0.8,
               ),
             ),
@@ -65,10 +67,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? 'Create an account with Google or email. Tasks and habits can '
                       'sync across your devices; raw usage history stays on this device.'
                   : 'Sign in with Google or your Focused email/password.',
-              style: const TextStyle(
-                color: Color(0xFF91A2BB),
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
                 height: 1.5,
-                fontSize: 15,
+                fontSize: 14.5,
               ),
             ),
             const SizedBox(height: 26),
@@ -85,23 +87,24 @@ class _LoginScreenState extends State<LoginScreen> {
               child: OutlinedButton(
                 onPressed: account.isBusy ? null : _continueWithGoogle,
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B1423),
-                  foregroundColor: const Color(0xFFEAF0FA),
-                  side: const BorderSide(color: Color(0xFF223754)),
+                  backgroundColor: scheme.surface,
+                  foregroundColor: scheme.onSurface,
+                  side: BorderSide(color: theme.dividerColor),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _GoogleMark(),
-                    SizedBox(width: 11),
+                    const _GoogleMark(),
+                    const SizedBox(width: 11),
                     Text(
                       'Continue with Google',
                       style: TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
                       ),
                     ),
                   ],
@@ -120,9 +123,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
-                      style: const TextStyle(color: Color(0xFFF3F7FF)),
-                      cursorColor: const Color(0xFF7EA2FF),
+                      style: TextStyle(color: scheme.onSurface),
+                      cursorColor: scheme.primary,
                       decoration: _authInputDecoration(
+                        context: context,
                         label: 'Your name',
                         prefixIcon: Icons.person_outline_rounded,
                       ),
@@ -141,9 +145,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     textInputAction: TextInputAction.next,
                     autocorrect: false,
                     enableSuggestions: false,
-                    style: const TextStyle(color: Color(0xFFF3F7FF)),
-                    cursorColor: const Color(0xFF7EA2FF),
+                    style: TextStyle(color: scheme.onSurface),
+                    cursorColor: scheme.primary,
                     decoration: _authInputDecoration(
+                      context: context,
                       label: 'Email',
                       prefixIcon: Icons.alternate_email_rounded,
                     ),
@@ -164,9 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         : TextInputAction.done,
                     onFieldSubmitted:
                         _isRegister ? null : (_) => _submitEmail(),
-                    style: const TextStyle(color: Color(0xFFF3F7FF)),
-                    cursorColor: const Color(0xFF7EA2FF),
+                    style: TextStyle(color: scheme.onSurface),
+                    cursorColor: scheme.primary,
                     decoration: _authInputDecoration(
+                      context: context,
                       label: 'Password',
                       helperText: _isRegister
                           ? 'Your Focused password — not your Google password.'
@@ -197,9 +203,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: true,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _submitEmail(),
-                      style: const TextStyle(color: Color(0xFFF3F7FF)),
-                      cursorColor: const Color(0xFF7EA2FF),
+                      style: TextStyle(color: scheme.onSurface),
+                      cursorColor: scheme.primary,
                       decoration: _authInputDecoration(
+                        context: context,
                         label: 'Confirm password',
                         prefixIcon: Icons.verified_user_outlined,
                       ),
@@ -233,19 +240,19 @@ class _LoginScreenState extends State<LoginScreen> {
               child: FilledButton(
                 onPressed: account.isBusy ? null : _submitEmail,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF6F9AFF),
-                  foregroundColor: const Color(0xFF06101F),
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: account.isBusy
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 21,
                         height: 21,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.2,
-                          color: Color(0xFF06101F),
+                          color: scheme.onPrimary,
                         ),
                       )
                     : Text(
@@ -258,21 +265,21 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 22),
-            const Row(
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
                   Icons.shield_outlined,
                   size: 18,
-                  color: Color(0xFF687D9C),
+                  color: scheme.onSurfaceVariant,
                 ),
-                SizedBox(width: 9),
+                const SizedBox(width: 9),
                 Expanded(
                   child: Text(
                     'Your Focused account syncs productivity data across devices. '
                     'Raw screen-time, app-open, and notification history stays local.',
                     style: TextStyle(
-                      color: Color(0xFF687D9C),
+                      color: scheme.onSurfaceVariant,
                       height: 1.45,
                       fontSize: 12.2,
                     ),
@@ -287,47 +294,48 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   InputDecoration _authInputDecoration({
+    required BuildContext context,
     required String label,
     required IconData prefixIcon,
     String? helperText,
     Widget? suffixIcon,
   }) {
-    const borderColor = Color(0xFF223754);
-    const focusedBorderColor = Color(0xFF6F9AFF);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return InputDecoration(
       labelText: label,
       helperText: helperText,
       filled: true,
-      fillColor: const Color(0xFF0A1321),
-      labelStyle: const TextStyle(color: Color(0xFF91A2BB)),
-      floatingLabelStyle: const TextStyle(color: Color(0xFF9DB8FF)),
-      helperStyle: const TextStyle(color: Color(0xFF687D9C)),
-      errorStyle: const TextStyle(color: Color(0xFFFF9B9B)),
+      fillColor: scheme.surface,
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+      floatingLabelStyle: TextStyle(color: scheme.primary),
+      helperStyle: TextStyle(color: scheme.onSurfaceVariant),
+      errorStyle: TextStyle(color: scheme.error),
       prefixIcon: Icon(prefixIcon),
-      prefixIconColor: const Color(0xFF7187A7),
+      prefixIconColor: scheme.onSurfaceVariant,
       suffixIcon: suffixIcon,
-      suffixIconColor: const Color(0xFF7187A7),
+      suffixIconColor: scheme.onSurfaceVariant,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: borderColor),
+        borderSide: BorderSide(color: theme.dividerColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: borderColor),
+        borderSide: BorderSide(color: theme.dividerColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: focusedBorderColor, width: 1.5),
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFF8F3D49)),
+        borderSide: BorderSide(color: scheme.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFFF7D8E), width: 1.5),
+        borderSide: BorderSide(color: scheme.error, width: 1.5),
       ),
     );
   }
@@ -425,39 +433,42 @@ class _Brand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Row(
       children: [
         Container(
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: const Color(0xFF0D1A2D),
+            color: scheme.primaryContainer,
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: const Color(0xFF25446F)),
+            border: Border.all(color: scheme.outlineVariant),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.center_focus_strong_rounded,
-            color: Color(0xFF7EA2FF),
+            color: scheme.primary,
           ),
         ),
         const SizedBox(width: 12),
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'FOCUSED',
               style: TextStyle(
-                color: Color(0xFFF3F7FF),
-                fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w800,
                 letterSpacing: 2.2,
                 fontSize: 14,
               ),
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
               'PRIVATE • LOCAL FIRST',
               style: TextStyle(
-                color: Color(0xFF6F829D),
+                color: scheme.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.7,
                 fontSize: 9.5,
@@ -481,12 +492,15 @@ class _ModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A1220),
+        color: scheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1D304B)),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Row(
         children: [
@@ -523,6 +537,8 @@ class _ModeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -531,15 +547,22 @@ class _ModeButton extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF152641) : Colors.transparent,
+          color: selected ? scheme.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected
-                ? const Color(0xFFEAF1FF)
-                : const Color(0xFF7588A4),
+            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -557,14 +580,15 @@ class _GoogleMark extends StatelessWidget {
       width: 26,
       height: 26,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFC),
+      decoration: BoxDecoration(
+        color: Colors.white,
         shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: const Text(
         'G',
         style: TextStyle(
-          color: Color(0xFF3158A8),
+          color: Color(0xFF4285F4),
           fontWeight: FontWeight.w700,
           fontSize: 15,
         ),
@@ -578,22 +602,25 @@ class _OrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Row(
       children: [
-        Expanded(child: Divider(color: Color(0xFF20304A))),
+        Expanded(child: Divider(color: theme.dividerColor)),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'OR',
             style: TextStyle(
-              color: Color(0xFF61728D),
+              color: scheme.onSurfaceVariant,
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
             ),
           ),
         ),
-        Expanded(child: Divider(color: Color(0xFF20304A))),
+        Expanded(child: Divider(color: theme.dividerColor)),
       ],
     );
   }
@@ -606,19 +633,22 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFF2B1218),
+        color: scheme.errorContainer.withOpacity(0.4),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF6B2B39)),
+        border: Border.all(color: scheme.error.withOpacity(0.4)),
       ),
       child: Text(
         message,
-        style: const TextStyle(
-          color: Color(0xFFFFB5C2),
+        style: TextStyle(
+          color: scheme.error,
           height: 1.4,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

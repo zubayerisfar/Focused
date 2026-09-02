@@ -116,6 +116,12 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
+          if (widget.isEditing)
+            IconButton(
+              tooltip: 'Delete task',
+              icon: const Icon(Icons.delete_outline_rounded),
+              onPressed: _isSaving ? null : _deleteTask,
+            ),
           TextButton(
             onPressed: _isSaving ? null : _saveTask,
             child: Text(
@@ -367,9 +373,75 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     ),
             ),
           ),
+          if (widget.isEditing) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 52,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                onPressed: _isSaving ? null : _deleteTask,
+                icon: const Icon(Icons.delete_outline_rounded),
+                label: const Text(
+                  'Delete Task',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _deleteTask() async {
+    final original = _originalTask;
+    if (original == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete task?'),
+        content: Text(
+          original.recurrence == TaskRecurrence.none
+              ? 'Are you sure you want to delete "${original.title}"? This cannot be undone.'
+              : 'Are you sure you want to delete the recurring task "${original.title}" and all its occurrences?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isSaving = true);
+      try {
+        await context.read<TaskProvider>().deleteTask(original.id);
+        if (mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Deleted "${original.title}"')),
+          );
+        }
+      } catch (error) {
+        if (mounted) {
+          setState(() => _isSaving = false);
+          _showMessage('Could not delete task: $error');
+        }
+      }
+    }
   }
 
   Future<void> _saveTask() async {

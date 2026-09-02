@@ -33,7 +33,10 @@ class TaskDetailsScreen extends StatelessWidget {
     }
 
     final day = _dateOnly(
-      occurrenceDate ?? task.plannedDate ?? task.scheduledStart ?? DateTime.now(),
+      occurrenceDate ??
+          task.plannedDate ??
+          task.scheduledStart ??
+          DateTime.now(),
     );
     final occurrence = tasks.occurrenceForTaskOnDate(task, day);
     final completed = tasks.isTaskCompletedForDate(task, day);
@@ -54,10 +57,14 @@ class TaskDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Task'),
         actions: [
+          IconButton(
+            tooltip: 'Delete task',
+            icon: const Icon(Icons.delete_outline_rounded),
+            onPressed: () => _confirmDelete(context, task),
+          ),
           TextButton(
-            onPressed: () => context.push(
-              '/task/edit/${Uri.encodeComponent(task.id)}',
-            ),
+            onPressed: () =>
+                context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
             child: const Text('Edit'),
           ),
           const SizedBox(width: 6),
@@ -66,18 +73,15 @@ class TaskDetailsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
         children: [
-          _TaskHeader(
-            task: task,
-            completed: completed,
-          ),
+          _TaskHeader(task: task, completed: completed),
           if (task.description.trim().isNotEmpty) ...[
             const SizedBox(height: 20),
             Text(
               task.description.trim(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    height: 1.5,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                height: 1.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
           const SizedBox(height: 24),
@@ -124,14 +128,59 @@ class TaskDetailsScreen extends StatelessWidget {
               !completed,
               completedAt: completed ? null : DateTime.now(),
             ),
-            icon: Icon(
-              completed ? Icons.undo_rounded : Icons.check_rounded,
-            ),
+            icon: Icon(completed ? Icons.undo_rounded : Icons.check_rounded),
             label: Text(completed ? 'Mark incomplete' : 'Mark complete'),
+          ),
+          const SizedBox(height: 10),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => _confirmDelete(context, task),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Delete task'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, Task task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete task?'),
+        content: Text(
+          task.recurrence == TaskRecurrence.none
+              ? 'Are you sure you want to delete "${task.title}"? This cannot be undone.'
+              : 'Are you sure you want to delete the recurring task "${task.title}" and all its occurrences?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await context.read<TaskProvider>().deleteTask(task.id);
+      if (context.mounted) {
+        context.pop();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Deleted "${task.title}"')));
+      }
+    }
   }
 }
 
@@ -139,10 +188,7 @@ class _TaskHeader extends StatelessWidget {
   final Task task;
   final bool completed;
 
-  const _TaskHeader({
-    required this.task,
-    required this.completed,
-  });
+  const _TaskHeader({required this.task, required this.completed});
 
   @override
   Widget build(BuildContext context) {
@@ -172,9 +218,9 @@ class _TaskHeader extends StatelessWidget {
               Text(
                 task.title,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      decoration: completed ? TextDecoration.lineThrough : null,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  decoration: completed ? TextDecoration.lineThrough : null,
+                ),
               ),
               const SizedBox(height: 6),
               Row(
@@ -345,17 +391,14 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 21,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

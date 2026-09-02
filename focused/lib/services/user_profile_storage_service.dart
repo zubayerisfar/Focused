@@ -5,6 +5,7 @@ import '../models/user_profile.dart';
 abstract class UserProfileStore {
   UserProfile? loadProfile();
   Future<void> saveProfile(UserProfile profile);
+  Future<void> clearProfile();
 }
 
 class UserProfileStorageService implements UserProfileStore {
@@ -20,7 +21,9 @@ class UserProfileStorageService implements UserProfileStore {
   Box<dynamic> get _profileBox {
     final box = _box;
     if (box == null) {
-      throw StateError('UserProfileStorageService.init() must be called first.');
+      throw StateError(
+        'UserProfileStorageService.init() must be called first.',
+      );
     }
     return box;
   }
@@ -39,5 +42,10 @@ class UserProfileStorageService implements UserProfileStore {
   @override
   Future<void> saveProfile(UserProfile profile) {
     return _profileBox.put(_profileKey, profile.toMap());
+  }
+
+  @override
+  Future<void> clearProfile() {
+    return _profileBox.delete(_profileKey);
   }
 }

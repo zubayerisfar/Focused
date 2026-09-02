@@ -11,6 +11,7 @@ abstract class HabitReminderScheduler {
   Future<HabitReminderScheduleResult> scheduleForHabit(Habit habit);
   Future<void> cancelForHabit(String habitId);
   Future<int> pendingReminderCountForHabit(String habitId);
+  Future<void> cancelAllHabitReminders();
 }
 
 class HabitNotificationService implements HabitReminderScheduler {
@@ -23,8 +24,8 @@ class HabitNotificationService implements HabitReminderScheduler {
   HabitNotificationService({
     FlutterLocalNotificationsPlugin? notifications,
     HabitReminderPlanner planner = const HabitReminderPlanner(),
-  })  : _notifications = notifications ?? FlutterLocalNotificationsPlugin(),
-        _planner = planner;
+  }) : _notifications = notifications ?? FlutterLocalNotificationsPlugin(),
+       _planner = planner;
 
   String? get timeZoneName => _timeZoneName;
 
@@ -89,8 +90,10 @@ class HabitNotificationService implements HabitReminderScheduler {
       var exactAlarmPermissionGranted = true;
       var useExactScheduling = true;
 
-      final android = _notifications.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final android = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (android != null) {
         exactAlarmPermissionGranted =
             await android.requestExactAlarmsPermission() ?? false;
@@ -163,20 +166,22 @@ class HabitNotificationService implements HabitReminderScheduler {
   @override
   Future<void> cancelForHabit(String habitId) async {
     await init();
-    for (var weekday = DateTime.monday;
-        weekday <= DateTime.sunday;
-        weekday++) {
+    for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
       await _notifications.cancel(_notificationId(habitId, weekday));
     }
+  }
+
+  @override
+  Future<void> cancelAllHabitReminders() async {
+    await init();
+    await _notifications.cancelAll();
   }
 
   @override
   Future<int> pendingReminderCountForHabit(String habitId) async {
     await init();
     final expected = <int>{
-      for (var weekday = DateTime.monday;
-          weekday <= DateTime.sunday;
-          weekday++)
+      for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++)
         _notificationId(habitId, weekday),
     };
 
@@ -197,14 +202,18 @@ class HabitNotificationService implements HabitReminderScheduler {
   }
 
   Future<bool> _requestNotificationPermission() async {
-    final android = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       return await android.requestNotificationsPermission() ?? true;
     }
 
-    final ios = _notifications.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final ios = _notifications
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
       return await ios.requestPermissions(
             alert: true,
@@ -214,8 +223,10 @@ class HabitNotificationService implements HabitReminderScheduler {
           false;
     }
 
-    final mac = _notifications.resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin>();
+    final mac = _notifications
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >();
     if (mac != null) {
       return await mac.requestPermissions(
             alert: true,
@@ -259,13 +270,7 @@ class HabitNotificationService implements HabitReminderScheduler {
       playSound: true,
       enableVibration: true,
     ),
-    iOS: DarwinNotificationDetails(
-      presentAlert: true,
-      presentSound: true,
-    ),
-    macOS: DarwinNotificationDetails(
-      presentAlert: true,
-      presentSound: true,
-    ),
+    iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    macOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
   );
 }

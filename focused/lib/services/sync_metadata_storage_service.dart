@@ -38,22 +38,21 @@ class LocalSyncMetadata {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
-      fingerprint:
-          clearFingerprint ? null : (fingerprint ?? this.fingerprint),
+      fingerprint: clearFingerprint ? null : (fingerprint ?? this.fingerprint),
       originDeviceId: originDeviceId ?? this.originDeviceId,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'schemaVersion': 1,
-        'collection': collection,
-        'id': id,
-        'createdAt': createdAt.toUtc().toIso8601String(),
-        'updatedAt': updatedAt.toUtc().toIso8601String(),
-        'deletedAt': deletedAt?.toUtc().toIso8601String(),
-        'fingerprint': fingerprint,
-        'originDeviceId': originDeviceId,
-      };
+    'schemaVersion': 1,
+    'collection': collection,
+    'id': id,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+    'deletedAt': deletedAt?.toUtc().toIso8601String(),
+    'fingerprint': fingerprint,
+    'originDeviceId': originDeviceId,
+  };
 
   factory LocalSyncMetadata.fromMap(Map<dynamic, dynamic> map) {
     final collection = map['collection'];
@@ -80,9 +79,12 @@ class LocalSyncMetadata {
       createdAt: createdAt.toUtc(),
       updatedAt: updatedAt.toUtc(),
       deletedAt: deletedAt?.toUtc(),
-      fingerprint: map['fingerprint'] is String ? map['fingerprint'] as String : null,
-      originDeviceId:
-          map['originDeviceId'] is String ? map['originDeviceId'] as String : null,
+      fingerprint: map['fingerprint'] is String
+          ? map['fingerprint'] as String
+          : null,
+      originDeviceId: map['originDeviceId'] is String
+          ? map['originDeviceId'] as String
+          : null,
     );
   }
 }
@@ -111,7 +113,8 @@ class SyncMetadataStorageService {
 
     final random = Random.secure();
     final values = List<int>.generate(4, (_) => random.nextInt(1 << 32));
-    final id = 'device_${DateTime.now().microsecondsSinceEpoch}_'
+    final id =
+        'device_${DateTime.now().microsecondsSinceEpoch}_'
         '${values.map((value) => value.toRadixString(16).padLeft(8, '0')).join()}';
     await box.put(_deviceIdKey, id);
     return id;
@@ -200,10 +203,26 @@ class SyncMetadataStorageService {
     );
   }
 
+  Future<void> clearMetadata() async {
+    final box = _metadataBox;
+    if (box != null && box.isOpen) {
+      await box.clear();
+    }
+  }
+
+  Future<void> clearBoundAccountUid() async {
+    final box = _installationBox;
+    if (box != null && box.isOpen) {
+      await box.delete(_boundAccountUidKey);
+    }
+  }
+
   Box<dynamic> _requireMetadataBox() {
     final box = _metadataBox;
     if (box == null || !box.isOpen) {
-      throw StateError('SyncMetadataStorageService.init() must be called first.');
+      throw StateError(
+        'SyncMetadataStorageService.init() must be called first.',
+      );
     }
     return box;
   }
@@ -211,7 +230,9 @@ class SyncMetadataStorageService {
   Box<dynamic> _requireInstallationBox() {
     final box = _installationBox;
     if (box == null || !box.isOpen) {
-      throw StateError('SyncMetadataStorageService.init() must be called first.');
+      throw StateError(
+        'SyncMetadataStorageService.init() must be called first.',
+      );
     }
     return box;
   }

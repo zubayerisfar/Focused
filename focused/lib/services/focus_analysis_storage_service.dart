@@ -23,6 +23,7 @@ abstract class FocusAnalysisStore {
     DateTime? savedAt,
   });
   Future<void> deleteAnalysis(String sessionId);
+  Future<void> clearAll();
 }
 
 class FocusAnalysisStorageService implements FocusAnalysisStore {
@@ -112,5 +113,13 @@ class FocusAnalysisStorageService implements FocusAnalysisStore {
   @override
   Future<void> deleteAnalysis(String sessionId) async {
     await _requiredBox.delete(sessionId);
+  }
+
+  @override
+  Future<void> clearAll() async {
+    final box = _box;
+    if (box != null && box.isOpen) {
+      await box.clear();
+    }
   }
 }
