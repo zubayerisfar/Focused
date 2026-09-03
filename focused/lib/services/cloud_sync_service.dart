@@ -476,6 +476,9 @@ class CloudSyncService {
       ),
       unlockedBadgeIds: unlockedBadgeIds.toList(),
       updatedAt: DateTime.now().toUtc(),
+      xpPoints: existingStats.xpPoints,
+      xpAdsWatchedToday: existingStats.xpAdsWatchedToday,
+      xpAdsWatchedDate: existingStats.xpAdsWatchedDate,
     );
   }
 

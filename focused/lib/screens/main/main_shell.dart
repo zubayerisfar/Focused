@@ -120,7 +120,9 @@ class _FocusedBottomNavigation extends StatelessWidget {
                   label: item.label,
                   child: InkWell(
                     key: ValueKey('nav-${item.label.toLowerCase()}'),
-                    onTap: () => onSelected(index),
+                    onTap: () {
+                      if (index != currentIndex) onSelected(index);
+                    },
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

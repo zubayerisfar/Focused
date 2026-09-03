@@ -1,251 +1,277 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Focused Daily App Summary Notification – Expanded View
+  Shows header stats + top 6 apps as icon + name + usage rows
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/notif_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="9dp"
-    android:paddingBottom="10dp"
-    android:background="#1C1F26">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="14dp">
 
-    <!-- Header Row: App Logo + Title & Summary Stats -->
+    <!-- ══════════ HEADER ══════════ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="10dp">
+        android:layout_marginBottom="12dp">
 
-        <!-- App Branding Icon -->
         <ImageView
             android:id="@+id/iv_focused_logo"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:layout_marginEnd="12dp"
             android:src="@mipmap/ic_launcher"
             android:scaleType="fitCenter" />
 
-        <!-- Title & Subtitle with Total Usage & Opens -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_apps_today_header"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Apps today"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:text="Your Day in Apps"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_summary_stats"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="3h 24m screen time • 64 app opens"
-                android:textColor="#A0A4AF"
+                android:text="3h 24m screen time · 64 opens"
                 android:textSize="12sp"
-                android:layout_marginTop="1dp" />
+                android:layout_marginTop="2dp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Top 6 Apps Grid: Row 1 (Apps 1, 2, 3) -->
+    <!-- ══════════ APP ROW 1 ══════════ -->
     <LinearLayout
-        android:id="@+id/layout_apps_row_1"
+        android:id="@+id/chip_app_1"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:orientation="horizontal"
-        android:layout_marginBottom="6dp">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone">
 
-        <!-- Chip 1 -->
-        <LinearLayout
-            android:id="@+id/chip_app_1"
+        <ImageView
+            android:id="@+id/iv_app_1"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/tv_app_1_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="YouTube"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tv_app_1"
             android:layout_width="wrap_content"
-            android:layout_height="29dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/notif_chip_bg"
-            android:paddingStart="5dp"
-            android:paddingEnd="9dp"
-            android:layout_marginEnd="6dp"
-            android:visibility="gone">
-
-            <ImageView
-                android:id="@+id/iv_app_1"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="5dp"
-                android:scaleType="fitCenter" />
-
-            <TextView
-                android:id="@+id/tv_app_1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3h 24m"
-                android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- Chip 2 -->
-        <LinearLayout
-            android:id="@+id/chip_app_2"
-            android:layout_width="wrap_content"
-            android:layout_height="29dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/notif_chip_bg"
-            android:paddingStart="5dp"
-            android:paddingEnd="9dp"
-            android:layout_marginEnd="6dp"
-            android:visibility="gone">
-
-            <ImageView
-                android:id="@+id/iv_app_2"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="5dp"
-                android:scaleType="fitCenter" />
-
-            <TextView
-                android:id="@+id/tv_app_2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2h 13m"
-                android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- Chip 3 -->
-        <LinearLayout
-            android:id="@+id/chip_app_3"
-            android:layout_width="wrap_content"
-            android:layout_height="29dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/notif_chip_bg"
-            android:paddingStart="5dp"
-            android:paddingEnd="9dp"
-            android:visibility="gone">
-
-            <ImageView
-                android:id="@+id/iv_app_3"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="5dp"
-                android:scaleType="fitCenter" />
-
-            <TextView
-                android:id="@+id/tv_app_3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="46m"
-                android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:layout_height="wrap_content"
+            android:text="1h 22m"
+            android:textSize="13sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Top 6 Apps Grid: Row 2 (Apps 4, 5, 6) -->
+    <!-- ══════════ APP ROW 2 ══════════ -->
     <LinearLayout
-        android:id="@+id/layout_apps_row_2"
+        android:id="@+id/chip_app_2"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone">
 
-        <!-- Chip 4 -->
-        <LinearLayout
-            android:id="@+id/chip_app_4"
+        <ImageView
+            android:id="@+id/iv_app_2"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/tv_app_2_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Instagram"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tv_app_2"
             android:layout_width="wrap_content"
-            android:layout_height="29dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/notif_chip_bg"
-            android:paddingStart="5dp"
-            android:paddingEnd="9dp"
-            android:layout_marginEnd="6dp"
-            android:visibility="gone">
+            android:layout_height="wrap_content"
+            android:text="48m"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-            <ImageView
-                android:id="@+id/iv_app_4"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="5dp"
-                android:scaleType="fitCenter" />
+    <!-- ══════════ APP ROW 3 ══════════ -->
+    <LinearLayout
+        android:id="@+id/chip_app_3"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone">
 
-            <TextView
-                android:id="@+id/tv_app_4"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="25m"
-                android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        <ImageView
+            android:id="@+id/iv_app_3"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:scaleType="fitCenter" />
 
-        <!-- Chip 5 -->
-        <LinearLayout
-            android:id="@+id/chip_app_5"
+        <TextView
+            android:id="@+id/tv_app_3_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Chrome"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tv_app_3"
             android:layout_width="wrap_content"
-            android:layout_height="29dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/notif_chip_bg"
-            android:paddingStart="5dp"
-            android:paddingEnd="9dp"
-            android:layout_marginEnd="6dp"
-            android:visibility="gone">
+            android:layout_height="wrap_content"
+            android:text="31m"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-            <ImageView
-                android:id="@+id/iv_app_5"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="5dp"
-                android:scaleType="fitCenter" />
+    <!-- ══════════ APP ROW 4 ══════════ -->
+    <LinearLayout
+        android:id="@+id/chip_app_4"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone">
 
-            <TextView
-                android:id="@+id/tv_app_5"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="18m"
-                android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        <ImageView
+            android:id="@+id/iv_app_4"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:scaleType="fitCenter" />
 
-        <!-- Chip 6 -->
-        <LinearLayout
-            android:id="@+id/chip_app_6"
+        <TextView
+            android:id="@+id/tv_app_4_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="TikTok"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tv_app_4"
             android:layout_width="wrap_content"
-            android:layout_height="29dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@drawable/notif_chip_bg"
-            android:paddingStart="5dp"
-            android:paddingEnd="9dp"
-            android:visibility="gone">
+            android:layout_height="wrap_content"
+            android:text="22m"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-            <ImageView
-                android:id="@+id/iv_app_6"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="5dp"
-                android:scaleType="fitCenter" />
+    <!-- ══════════ APP ROW 5 ══════════ -->
+    <LinearLayout
+        android:id="@+id/chip_app_5"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone">
 
-            <TextView
-                android:id="@+id/tv_app_6"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="8m"
-                android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        <ImageView
+            android:id="@+id/iv_app_5"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/tv_app_5_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="WhatsApp"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tv_app_5"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="14m"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- ══════════ APP ROW 6 ══════════ -->
+    <LinearLayout
+        android:id="@+id/chip_app_6"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/iv_app_6"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/tv_app_6_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Maps"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tv_app_6"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="8m"
+            android:textSize="13sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
 </LinearLayout>

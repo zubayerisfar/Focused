@@ -6,6 +6,11 @@ class UserCloudStats {
   final List<String> unlockedBadgeIds;
   final DateTime? updatedAt;
 
+  // XP System
+  final int xpPoints;
+  final int xpAdsWatchedToday;
+  final String? xpAdsWatchedDate; // ISO8601 date-only string (yyyy-MM-dd)
+
   const UserCloudStats({
     this.streakDays = 0,
     this.longestStreak = 0,
@@ -13,6 +18,9 @@ class UserCloudStats {
     this.completedSessionsCount = 0,
     this.unlockedBadgeIds = const <String>[],
     this.updatedAt,
+    this.xpPoints = 0,
+    this.xpAdsWatchedToday = 0,
+    this.xpAdsWatchedDate,
   });
 
   Duration get totalFocusDuration => Duration(minutes: totalFocusMinutes);
@@ -24,6 +32,9 @@ class UserCloudStats {
     int? completedSessionsCount,
     List<String>? unlockedBadgeIds,
     DateTime? updatedAt,
+    int? xpPoints,
+    int? xpAdsWatchedToday,
+    String? xpAdsWatchedDate,
   }) {
     return UserCloudStats(
       streakDays: streakDays ?? this.streakDays,
@@ -33,18 +44,24 @@ class UserCloudStats {
           completedSessionsCount ?? this.completedSessionsCount,
       unlockedBadgeIds: unlockedBadgeIds ?? this.unlockedBadgeIds,
       updatedAt: updatedAt ?? this.updatedAt,
+      xpPoints: xpPoints ?? this.xpPoints,
+      xpAdsWatchedToday: xpAdsWatchedToday ?? this.xpAdsWatchedToday,
+      xpAdsWatchedDate: xpAdsWatchedDate ?? this.xpAdsWatchedDate,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'streakDays': streakDays,
       'longestStreak': longestStreak,
       'totalFocusMinutes': totalFocusMinutes,
       'completedSessionsCount': completedSessionsCount,
       'unlockedBadgeIds': unlockedBadgeIds,
       'updatedAt': updatedAt?.toIso8601String(),
+      'xpPoints': xpPoints,
+      'xpAdsWatchedToday': xpAdsWatchedToday,
+      'xpAdsWatchedDate': xpAdsWatchedDate,
     };
   }
 
@@ -55,6 +72,9 @@ class UserCloudStats {
     final sessions = map['completedSessionsCount'];
     final badgesRaw = map['unlockedBadgeIds'];
     final updatedRaw = map['updatedAt'];
+    final xp = map['xpPoints'];
+    final xpAds = map['xpAdsWatchedToday'];
+    final xpDate = map['xpAdsWatchedDate'];
 
     return UserCloudStats(
       streakDays: (streak is num) ? streak.toInt() : 0,
@@ -65,6 +85,9 @@ class UserCloudStats {
           ? List<String>.from(badgesRaw.map((e) => e.toString()))
           : const <String>[],
       updatedAt: (updatedRaw is String) ? DateTime.tryParse(updatedRaw) : null,
+      xpPoints: (xp is num) ? xp.toInt() : 0,
+      xpAdsWatchedToday: (xpAds is num) ? xpAds.toInt() : 0,
+      xpAdsWatchedDate: (xpDate is String) ? xpDate : null,
     );
   }
 }

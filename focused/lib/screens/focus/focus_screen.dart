@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../../models/focus_session.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
-import '../../theme/app_theme.dart';
+import '../../widgets/app_banner_ad_widget.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
@@ -57,19 +57,16 @@ class FocusScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          _FocusStartCard(
-            provider: provider,
-            focusedToday: focusedToday,
-          ),
+          _FocusStartCard(provider: provider, focusedToday: focusedToday),
           const SizedBox(height: 28),
           Row(
             children: [
               Expanded(
                 child: Text(
                   'Recent sessions',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               if (recent.isNotEmpty)
@@ -93,6 +90,8 @@ class FocusScreen extends StatelessWidget {
                 child: _SessionHistoryTile(session: session),
               ),
             ),
+          const SizedBox(height: 16),
+          const AppBannerAdWidget(),
         ],
       ),
     );
@@ -113,9 +112,9 @@ class _FocusHeader extends StatelessWidget {
           Expanded(
             child: Text(
               'Focus',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           InkWell(
@@ -123,8 +122,9 @@ class _FocusHeader extends StatelessWidget {
             onTap: () => context.push('/profile'),
             child: CircleAvatar(
               radius: 22,
-              backgroundImage:
-                  account.photoUrl == null ? null : NetworkImage(account.photoUrl!),
+              backgroundImage: account.photoUrl == null
+                  ? null
+                  : NetworkImage(account.photoUrl!),
               child: account.photoUrl == null
                   ? Text(
                       _initials(account.displayName),
@@ -140,10 +140,7 @@ class _FocusHeader extends StatelessWidget {
 }
 
 class _FocusStartCard extends StatelessWidget {
-  const _FocusStartCard({
-    required this.provider,
-    required this.focusedToday,
-  });
+  const _FocusStartCard({required this.provider, required this.focusedToday});
 
   final FocusProvider provider;
   final Duration focusedToday;
@@ -162,10 +159,7 @@ class _FocusStartCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            scheme.primaryContainer,
-            scheme.surfaceContainer,
-          ],
+          colors: [scheme.primaryContainer, scheme.surfaceContainer],
         ),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: scheme.primary.withOpacity(0.18)),
@@ -184,9 +178,7 @@ class _FocusStartCard extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: FaIcon(
-                  running
-                      ? FontAwesomeIcons.clock
-                      : FontAwesomeIcons.bullseye,
+                  running ? FontAwesomeIcons.clock : FontAwesomeIcons.bullseye,
                   size: 20,
                   color: scheme.primary,
                 ),
@@ -210,7 +202,9 @@ class _FocusStartCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       running
-                          ? (paused ? 'Paused' : '${_formatClock(remaining)} remaining')
+                          ? (paused
+                                ? 'Paused'
+                                : '${_formatClock(remaining)} remaining')
                           : '${_formatDuration(focusedToday)} focused today',
                       style: TextStyle(
                         color: scheme.onSurfaceVariant,
@@ -226,9 +220,8 @@ class _FocusStartCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () => context.push(
-                running ? '/focus/session' : '/focus/setup',
-              ),
+              onPressed: () =>
+                  context.push(running ? '/focus/session' : '/focus/setup'),
               icon: FaIcon(
                 running
                     ? FontAwesomeIcons.arrowUpRightFromSquare
@@ -277,10 +270,7 @@ class _FocusMetric extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 1),
           Text(
@@ -312,9 +302,8 @@ class _SessionHistoryTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => context.push(
-          '/focus/history/${Uri.encodeComponent(session.id)}',
-        ),
+        onTap: () =>
+            context.push('/focus/history/${Uri.encodeComponent(session.id)}'),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(

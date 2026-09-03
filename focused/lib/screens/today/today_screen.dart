@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -130,6 +131,7 @@ class TodayScreen extends StatelessWidget {
                 streak: streak,
                 photoUrl: account.photoUrl,
                 displayName: account.displayName,
+                xpPoints: userStats.xpPoints,
               ),
             ),
             SliverPadding(
@@ -167,11 +169,13 @@ class _HomeHeader extends StatelessWidget {
   final int streak;
   final String? photoUrl;
   final String displayName;
+  final int xpPoints;
 
   const _HomeHeader({
     required this.streak,
     required this.photoUrl,
     required this.displayName,
+    required this.xpPoints,
   });
 
   @override
@@ -193,6 +197,45 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
             ),
+            // XP chip
+            InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => context.push('/xp'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A73E8).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: const Color(0xFF1A73E8).withOpacity(0.28),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const FaIcon(
+                      FontAwesomeIcons.bolt,
+                      size: 16,
+                      color: Color(0xFF1A73E8),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$xpPoints',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A73E8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Streak chip
             InkWell(
               borderRadius: BorderRadius.circular(18),
               onTap: () => context.push('/streak'),

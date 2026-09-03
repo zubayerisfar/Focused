@@ -32,6 +32,7 @@ class UserProfileProvider extends ChangeNotifier {
   Future<void> updateProfile({
     required String displayName,
     required String email,
+    String? username,
     String? nationality,
     DateTime? birthday,
     bool clearBirthday = false,
@@ -41,6 +42,8 @@ class UserProfileProvider extends ChangeNotifier {
           ? 'Focused User'
           : displayName.trim(),
       email: email.trim(),
+      username: username != null ? username.trim().replaceAll('@', '') : _profile.username,
+      joinedYear: _profile.joinedYear,
       nationality: nationality ?? _profile.nationality,
       birthday: clearBirthday ? null : (birthday ?? _profile.birthday),
     );

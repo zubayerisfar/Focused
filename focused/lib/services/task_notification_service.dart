@@ -532,6 +532,31 @@ class TaskNotificationService {
     );
   }
 
+  Future<void> showFriendReminderNotification({
+    required String fromName,
+    required String message,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'focused_friend_reminders',
+      'Friend Task Reminders',
+      channelDescription: 'Notifications sent by your friends to remind you to finish your tasks.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      'Friend Reminder: $fromName',
+      message,
+      notificationDetails,
+    );
+  }
+
   tz.TZDateTime _toLocalTz(DateTime value) {
     // Reconstruct using wall-clock components. The Task model stores the
     // user's local calendar/time choice; converting the instant with

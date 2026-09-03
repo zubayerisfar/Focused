@@ -128,37 +128,34 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
         compactViews.setTextViewText(R.id.tv_apps_today_header_compact, headerTitle)
 
         // Bind Top 6 Apps into Big View
-        val bigChips = listOf(
-            Triple(R.id.chip_app_1, R.id.iv_app_1, R.id.tv_app_1),
-            Triple(R.id.chip_app_2, R.id.iv_app_2, R.id.tv_app_2),
-            Triple(R.id.chip_app_3, R.id.iv_app_3, R.id.tv_app_3),
-            Triple(R.id.chip_app_4, R.id.iv_app_4, R.id.tv_app_4),
-            Triple(R.id.chip_app_5, R.id.iv_app_5, R.id.tv_app_5),
-            Triple(R.id.chip_app_6, R.id.iv_app_6, R.id.tv_app_6),
+        data class AppRowIds(val chipId: Int, val ivId: Int, val tvNameId: Int, val tvTimeId: Int)
+        val bigRows = listOf(
+            AppRowIds(R.id.chip_app_1, R.id.iv_app_1, R.id.tv_app_1_name, R.id.tv_app_1),
+            AppRowIds(R.id.chip_app_2, R.id.iv_app_2, R.id.tv_app_2_name, R.id.tv_app_2),
+            AppRowIds(R.id.chip_app_3, R.id.iv_app_3, R.id.tv_app_3_name, R.id.tv_app_3),
+            AppRowIds(R.id.chip_app_4, R.id.iv_app_4, R.id.tv_app_4_name, R.id.tv_app_4),
+            AppRowIds(R.id.chip_app_5, R.id.iv_app_5, R.id.tv_app_5_name, R.id.tv_app_5),
+            AppRowIds(R.id.chip_app_6, R.id.iv_app_6, R.id.tv_app_6_name, R.id.tv_app_6),
         )
 
-        for (i in bigChips.indices) {
-            val (chipId, ivId, tvId) = bigChips[i]
+        for (i in bigRows.indices) {
+            val row = bigRows[i]
             if (i < sortedApps.size) {
                 val app = sortedApps[i]
                 val timeStr = formatDuration(app.value)
-                val icon = getAppIconBitmap(context, app.key, sizePx = 64)
+                val appLabel = getAppLabel(context, app.key)
+                val icon = getAppIconBitmap(context, app.key, sizePx = 72)
 
-                bigViews.setViewVisibility(chipId, View.VISIBLE)
-                bigViews.setTextViewText(tvId, timeStr)
+                bigViews.setViewVisibility(row.chipId, View.VISIBLE)
+                bigViews.setTextViewText(row.tvNameId, appLabel)
+                bigViews.setTextViewText(row.tvTimeId, timeStr)
                 if (icon != null) {
-                    bigViews.setImageViewBitmap(ivId, icon)
+                    bigViews.setImageViewBitmap(row.ivId, icon)
                 }
             } else {
-                bigViews.setViewVisibility(chipId, View.GONE)
+                bigViews.setViewVisibility(row.chipId, View.GONE)
             }
         }
-
-        // Hide Row 2 if 3 or fewer apps
-        bigViews.setViewVisibility(
-            R.id.layout_apps_row_2,
-            if (sortedApps.size > 3) View.VISIBLE else View.GONE,
-        )
 
         // Bind Top 3 Apps into Compact View
         val compactChips = listOf(
@@ -277,5 +274,15 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+    }
+
+    private fun getAppLabel(context: Context, packageName: String): String {
+        return try {
+            val pm = context.packageManager
+            val appInfo = pm.getApplicationInfo(packageName, 0)
+            pm.getApplicationLabel(appInfo).toString()
+        } catch (_: Throwable) {
+            packageName.substringAfterLast('.')
+        }
     }
 }

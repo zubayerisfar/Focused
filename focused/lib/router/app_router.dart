@@ -13,6 +13,7 @@ import '../screens/habits/habit_details_screen.dart';
 import '../screens/habits/habit_edit_screen.dart';
 import '../screens/main/main_shell.dart';
 import '../screens/onboarding/intro_sequence_screen.dart';
+import '../screens/onboarding/ad_notice_screen.dart';
 import '../screens/profile/badges_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/settings/notification_access_screen.dart';
@@ -31,6 +32,7 @@ import '../screens/wellbeing/usage_permission_screen.dart';
 import '../screens/wellbeing/wellbeing_screen.dart';
 import '../screens/wellbeing/wellbeing_summary_screen.dart';
 import '../screens/wellbeing/weekly_wellbeing_screen.dart';
+import '../screens/xp/xp_screen.dart';
 
 GoRouter createAppRouter({
   required AccountProvider accountProvider,
@@ -56,7 +58,12 @@ GoRouter createAppRouter({
         return path == '/login' ? null : '/login';
       }
 
-      if (path == '/login' || path == '/intro') {
+      // Show ad notice exactly once after signing in for the first time
+      if (!onboardingProvider.adNoticeSeen) {
+        return path == '/ad-notice' ? null : '/ad-notice';
+      }
+
+      if (path == '/login' || path == '/intro' || path == '/ad-notice') {
         return '/';
       }
 
@@ -100,6 +107,11 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/ad-notice',
+        builder: (context, state) => const AdNoticeScreen(),
+      ),
+      GoRoute(path: '/xp', builder: (context, state) => const XpScreen()),
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
