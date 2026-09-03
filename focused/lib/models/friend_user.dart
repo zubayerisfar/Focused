@@ -6,6 +6,7 @@ class FriendUser {
   final int streakDays;
   final int xpPoints;
   final bool isFollowing;
+  final bool isSelf;
 
   const FriendUser({
     required this.uid,
@@ -15,6 +16,7 @@ class FriendUser {
     this.streakDays = 0,
     this.xpPoints = 0,
     this.isFollowing = false,
+    this.isSelf = false,
   });
 
   String get handle {
@@ -33,6 +35,7 @@ class FriendUser {
     int? streakDays,
     int? xpPoints,
     bool? isFollowing,
+    bool? isSelf,
   }) {
     return FriendUser(
       uid: uid ?? this.uid,
@@ -42,6 +45,7 @@ class FriendUser {
       streakDays: streakDays ?? this.streakDays,
       xpPoints: xpPoints ?? this.xpPoints,
       isFollowing: isFollowing ?? this.isFollowing,
+      isSelf: isSelf ?? this.isSelf,
     );
   }
 
@@ -61,6 +65,7 @@ class FriendUser {
     Map<String, dynamic> map, {
     String? docId,
     bool isFollowing = false,
+    bool isSelf = false,
   }) {
     return FriendUser(
       uid: (docId ?? map['uid'] ?? '').toString(),
@@ -70,6 +75,7 @@ class FriendUser {
       streakDays: (map['streakDays'] as num?)?.toInt() ?? 0,
       xpPoints: (map['xpPoints'] as num?)?.toInt() ?? 0,
       isFollowing: isFollowing || map['isFollowing'] == true,
+      isSelf: isSelf,
     );
   }
 }

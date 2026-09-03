@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../focus/focus_screen.dart';
 import '../friends/friends_screen.dart';
@@ -22,7 +23,7 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  late int _currentIndex = _safeIndex(widget.initialIndex);
+  late int _currentIndex;
 
   void setIndex(int index) {
     setState(() {
@@ -30,13 +31,19 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
-  final List<Widget> _screens = const [
+  static const List<Widget> _screens = [
     PrimaryScrollController.none(child: TodayScreen()),
     PrimaryScrollController.none(child: PlannerScreen()),
     PrimaryScrollController.none(child: FocusScreen()),
     PrimaryScrollController.none(child: FriendsScreen()),
     PrimaryScrollController.none(child: SettingsScreen(embedded: true)),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = _safeIndex(widget.initialIndex);
+  }
 
   @override
   void didUpdateWidget(covariant MainShell oldWidget) {
@@ -76,46 +83,235 @@ class _MainShellState extends State<MainShell> {
               top: BorderSide(color: Theme.of(context).dividerColor, width: 1),
             ),
           ),
-          child: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (index) {
-              if (_currentIndex != index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              }
-            },
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_rounded),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.view_timeline_outlined),
-                selectedIcon: Icon(Icons.view_timeline_rounded),
-                label: 'Planner',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.center_focus_strong_outlined),
-                selectedIcon: Icon(Icons.center_focus_strong_rounded),
-                label: 'Focus',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.people_alt_outlined),
-                selectedIcon: Icon(Icons.people_alt_rounded),
-                label: 'Friends',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings_rounded),
-                label: 'Settings',
-              ),
-            ],
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              indicatorColor: Colors.transparent,
+              overlayColor: WidgetStateProperty.all(Colors.transparent),
+              height: 66,
+            ),
+            child: NavigationBar(
+              selectedIndex: _currentIndex,
+              height: 66,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              onDestinationSelected: (index) {
+                if (_currentIndex != index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                }
+              },
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+              destinations: const [
+                NavigationDestination(
+                  icon: _NavIcon(
+                    assetName: 'nav_home.svg',
+                    fallbackIcon: Icons.home_outlined,
+                    color: Color(0xFFFF8228), // Orange
+                    isSelected: false,
+                    size: 36,
+                  ),
+                  selectedIcon: _NavIcon(
+                    assetName: 'nav_home.svg',
+                    fallbackIcon: Icons.home_rounded,
+                    color: Color(0xFFFF8228), // Orange
+                    isSelected: true,
+                    size: 36,
+                  ),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: _NavIcon(
+                    assetName: 'nav_planner.svg',
+                    fallbackIcon: Icons.view_timeline_outlined,
+                    color: Color(0xFF58CC02), // Green
+                    isSelected: false,
+                    size: 36,
+                  ),
+                  selectedIcon: _NavIcon(
+                    assetName: 'nav_planner.svg',
+                    fallbackIcon: Icons.view_timeline_rounded,
+                    color: Color(0xFF58CC02), // Green
+                    isSelected: true,
+                    size: 36,
+                  ),
+                  label: 'Planner',
+                ),
+                NavigationDestination(
+                  icon: _NavIcon(
+                    assetName: 'nav_focus.svg',
+                    fallbackIcon: Icons.center_focus_strong_outlined,
+                    color: Color(0xFFFF5252), // Red
+                    isSelected: false,
+                    size: 36,
+                  ),
+                  selectedIcon: _NavIcon(
+                    assetName: 'nav_focus.svg',
+                    fallbackIcon: Icons.center_focus_strong_rounded,
+                    color: Color(0xFFFF5252), // Red
+                    isSelected: true,
+                    size: 36,
+                  ),
+                  label: 'Focus',
+                ),
+                NavigationDestination(
+                  icon: _NavIcon(
+                    assetName: 'nav_friends.svg',
+                    alternateAssetName: 'friends_icon.svg',
+                    fallbackIcon: Icons.people_alt_outlined,
+                    color: Color(0xFF9B51E0), // Purple
+                    isSelected: false,
+                    size: 36,
+                  ),
+                  selectedIcon: _NavIcon(
+                    assetName: 'nav_friends.svg',
+                    alternateAssetName: 'friends_icon.svg',
+                    fallbackIcon: Icons.people_alt_rounded,
+                    color: Color(0xFF9B51E0), // Purple
+                    isSelected: true,
+                    size: 36,
+                  ),
+                  label: 'Friends',
+                ),
+                NavigationDestination(
+                  icon: _NavIcon(
+                    assetName: 'nav_settings.svg',
+                    fallbackIcon: Icons.settings_outlined,
+                    color: Color(0xFF0EA5E9), // Bluish
+                    isSelected: false,
+                    size: 36,
+                  ),
+                  selectedIcon: _NavIcon(
+                    assetName: 'nav_settings.svg',
+                    fallbackIcon: Icons.settings_rounded,
+                    color: Color(0xFF0EA5E9), // Bluish
+                    isSelected: true,
+                    size: 36,
+                  ),
+                  label: 'Settings',
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NavIcon extends StatelessWidget {
+  final String assetName;
+  final String? alternateAssetName;
+  final IconData fallbackIcon;
+  final Color color;
+  final bool isSelected;
+  final double size;
+
+  const _NavIcon({
+    required this.assetName,
+    this.alternateAssetName,
+    required this.fallbackIcon,
+    required this.color,
+    required this.isSelected,
+    this.size = 36.0,
+  });
+
+  static final Map<String, bool> _assetCache = {};
+
+  static Future<String?> _resolveAssetPath(
+    String primaryName, [
+    String? alternateName,
+  ]) async {
+    final primaryPath = 'assets/navbar_icon/$primaryName';
+    if (_assetCache[primaryPath] == true) return primaryPath;
+    try {
+      await rootBundle.load(primaryPath);
+      _assetCache[primaryPath] = true;
+      return primaryPath;
+    } catch (_) {
+      _assetCache[primaryPath] = false;
+    }
+
+    if (alternateName != null) {
+      final altPath = 'assets/navbar_icon/$alternateName';
+      if (_assetCache[altPath] == true) return altPath;
+      try {
+        await rootBundle.load(altPath);
+        _assetCache[altPath] = true;
+        return altPath;
+      } catch (_) {
+        _assetCache[altPath] = false;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return FutureBuilder<String?>(
+      future: _resolveAssetPath(assetName, alternateAssetName),
+      builder: (context, snapshot) {
+        final path = snapshot.data;
+        Widget iconWidget;
+
+        if (path != null) {
+          iconWidget = SvgPicture.asset(
+            path,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+          );
+        } else {
+          iconWidget = Icon(
+            fallbackIcon,
+            size: size - 2,
+            color: isSelected
+                ? color
+                : (isDark ? Colors.white70 : const Color(0xFF4A5568)),
+          );
+        }
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSelected ? 12 : 6,
+                vertical: isSelected ? 4 : 4,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? color.withValues(alpha: isDark ? 0.24 : 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: AnimatedScale(
+                scale: isSelected ? 1.12 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                child: iconWidget,
+              ),
+            ),
+            const SizedBox(height: 3),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              width: isSelected ? 14 : 0,
+              height: 3,
+              decoration: BoxDecoration(
+                color: isSelected ? color : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

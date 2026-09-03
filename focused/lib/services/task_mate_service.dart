@@ -32,8 +32,8 @@ class TaskMateService {
     required String creatorUid,
     required List<TaskGroupMember> members,
   }) async {
-    if (members.length > 3) {
-      throw StateError('A Task Mate group can have at most 3 members.');
+    if (members.length > 5) {
+      throw StateError('A Task Mate group can have at most 5 members.');
     }
 
     final memberUids = members.map((m) => m.uid).toList();
@@ -47,6 +47,7 @@ class TaskMateService {
       'createdBy': creatorUid,
       'memberUids': memberUids,
       'members': membersMap,
+      'activeTasks': <dynamic>[],
       'activeTask': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -55,14 +56,15 @@ class TaskMateService {
     return docRef.id;
   }
 
-  /// Assigns a shared task to the group.
-  /// Rule: Only one task can be active at a time. Another member cannot assign until removed.
+  /// Assigns a shared task to the group (up to 3 active tasks allowed).
   Future<bool> assignTask({
     required String groupId,
     required String title,
     required String assignerUid,
     required String assignerName,
     required String assignerUsername,
+    String? category,
+    bool isHabit = false,
   }) async {
     final docRef = _firestore.collection('task_groups').doc(groupId);
 
@@ -72,24 +74,31 @@ class TaskMateService {
         if (!snap.exists) return false;
 
         final data = snap.data();
-        final currentActive = data?['activeTask'] as Map<String, dynamic>?;
-        if (currentActive != null && currentActive['title'] != null) {
-          // Already has an active task!
+        final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
+        if (rawActiveTasks.length >= 3) {
+          // Already has 3 active tasks!
           return false;
         }
 
         final cleanUsername = assignerUsername.replaceAll('@', '').trim();
-        final taskData = {
+        final newTask = {
           'title': title.trim(),
           'assignedByUid': assignerUid,
           'assignedByName': assignerName,
           'assignedByUsername': cleanUsername,
-          'createdAt': FieldValue.serverTimestamp(),
+          'category': category,
+          'isHabit': isHabit,
+          'createdAt': Timestamp.now(),
           'memberSchedules': <String, dynamic>{},
         };
 
+        final updatedTasks = List<Map<String, dynamic>>.from(
+          rawActiveTasks.map((t) => Map<String, dynamic>.from(t as Map)),
+        )..add(newTask);
+
         transaction.update(docRef, {
-          'activeTask': taskData,
+          'activeTasks': updatedTasks,
+          'activeTask': updatedTasks.first, // keep backward-compatible
           'updatedAt': FieldValue.serverTimestamp(),
         });
         return true;
@@ -100,12 +109,32 @@ class TaskMateService {
     }
   }
 
-  /// Removes the active task from the group (only assigner or creator can remove)
-  Future<void> removeTask({required String groupId}) async {
-    await _firestore.collection('task_groups').doc(groupId).update({
-      'activeTask': FieldValue.delete(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+  /// Removes a task from the group (default: first task, or specific task index)
+  Future<void> removeTask({required String groupId, int taskIndex = 0}) async {
+    final docRef = _firestore.collection('task_groups').doc(groupId);
+    final snap = await docRef.get();
+    if (!snap.exists) return;
+    final data = snap.data();
+    final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
+    if (rawActiveTasks.isNotEmpty &&
+        taskIndex >= 0 &&
+        taskIndex < rawActiveTasks.length) {
+      final updatedTasks = List<dynamic>.from(rawActiveTasks)
+        ..removeAt(taskIndex);
+      await docRef.update({
+        'activeTasks': updatedTasks,
+        'activeTask': updatedTasks.isNotEmpty
+            ? updatedTasks.first
+            : FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await docRef.update({
+        'activeTasks': [],
+        'activeTask': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   /// Each member sets their own chosen scheduled time for the group task
@@ -113,31 +142,89 @@ class TaskMateService {
     required String groupId,
     required String uid,
     required DateTime scheduledTime,
+    int taskIndex = 0,
   }) async {
     final docRef = _firestore.collection('task_groups').doc(groupId);
+    final snap = await docRef.get();
+    if (!snap.exists) return;
+    final data = snap.data();
+    final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
+    if (rawActiveTasks.isNotEmpty &&
+        taskIndex >= 0 &&
+        taskIndex < rawActiveTasks.length) {
+      final updatedTasks = List<Map<String, dynamic>>.from(
+        rawActiveTasks.map((t) => Map<String, dynamic>.from(t as Map)),
+      );
+      final targetTask = updatedTasks[taskIndex];
+      final memberSchedules = Map<String, dynamic>.from(
+        targetTask['memberSchedules'] as Map? ?? {},
+      );
+      final currentMemberSched = Map<String, dynamic>.from(
+        memberSchedules[uid] as Map? ?? {},
+      );
+      currentMemberSched['scheduledTime'] = Timestamp.fromDate(scheduledTime);
+      currentMemberSched['completed'] = false;
+      memberSchedules[uid] = currentMemberSched;
+      targetTask['memberSchedules'] = memberSchedules;
 
-    await docRef.update({
-      'activeTask.memberSchedules.$uid.scheduledTime': Timestamp.fromDate(
-        scheduledTime,
-      ),
-      'activeTask.memberSchedules.$uid.completed': false,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+      await docRef.update({
+        'activeTasks': updatedTasks,
+        'activeTask': updatedTasks.first,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await docRef.update({
+        'activeTask.memberSchedules.$uid.scheduledTime': Timestamp.fromDate(
+          scheduledTime,
+        ),
+        'activeTask.memberSchedules.$uid.completed': false,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   /// Completes the task for the current member
   Future<void> completeMemberTask({
     required String groupId,
     required String uid,
+    int taskIndex = 0,
   }) async {
     final docRef = _firestore.collection('task_groups').doc(groupId);
+    final snap = await docRef.get();
+    if (!snap.exists) return;
+    final data = snap.data();
+    final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
+    if (rawActiveTasks.isNotEmpty &&
+        taskIndex >= 0 &&
+        taskIndex < rawActiveTasks.length) {
+      final updatedTasks = List<Map<String, dynamic>>.from(
+        rawActiveTasks.map((t) => Map<String, dynamic>.from(t as Map)),
+      );
+      final targetTask = updatedTasks[taskIndex];
+      final memberSchedules = Map<String, dynamic>.from(
+        targetTask['memberSchedules'] as Map? ?? {},
+      );
+      final currentMemberSched = Map<String, dynamic>.from(
+        memberSchedules[uid] as Map? ?? {},
+      );
+      currentMemberSched['completed'] = true;
+      currentMemberSched['completedAt'] = Timestamp.now();
+      memberSchedules[uid] = currentMemberSched;
+      targetTask['memberSchedules'] = memberSchedules;
 
-    await docRef.update({
-      'activeTask.memberSchedules.$uid.completed': true,
-      'activeTask.memberSchedules.$uid.completedAt':
-          FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+      await docRef.update({
+        'activeTasks': updatedTasks,
+        'activeTask': updatedTasks.first,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await docRef.update({
+        'activeTask.memberSchedules.$uid.completed': true,
+        'activeTask.memberSchedules.$uid.completedAt':
+            FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   /// Leaves or deletes the group

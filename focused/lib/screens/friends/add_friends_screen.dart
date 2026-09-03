@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/friend_user.dart';
@@ -108,8 +109,12 @@ class _AddFriendsScreenState extends State<AddFriendsScreen> {
                   vertical: 14,
                 ),
               ),
+              textInputAction: TextInputAction.search,
               onChanged: (text) {
                 friendsProvider.searchUsers(text);
+              },
+              onSubmitted: (text) {
+                friendsProvider.searchUsersImmediate(text);
               },
             ),
           ),
@@ -217,116 +222,147 @@ class _UserResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: const Color(0xFF58CC02),
-            backgroundImage: user.photoUrl != null
-                ? NetworkImage(user.photoUrl!)
-                : null,
-            child: user.photoUrl == null
-                ? Text(
-                    _initials(user.displayName),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user.displayName,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : scheme.onSurface,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(
-                      user.handle,
+    return InkWell(
+      onTap: () => context.push('/profile/view', extra: user),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFF58CC02),
+              backgroundImage: user.photoUrl != null
+                  ? NetworkImage(user.photoUrl!)
+                  : null,
+              child: user.photoUrl == null
+                  ? Text(
+                      _initials(user.displayName),
                       style: const TextStyle(
-                        color: Color(0xFF1CB0F6),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : scheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
                     ),
-                    if (user.streakDays > 0) ...[
-                      const SizedBox(width: 8),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
                       Text(
-                        '🔥 ${user.streakDays}d',
+                        user.handle,
                         style: const TextStyle(
-                          color: Color(0xFFFF9600),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1CB0F6),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
                         ),
                       ),
+                      if (user.streakDays > 0) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '🔥 ${user.streakDays}d',
+                          style: const TextStyle(
+                            color: Color(0xFFFF9600),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          user.isFollowing
-              ? OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark
-                        ? const Color(0xFF77878F)
-                        : scheme.onSurfaceVariant,
-                    side: BorderSide(
-                      color: isDark
-                          ? const Color(0xFF37464F)
-                          : scheme.outlineVariant,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+            const SizedBox(width: 8),
+            user.isSelf
+                ? Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 8,
                     ),
-                  ),
-                  onPressed: onUnfollow,
-                  child: const Text(
-                    'Following',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
-                )
-              : FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1CB0F6),
-                    shape: RoundedRectangleBorder(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF26334D)
+                          : const Color(0xFFE8EAF5),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                    child: const Text(
+                      'You',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: Color(0xFF1CB0F6),
+                      ),
+                    ),
+                  )
+                : user.isFollowing
+                ? OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark
+                          ? const Color(0xFF77878F)
+                          : scheme.onSurfaceVariant,
+                      side: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF37464F)
+                            : scheme.outlineVariant,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                    ),
+                    onPressed: onUnfollow,
+                    child: const Text(
+                      'Following',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                : FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1CB0F6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                    onPressed: onFollow,
+                    child: const Text(
+                      'Follow',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                  onPressed: onFollow,
-                  child: const Text(
-                    'Follow',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                  ),
-                ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -57,6 +57,9 @@ class GroupActiveTask {
   final DateTime createdAt;
   final Map<String, MemberTaskSchedule> memberSchedules;
 
+  final String? category;
+  final bool isHabit;
+
   const GroupActiveTask({
     required this.title,
     required this.assignedByUid,
@@ -64,6 +67,8 @@ class GroupActiveTask {
     required this.assignedByUsername,
     required this.createdAt,
     this.memberSchedules = const {},
+    this.category,
+    this.isHabit = false,
   });
 
   factory GroupActiveTask.fromMap(Map<String, dynamic> map) {
@@ -80,6 +85,8 @@ class GroupActiveTask {
       assignedByUid: map['assignedByUid']?.toString() ?? '',
       assignedByName: map['assignedByName']?.toString() ?? 'Mate',
       assignedByUsername: map['assignedByUsername']?.toString() ?? '',
+      category: map['category'] as String?,
+      isHabit: map['isHabit'] as bool? ?? false,
       createdAt: (map['createdAt'] is Timestamp)
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -93,6 +100,8 @@ class GroupActiveTask {
       'assignedByUid': assignedByUid,
       'assignedByName': assignedByName,
       'assignedByUsername': assignedByUsername,
+      if (category != null) 'category': category,
+      'isHabit': isHabit,
       'createdAt': Timestamp.fromDate(createdAt),
       'memberSchedules': memberSchedules.map((k, v) => MapEntry(k, v.toMap())),
     };
@@ -150,20 +159,22 @@ class TaskGroup {
   final String createdBy;
   final List<String> memberUids;
   final Map<String, TaskGroupMember> members;
-  final GroupActiveTask? activeTask;
+  final List<GroupActiveTask> activeTasks;
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  const TaskGroup({
+  TaskGroup({
     required this.id,
     required this.name,
     required this.createdBy,
     required this.memberUids,
     required this.members,
-    this.activeTask,
+    List<GroupActiveTask>? activeTasks,
+    GroupActiveTask? activeTask,
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : activeTasks =
+           activeTasks ?? (activeTask != null ? [activeTask] : const []);
 
   factory TaskGroup.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -175,10 +186,19 @@ class TaskGroup {
       ),
     );
 
-    final rawActive = data['activeTask'] as Map<String, dynamic>?;
-    final activeTask = (rawActive != null && rawActive['title'] != null)
-        ? GroupActiveTask.fromMap(rawActive)
-        : null;
+    final List<GroupActiveTask> tasksList = [];
+    if (data['activeTasks'] is List) {
+      for (final item in (data['activeTasks'] as List)) {
+        if (item is Map<String, dynamic> && item['title'] != null) {
+          tasksList.add(GroupActiveTask.fromMap(item));
+        }
+      }
+    } else {
+      final rawActive = data['activeTask'] as Map<String, dynamic>?;
+      if (rawActive != null && rawActive['title'] != null) {
+        tasksList.add(GroupActiveTask.fromMap(rawActive));
+      }
+    }
 
     return TaskGroup(
       id: doc.id,
@@ -190,7 +210,7 @@ class TaskGroup {
               .toList() ??
           [],
       members: membersMap,
-      activeTask: activeTask,
+      activeTasks: tasksList,
       createdAt: (data['createdAt'] is Timestamp)
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -200,7 +220,10 @@ class TaskGroup {
     );
   }
 
-  bool get hasActiveTask => activeTask != null && activeTask!.title.isNotEmpty;
+  GroupActiveTask? get activeTask =>
+      activeTasks.isNotEmpty ? activeTasks.first : null;
+  bool get hasActiveTask => activeTasks.isNotEmpty;
+  bool get canAddMoreTasks => activeTasks.length < 3;
   bool isMember(String uid) => memberUids.contains(uid);
   bool isCreator(String uid) => createdBy == uid;
 }

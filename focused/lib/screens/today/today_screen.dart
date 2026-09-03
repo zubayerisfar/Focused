@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -180,6 +179,7 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -199,35 +199,37 @@ class _HomeHeader extends StatelessWidget {
             ),
             // XP chip
             InkWell(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(19),
               onTap: () => context.push('/xp'),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 8,
-                ),
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 13),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A73E8).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(18),
+                  color: const Color(
+                    0xFF1CB0F6,
+                  ).withValues(alpha: isDark ? 0.16 : 0.12),
+                  borderRadius: BorderRadius.circular(19),
                   border: Border.all(
-                    color: const Color(0xFF1A73E8).withOpacity(0.28),
+                    color: const Color(0xFF1CB0F6).withValues(alpha: 0.32),
+                    width: 1.2,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const FaIcon(
-                      FontAwesomeIcons.bolt,
-                      size: 16,
-                      color: Color(0xFF1A73E8),
+                    const Icon(
+                      Icons.bolt_rounded,
+                      size: 20,
+                      color: Color(0xFF1CB0F6),
                     ),
                     const SizedBox(width: 5),
                     Text(
                       '$xpPoints',
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A73E8),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1CB0F6),
                       ),
                     ),
                   ],
@@ -237,30 +239,36 @@ class _HomeHeader extends StatelessWidget {
             const SizedBox(width: 8),
             // Streak chip
             InkWell(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(19),
               onTap: () => context.push('/streak'),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 8,
-                ),
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 13),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFA629).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(18),
+                  color: const Color(
+                    0xFFFF9600,
+                  ).withValues(alpha: isDark ? 0.16 : 0.12),
+                  borderRadius: BorderRadius.circular(19),
                   border: Border.all(
-                    color: const Color(0xFFFFA629).withOpacity(0.28),
+                    color: const Color(0xFFFF9600).withValues(alpha: 0.32),
+                    width: 1.2,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 18)),
+                    const Text(
+                      '🔥',
+                      style: TextStyle(fontSize: 16, height: 1.0),
+                    ),
                     const SizedBox(width: 5),
                     Text(
                       '$streak',
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFFF9600),
                       ),
                     ),
                   ],

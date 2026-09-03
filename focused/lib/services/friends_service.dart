@@ -116,6 +116,7 @@ class FriendsService {
     required String uid,
     required String displayName,
     required String email,
+    String? preferredUsername,
     String? photoUrl,
   }) async {
     if (uid.isEmpty) return;
@@ -124,13 +125,16 @@ class FriendsService {
     try {
       final userSnap = await userDocRef.get();
       if (!userSnap.exists) {
-        final defaultUsername = email.isNotEmpty
-            ? email
-                  .split('@')
-                  .first
-                  .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
-                  .toLowerCase()
-            : displayName.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+        final defaultUsername =
+            preferredUsername != null && preferredUsername.trim().isNotEmpty
+            ? preferredUsername.trim().replaceAll('@', '').toLowerCase()
+            : (email.isNotEmpty
+                  ? email
+                        .split('@')
+                        .first
+                        .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
+                        .toLowerCase()
+                  : displayName.replaceAll(RegExp(r'\s+'), '').toLowerCase());
         final cleanUsername = defaultUsername.isEmpty
             ? 'user_${uid.substring(0, 5)}'
             : defaultUsername;
@@ -174,10 +178,138 @@ class FriendsService {
           });
         });
       } else {
-        await userDocRef.update({'updatedAt': FieldValue.serverTimestamp()});
+        // Backfill existing / older accounts so they become searchable immediately
+        final data = userSnap.data() ?? {};
+        final existingUsername = data['username'] as String?;
+        final existingUsernameLower = data['usernameLower'] as String?;
+        final existingDisplayName = data['displayName'] as String?;
+        final existingDisplayNameLower = data['displayNameLower'] as String?;
+
+        final resolvedUsername =
+            (preferredUsername != null && preferredUsername.trim().isNotEmpty)
+            ? preferredUsername.trim().replaceAll('@', '').toLowerCase()
+            : ((existingUsername != null && existingUsername.isNotEmpty)
+                  ? existingUsername.replaceAll('@', '')
+                  : (email.isNotEmpty
+                        ? email
+                              .split('@')
+                              .first
+                              .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
+                              .toLowerCase()
+                        : displayName
+                              .replaceAll(RegExp(r'\s+'), '')
+                              .toLowerCase()));
+        final cleanUsername = resolvedUsername.isEmpty
+            ? 'user_${uid.substring(0, 5)}'
+            : resolvedUsername;
+
+        final resolvedDisplayName = (displayName.isNotEmpty)
+            ? displayName
+            : ((existingDisplayName != null && existingDisplayName.isNotEmpty)
+                  ? existingDisplayName
+                  : 'Focused User');
+
+        final updates = <String, dynamic>{
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        if (existingUsernameLower == null ||
+            existingUsername == null ||
+            existingUsername != cleanUsername) {
+          updates['username'] = cleanUsername;
+          updates['usernameLower'] = cleanUsername.toLowerCase();
+          // Also reserve in usernames registry
+          try {
+            await _firestore
+                .collection('usernames')
+                .doc(cleanUsername.toLowerCase())
+                .set({
+                  'uid': uid,
+                  'reservedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+          } catch (e) {
+            debugPrint(
+              'Could not register username in usernames collection: $e',
+            );
+          }
+        }
+
+        if (existingDisplayNameLower == null || existingDisplayName == null) {
+          updates['displayName'] = resolvedDisplayName;
+          updates['displayNameLower'] = resolvedDisplayName.toLowerCase();
+        }
+
+        if (photoUrl != null &&
+            photoUrl.isNotEmpty &&
+            data['photoUrl'] == null) {
+          updates['photoUrl'] = photoUrl;
+        }
+
+        await userDocRef.set(updates, SetOptions(merge: true));
       }
     } catch (e) {
       debugPrint('Could not initialize user document: $e');
+    }
+  }
+
+  /// Atomically updates a user's username in Firestore `users/{uid}` and the `usernames/` registry
+  Future<bool> updateUsername({
+    required String uid,
+    required String oldUsername,
+    required String newUsername,
+    required String displayName,
+  }) async {
+    final cleanOld = oldUsername.trim().toLowerCase().replaceAll('@', '');
+    final cleanNew = newUsername.trim().toLowerCase().replaceAll('@', '');
+    if (cleanNew.length < 3) return false;
+
+    final newDocRef = _firestore.collection('usernames').doc(cleanNew);
+    final userDocRef = _firestore.collection('users').doc(uid);
+
+    try {
+      final success = await _firestore.runTransaction<bool>((
+        transaction,
+      ) async {
+        final snap = await transaction.get(newDocRef);
+        if (snap.exists && snap.data()?['uid'] != uid) {
+          return false; // Taken by someone else
+        }
+        transaction.set(newDocRef, {
+          'uid': uid,
+          'username': cleanNew,
+          'reservedAt': FieldValue.serverTimestamp(),
+        });
+        transaction.set(userDocRef, {
+          'username': cleanNew,
+          'usernameLower': cleanNew,
+          'displayName': displayName.isEmpty ? 'Focused User' : displayName,
+          'displayNameLower':
+              (displayName.isEmpty ? 'focused user' : displayName)
+                  .toLowerCase(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        return true;
+      });
+
+      if (!success) return false;
+
+      // Release old handle reservation if changed
+      if (cleanOld.isNotEmpty && cleanOld != cleanNew) {
+        try {
+          final oldDocRef = _firestore.collection('usernames').doc(cleanOld);
+          final oldSnap = await oldDocRef.get();
+          if (oldSnap.exists && oldSnap.data()?['uid'] == uid) {
+            await oldDocRef.delete();
+          }
+        } catch (e) {
+          debugPrint('Could not delete old username reservation: $e');
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error updating username in Firestore: $e');
+      return false;
     }
   }
 
@@ -194,41 +326,135 @@ class FriendsService {
     if (cleanQuery.isEmpty) return const [];
 
     try {
-      // 1. Fetch currently followed user IDs for the current user
-      final followingSnap = await _firestore
-          .collection('users')
-          .doc(currentUid)
-          .collection('following')
-          .get();
-      final followingUids = followingSnap.docs.map((d) => d.id).toSet();
-
-      // 2. Search by username prefix
-      final usernameQuery = await _firestore
-          .collection('users')
-          .where('usernameLower', isGreaterThanOrEqualTo: cleanQuery)
-          .where('usernameLower', isLessThanOrEqualTo: '$cleanQuery\uf8ff')
-          .limit(20)
-          .get();
-
-      // 3. Search by displayName prefix
-      final displayNameQuery = await _firestore
-          .collection('users')
-          .where('displayNameLower', isGreaterThanOrEqualTo: cleanQuery)
-          .where('displayNameLower', isLessThanOrEqualTo: '$cleanQuery\uf8ff')
-          .limit(20)
-          .get();
+      final followingUids = <String>{};
+      if (currentUid.isNotEmpty) {
+        try {
+          final followingSnap = await _firestore
+              .collection('users')
+              .doc(currentUid)
+              .collection('following')
+              .get();
+          followingUids.addAll(followingSnap.docs.map((d) => d.id));
+        } catch (e) {
+          debugPrint('Could not load following for search: $e');
+        }
+      }
 
       final resultsMap = <String, FriendUser>{};
 
-      for (final doc in [...usernameQuery.docs, ...displayNameQuery.docs]) {
-        if (doc.id == currentUid) continue; // Don't return current user
-        final data = doc.data();
-        final user = FriendUser.fromMap(
-          data,
-          docId: doc.id,
-          isFollowing: followingUids.contains(doc.id),
+      // Helper to add or enrich a found user
+      Future<void> addFoundUser({
+        required String uid,
+        required String username,
+        Map<String, dynamic>? preloadedData,
+      }) async {
+        if (resultsMap.containsKey(uid)) return;
+
+        Map<String, dynamic> data = preloadedData ?? {};
+        if (data.isEmpty) {
+          try {
+            final snap = await _firestore.collection('users').doc(uid).get();
+            if (snap.exists && snap.data() != null) {
+              data = snap.data()!;
+            }
+          } catch (_) {}
+        }
+
+        final isSelf = currentUid.isNotEmpty && uid == currentUid;
+        final dName = (data['displayName'] as String?)?.trim();
+        final uName = (data['username'] as String?)?.trim();
+
+        resultsMap[uid] = FriendUser(
+          uid: uid,
+          displayName: (dName != null && dName.isNotEmpty) ? dName : username,
+          username: (uName != null && uName.isNotEmpty) ? uName : username,
+          photoUrl: data['photoUrl'] as String?,
+          streakDays: (data['streakDays'] as num?)?.toInt() ?? 0,
+          xpPoints: (data['xpPoints'] as num?)?.toInt() ?? 0,
+          isFollowing: followingUids.contains(uid),
+          isSelf: isSelf,
         );
-        resultsMap[doc.id] = user;
+      }
+
+      // 1. Direct exact match in /usernames registry
+      try {
+        final exactSnap = await _firestore
+            .collection('usernames')
+            .doc(cleanQuery)
+            .get();
+        if (exactSnap.exists) {
+          final targetUid = exactSnap.data()?['uid'] as String?;
+          final claimedUsername =
+              exactSnap.data()?['username'] as String? ?? exactSnap.id;
+          if (targetUid != null && targetUid.isNotEmpty) {
+            await addFoundUser(uid: targetUid, username: claimedUsername);
+          }
+        }
+      } catch (e) {
+        debugPrint('Direct username match error: $e');
+      }
+
+      // 2. Prefix search on /usernames collection directly
+      try {
+        final usernamesColQuery = await _firestore
+            .collection('usernames')
+            .where(FieldPath.documentId, isGreaterThanOrEqualTo: cleanQuery)
+            .where(
+              FieldPath.documentId,
+              isLessThanOrEqualTo: '$cleanQuery\uf8ff',
+            )
+            .limit(20)
+            .get();
+
+        for (final doc in usernamesColQuery.docs) {
+          final targetUid = doc.data()['uid'] as String?;
+          final uName = doc.data()['username'] as String? ?? doc.id;
+          if (targetUid != null && targetUid.isNotEmpty) {
+            await addFoundUser(uid: targetUid, username: uName);
+          }
+        }
+      } catch (e) {
+        debugPrint('Usernames prefix search error: $e');
+      }
+
+      // 3. Prefix search on /users collection by usernameLower
+      try {
+        final usernameQuery = await _firestore
+            .collection('users')
+            .where('usernameLower', isGreaterThanOrEqualTo: cleanQuery)
+            .where('usernameLower', isLessThanOrEqualTo: '$cleanQuery\uf8ff')
+            .limit(20)
+            .get();
+
+        for (final doc in usernameQuery.docs) {
+          await addFoundUser(
+            uid: doc.id,
+            username: doc.data()['username'] as String? ?? cleanQuery,
+            preloadedData: doc.data(),
+          );
+        }
+      } catch (e) {
+        debugPrint('Users username prefix search error: $e');
+      }
+
+      // 4. Prefix search on /users collection by displayNameLower
+      try {
+        final displayNameQuery = await _firestore
+            .collection('users')
+            .where('displayNameLower', isGreaterThanOrEqualTo: cleanQuery)
+            .where('displayNameLower', isLessThanOrEqualTo: '$cleanQuery\uf8ff')
+            .limit(20)
+            .get();
+
+        for (final doc in displayNameQuery.docs) {
+          await addFoundUser(
+            uid: doc.id,
+            username: doc.data()['username'] as String? ?? cleanQuery,
+            preloadedData: doc.data(),
+          );
+        }
+      } catch (e) {
+        debugPrint('Users displayName prefix search error: $e');
       }
 
       return resultsMap.values.toList();

@@ -26,6 +26,7 @@ class FriendsProvider extends ChangeNotifier {
        _notificationService = notificationService;
 
   String _currentUid = '';
+  String? _currentPhotoUrl;
   List<FriendUser> _following = [];
   List<FriendUser> _followers = [];
   List<ExpGift> _unclaimedGifts = [];
@@ -68,6 +69,40 @@ class FriendsProvider extends ChangeNotifier {
     );
   }
 
+  /// Updates user handle immediately in Firestore and local state
+  Future<bool> updateUsername({
+    required String oldUsername,
+    required String newUsername,
+  }) async {
+    if (_currentUid.isEmpty) return false;
+    final displayName = _profileProvider.profile.displayName;
+    final ok = await _friendsService.updateUsername(
+      uid: _currentUid,
+      oldUsername: oldUsername,
+      newUsername: newUsername,
+      displayName: displayName,
+    );
+    if (ok) {
+      await _profileProvider.updateProfile(
+        displayName: displayName,
+        email: _profileProvider.profile.email,
+        username: newUsername,
+      );
+      // Re-sync public profile
+      await _friendsService.syncPublicProfile(
+        uid: _currentUid,
+        displayName: displayName,
+        username: newUsername,
+        photoUrl: _currentPhotoUrl,
+        streakDays: _statsProvider.syncedStreakDays,
+        xpPoints: _statsProvider.xpPoints,
+        totalFocusMinutes: _statsProvider.stats.totalFocusMinutes,
+      );
+      notifyListeners();
+    }
+    return ok;
+  }
+
   String get _todayKey {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -84,6 +119,7 @@ class FriendsProvider extends ChangeNotifier {
   void initForUser(String uid, {String? displayName, String? photoUrl}) {
     if (_currentUid == uid && uid.isNotEmpty) return;
     _currentUid = uid;
+    _currentPhotoUrl = photoUrl;
     _cancelSubs();
 
     if (uid.isEmpty) {
@@ -95,8 +131,18 @@ class FriendsProvider extends ChangeNotifier {
       return;
     }
 
-    // 1. Publish public profile so friends can discover this user
     final profile = _profileProvider.profile;
+
+    // 1. Ensure user document & handle reservation are initialized in Firestore
+    _friendsService.ensureUserDocumentInitialized(
+      uid: uid,
+      displayName: displayName ?? profile.displayName,
+      email: profile.email,
+      preferredUsername: profile.username,
+      photoUrl: photoUrl,
+    );
+
+    // 2. Publish public profile so friends can discover this user
     _friendsService.syncPublicProfile(
       uid: uid,
       displayName: displayName ?? profile.displayName,
@@ -110,26 +156,19 @@ class FriendsProvider extends ChangeNotifier {
     // 2. Stream Following
     _followingSub = _friendsService.streamFollowing(uid).listen((list) {
       _following = list;
-      // If partner quest is null but we have following, provide default active quest
-      if (_partnerQuest == null && _following.isNotEmpty) {
-        final first = _following.first;
-        _partnerQuest = PartnerQuest(
-          partnerUid: first.uid,
-          partnerName: first.displayName,
-          partnerUsername: first.username,
-          partnerPhotoUrl: first.photoUrl,
-          myProgress: 3,
-          partnerProgress: 6,
-          totalTarget: 10,
-          hoursRemaining: 23,
-        );
-      }
+      final followingUids = list.map((f) => f.uid).toSet();
+      _followers = _followers
+          .map((f) => f.copyWith(isFollowing: followingUids.contains(f.uid)))
+          .toList();
       notifyListeners();
     });
 
     // 3. Stream Followers
     _followersSub = _friendsService.streamFollowers(uid).listen((list) {
-      _followers = list;
+      final followingUids = _following.map((f) => f.uid).toSet();
+      _followers = list
+          .map((f) => f.copyWith(isFollowing: followingUids.contains(f.uid)))
+          .toList();
       notifyListeners();
     });
 
@@ -161,9 +200,11 @@ class FriendsProvider extends ChangeNotifier {
 
   // ===========================================================================
   // SEARCH
-  // ===========================================================================
+  Timer? _searchDebounce;
+  int _searchSessionId = 0;
 
   Future<void> searchUsers(String query) async {
+    _searchDebounce?.cancel();
     final clean = query.trim();
     if (clean.isEmpty) {
       _searchResults = [];
@@ -175,55 +216,139 @@ class FriendsProvider extends ChangeNotifier {
     _isSearching = true;
     notifyListeners();
 
+    final currentSession = ++_searchSessionId;
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () async {
+      try {
+        final results = await _friendsService.searchUsers(
+          currentUid: _currentUid,
+          query: clean,
+        );
+        if (_searchSessionId == currentSession) {
+          _searchResults = results;
+        }
+      } catch (e) {
+        if (_searchSessionId == currentSession) {
+          _searchResults = [];
+        }
+      } finally {
+        if (_searchSessionId == currentSession) {
+          _isSearching = false;
+          notifyListeners();
+        }
+      }
+    });
+  }
+
+  Future<void> searchUsersImmediate(String query) async {
+    _searchDebounce?.cancel();
+    final clean = query.trim();
+    if (clean.isEmpty) {
+      _searchResults = [];
+      _isSearching = false;
+      notifyListeners();
+      return;
+    }
+
+    _isSearching = true;
+    notifyListeners();
+
+    final currentSession = ++_searchSessionId;
     try {
-      _searchResults = await _friendsService.searchUsers(
+      final results = await _friendsService.searchUsers(
         currentUid: _currentUid,
         query: clean,
       );
+      if (_searchSessionId == currentSession) {
+        _searchResults = results;
+      }
     } catch (e) {
-      _searchResults = [];
+      if (_searchSessionId == currentSession) {
+        _searchResults = [];
+      }
     } finally {
-      _isSearching = false;
-      notifyListeners();
+      if (_searchSessionId == currentSession) {
+        _isSearching = false;
+        notifyListeners();
+      }
     }
   }
 
   // ===========================================================================
   // FOLLOW / UNFOLLOW
   // ===========================================================================
+  static const int maxFriends = 200;
+  bool get canFollowMore => _following.length < maxFriends;
 
-  Future<void> follow(FriendUser targetUser) async {
+  Future<bool> follow(FriendUser targetUser) async {
+    if (_currentUid.isEmpty) return false;
+    if (_following.length >= maxFriends) return false;
+
     final profile = _profileProvider.profile;
-    await _friendsService.followUser(
-      currentUid: _currentUid,
-      targetUser: targetUser,
-      myDisplayName: profile.displayName,
-      myUsername: profile.username,
-      myStreakDays: _statsProvider.syncedStreakDays,
-      myXpPoints: _statsProvider.xpPoints,
-    );
+    try {
+      await _friendsService.followUser(
+        currentUid: _currentUid,
+        targetUser: targetUser,
+        myDisplayName: profile.displayName,
+        myUsername: profile.username,
+        myStreakDays: _statsProvider.syncedStreakDays,
+        myXpPoints: _statsProvider.xpPoints,
+      );
 
-    // Update in search results locally
-    final index = _searchResults.indexWhere((u) => u.uid == targetUser.uid);
-    if (index != -1) {
-      _searchResults[index] = _searchResults[index].copyWith(isFollowing: true);
+      // Optimistically update local following list
+      if (!_following.any((u) => u.uid == targetUser.uid)) {
+        _following = [..._following, targetUser.copyWith(isFollowing: true)];
+      }
+
+      // Optimistically update followers list isFollowing
+      final followerIdx = _followers.indexWhere((u) => u.uid == targetUser.uid);
+      if (followerIdx != -1) {
+        _followers[followerIdx] = _followers[followerIdx].copyWith(
+          isFollowing: true,
+        );
+      }
+
+      // Update in search results locally
+      final index = _searchResults.indexWhere((u) => u.uid == targetUser.uid);
+      if (index != -1) {
+        _searchResults[index] = _searchResults[index].copyWith(
+          isFollowing: true,
+        );
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error following user: $e');
+      return false;
     }
-    notifyListeners();
   }
 
   Future<void> unfollow(String targetUid) async {
-    await _friendsService.unfollowUser(
-      currentUid: _currentUid,
-      targetUid: targetUid,
-    );
-
-    final index = _searchResults.indexWhere((u) => u.uid == targetUid);
-    if (index != -1) {
-      _searchResults[index] = _searchResults[index].copyWith(
-        isFollowing: false,
+    if (_currentUid.isEmpty) return;
+    try {
+      await _friendsService.unfollowUser(
+        currentUid: _currentUid,
+        targetUid: targetUid,
       );
+
+      _following = _following.where((u) => u.uid != targetUid).toList();
+
+      final followerIdx = _followers.indexWhere((u) => u.uid == targetUid);
+      if (followerIdx != -1) {
+        _followers[followerIdx] = _followers[followerIdx].copyWith(
+          isFollowing: false,
+        );
+      }
+
+      final index = _searchResults.indexWhere((u) => u.uid == targetUid);
+      if (index != -1) {
+        _searchResults[index] = _searchResults[index].copyWith(
+          isFollowing: false,
+        );
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error unfollowing user: $e');
     }
-    notifyListeners();
   }
 
   // ===========================================================================

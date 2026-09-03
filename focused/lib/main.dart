@@ -260,6 +260,18 @@ Future<void> main() async {
   );
   await cloudSyncProvider.initialize();
 
+  // Automatically trigger cloud sync when tasks, habits, profile, or goals are modified
+  void onLocalDataMutated() {
+    if (!cloudSyncProvider.isSyncing) {
+      cloudSyncProvider.triggerAutoSync();
+    }
+  }
+
+  taskProvider.addListener(onLocalDataMutated);
+  habitProvider.addListener(onLocalDataMutated);
+  userProfileProvider.addListener(onLocalDataMutated);
+  streakGoalProvider.addListener(onLocalDataMutated);
+
   final router = createAppRouter(
     accountProvider: accountProvider,
     onboardingProvider: onboardingProvider,
@@ -278,15 +290,26 @@ Future<void> main() async {
     notificationService: taskNotificationService,
     statsProvider: userStatsProvider,
     profileProvider: userProfileProvider,
+    taskProvider: taskProvider,
+    habitProvider: habitProvider,
   );
-  if (accountProvider.isSignedIn) {
-    friendsProvider.initForUser(
-      accountProvider.user!.uid,
-      displayName: accountProvider.displayName,
-      photoUrl: accountProvider.photoUrl,
-    );
-    taskMateProvider.initForUser(accountProvider.user!.uid);
+  void syncUserProviders() {
+    if (accountProvider.isSignedIn && accountProvider.user != null) {
+      final uid = accountProvider.user!.uid;
+      friendsProvider.initForUser(
+        uid,
+        displayName: accountProvider.displayName,
+        photoUrl: accountProvider.photoUrl,
+      );
+      taskMateProvider.initForUser(uid);
+    } else {
+      friendsProvider.initForUser('');
+      taskMateProvider.initForUser('');
+    }
   }
+
+  syncUserProviders();
+  accountProvider.addListener(syncUserProviders);
 
   runApp(
     MultiProvider(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/friend_user.dart';
 import '../providers/account_provider.dart';
 import '../providers/onboarding_provider.dart';
 import '../screens/auth/login_screen.dart';
@@ -116,7 +117,19 @@ GoRouter createAppRouter({
       GoRoute(path: '/xp', builder: (context, state) => const XpScreen()),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
+        builder: (context, state) => ProfileScreen(
+          friendUser: state.extra is FriendUser
+              ? state.extra as FriendUser
+              : null,
+        ),
+      ),
+      GoRoute(
+        path: '/profile/view',
+        builder: (context, state) => ProfileScreen(
+          friendUser: state.extra is FriendUser
+              ? state.extra as FriendUser
+              : null,
+        ),
       ),
       GoRoute(
         path: '/streak',

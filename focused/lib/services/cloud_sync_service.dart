@@ -373,12 +373,20 @@ class CloudSyncService {
     final currentStats =
         _userStatsStorage?.loadStats() ?? _computeCurrentLocalStats();
     try {
+      final cleanUsername = profile?.username.trim().replaceAll('@', '');
       await _firestore.collection('users').doc(uid).set({
         'uid': uid,
         if (profile?.email != null && profile!.email.isNotEmpty)
           'email': profile.email,
-        if (profile?.displayName != null && profile!.displayName.isNotEmpty)
+        if (profile?.displayName != null &&
+            profile!.displayName.isNotEmpty) ...{
           'displayName': profile.displayName,
+          'displayNameLower': profile.displayName.toLowerCase(),
+        },
+        if (cleanUsername != null && cleanUsername.isNotEmpty) ...{
+          'username': cleanUsername,
+          'usernameLower': cleanUsername.toLowerCase(),
+        },
         if (profile?.nationality != null && profile!.nationality.isNotEmpty)
           'nationality': profile.nationality,
         'streakDays': currentStats.streakDays,
@@ -392,6 +400,18 @@ class CloudSyncService {
         if (deviceName != null) 'lastSyncedDeviceName': deviceName,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      if (cleanUsername != null && cleanUsername.isNotEmpty) {
+        try {
+          await _firestore
+              .collection('usernames')
+              .doc(cleanUsername.toLowerCase())
+              .set({
+                'uid': uid,
+                'reservedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+        } catch (_) {}
+      }
     } catch (e) {
       debugPrint('Could not update root user document: $e');
     }

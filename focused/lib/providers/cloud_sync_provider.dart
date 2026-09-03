@@ -252,13 +252,37 @@ class CloudSyncProvider extends ChangeNotifier {
   }
 
   void clearError() {
-    if (_errorMessage == null) return;
     _errorMessage = null;
     notifyListeners();
   }
 
+  Timer? _autoSyncTimer;
+
+  /// Triggers a debounced background sync whenever tasks, habits, or settings change
+  void triggerAutoSync() {
+    if (!_accountProvider.isSignedIn || _syncing) return;
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = Timer(const Duration(seconds: 2), () {
+      if (_accountProvider.isSignedIn && !_syncing) {
+        unawaited(
+          syncNow(isManual: false).catchError((e) {
+            debugPrint('Automatic background sync: $e');
+            return _lastResult ??
+                CloudSyncResult(
+                  pushed: 0,
+                  pulled: 0,
+                  deleted: 0,
+                  syncedAt: DateTime.now(),
+                );
+          }),
+        );
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _autoSyncTimer?.cancel();
     _accountProvider.removeListener(_handleAccountChanged);
     super.dispose();
   }

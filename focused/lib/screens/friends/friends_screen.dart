@@ -219,8 +219,10 @@ class _FriendsScreenState extends State<FriendsScreen>
                   isDark: isDark,
                   onCreateGroup: () => _showCreateGroupDialog(context),
                   onAssignTask: (group) => _showAssignTaskSheet(context, group),
-                  onPickTime: (group) => _pickScheduleTime(context, group),
-                  onCompleteTask: (group) => _completeTask(context, group),
+                  onPickTime: (group, idx) =>
+                      _pickScheduleTime(context, group, taskIndex: idx),
+                  onCompleteTask: (group, idx) =>
+                      _completeTask(context, group, taskIndex: idx),
                 ),
 
                 // 2. Following Tab
@@ -438,7 +440,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Partner with up to 2 friends. Group members share one active task and earn double EXP (+200 EXP)!',
+                  'Partner with up to 4 friends (up to 5 members total). Squad members can share up to 3 active tasks and earn double EXP (+200 EXP)!',
                   style: TextStyle(
                     color: isDark
                         ? const Color(0xFF77878F)
@@ -524,13 +526,13 @@ class _FriendsScreenState extends State<FriendsScreen>
                           onChanged: (val) {
                             setSheetState(() {
                               if (val == true) {
-                                if (selectedFriends.length < 2) {
+                                if (selectedFriends.length < 4) {
                                   selectedFriends.add(f);
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Maximum 2 friends can be added (3 members total).',
+                                        'Maximum 4 friends can be added (5 members total).',
                                       ),
                                       duration: Duration(seconds: 2),
                                     ),
@@ -606,6 +608,7 @@ class _FriendsScreenState extends State<FriendsScreen>
     final taskProvider = context.read<TaskProvider>();
     final taskMateProvider = context.read<TaskMateProvider>();
     final customTaskController = TextEditingController();
+    bool isHabit = false;
 
     showModalBottomSheet(
       context: context,
@@ -613,185 +616,235 @@ class _FriendsScreenState extends State<FriendsScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final scheme = Theme.of(ctx).colorScheme;
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          final scheme = Theme.of(ctx).colorScheme;
 
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            20 + MediaQuery.viewInsetsOf(ctx).bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF2B3D47)
-                        : scheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  const Text('⚡', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Assign Group Task',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : scheme.onSurface,
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              20 + MediaQuery.viewInsetsOf(ctx).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF2B3D47)
+                          : scheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'This task will be assigned to everyone in "${group.name}". Each member will choose their own time to complete it and earn +200 EXP!',
-                style: TextStyle(
-                  color: isDark
-                      ? const Color(0xFF77878F)
-                      : scheme.onSurfaceVariant,
-                  fontSize: 13,
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: customTaskController,
-                decoration: InputDecoration(
-                  labelText: 'Custom Task Title',
-                  hintText: 'e.g. Finish Chapter 4, Do 30m Workout',
-                  filled: true,
-                  fillColor: scheme.surfaceContainerHigh,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: scheme.outlineVariant),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: scheme.outlineVariant),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF58CC02),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Text('⚡', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Assign Squad Task (${group.activeTasks.length}/3)',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : scheme.onSurface,
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text(
-                    'Assign Custom Task',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  onPressed: () async {
-                    final title = customTaskController.text.trim();
-                    if (title.isEmpty) return;
-                    Navigator.pop(ctx);
-                    final ok = await taskMateProvider.assignTask(
-                      groupId: group.id,
-                      title: title,
-                    );
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: ok
-                              ? const Color(0xFF58CC02)
-                              : Colors.redAccent,
-                          content: Text(
-                            ok
-                                ? '⚡ Task assigned to "${group.name}"!'
-                                : 'An active task is already assigned to this group.',
-                          ),
-                        ),
-                      );
-                    }
-                  },
+                  ],
                 ),
-              ),
-              if (taskProvider.tasks.isNotEmpty) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 6),
                 Text(
-                  'Or pick from your personal tasks:',
+                  'Upload up to 3 tasks to "${group.name}". Each member sets their own timer, auto-syncing to their task list or habits, and earns +200 EXP!',
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : scheme.onSurface,
+                    color: isDark
+                        ? const Color(0xFF77878F)
+                        : scheme.onSurfaceVariant,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 180),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: taskProvider.tasks.take(8).length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
-                    itemBuilder: (context, i) {
-                      final t = taskProvider.tasks[i];
-                      return ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        tileColor: scheme.surfaceContainerHigh,
-                        title: Text(
-                          t.title,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : scheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        trailing: const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 14,
-                        ),
-                        onTap: () async {
-                          Navigator.pop(ctx);
-                          final ok = await taskMateProvider.assignTask(
-                            groupId: group.id,
-                            title: t.title,
-                          );
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: ok
-                                    ? const Color(0xFF58CC02)
-                                    : Colors.redAccent,
-                                content: Text(
-                                  ok
-                                      ? '⚡ Task "${t.title}" assigned to squad!'
-                                      : 'An active task is already assigned to this squad.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
+                const SizedBox(height: 14),
+
+                // Task Type Selector: Task vs Habit
+                Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('📋 Task'),
+                      selected: !isHabit,
+                      selectedColor: const Color(
+                        0xFF1CB0F6,
+                      ).withValues(alpha: 0.2),
+                      onSelected: (val) {
+                        if (val) setSheetState(() => isHabit = false);
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    ChoiceChip(
+                      label: const Text('🌱 Habit (Auto-sync)'),
+                      selected: isHabit,
+                      selectedColor: const Color(
+                        0xFF58CC02,
+                      ).withValues(alpha: 0.2),
+                      onSelected: (val) {
+                        if (val) setSheetState(() => isHabit = true);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: customTaskController,
+                  decoration: InputDecoration(
+                    labelText: isHabit ? 'Habit Title' : 'Custom Task Title',
+                    hintText: isHabit
+                        ? 'e.g. Daily 20m Reading, Morning Walk'
+                        : 'e.g. Finish Chapter 4, Do 30m Workout',
+                    filled: true,
+                    fillColor: scheme.surfaceContainerHigh,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: scheme.outlineVariant),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: scheme.outlineVariant),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: isHabit
+                          ? const Color(0xFF58CC02)
+                          : const Color(0xFF1CB0F6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.check_rounded),
+                    label: Text(
+                      isHabit ? 'Upload Squad Habit' : 'Upload Squad Task',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    onPressed: () async {
+                      final title = customTaskController.text.trim();
+                      if (title.isEmpty) return;
+                      Navigator.pop(ctx);
+                      final ok = await taskMateProvider.assignTask(
+                        groupId: group.id,
+                        title: title,
+                        category: isHabit ? 'Habit' : 'Task',
+                        isHabit: isHabit,
                       );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: ok
+                                ? const Color(0xFF58CC02)
+                                : Colors.redAccent,
+                            content: Text(
+                              ok
+                                  ? '⚡ Task uploaded to "${group.name}"!'
+                                  : 'This squad already has 3 active tasks.',
+                            ),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ),
+                if (taskProvider.tasks.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Or pick from your personal tasks:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 180),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: taskProvider.tasks.take(8).length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, i) {
+                        final t = taskProvider.tasks[i];
+                        return ListTile(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          tileColor: scheme.surfaceContainerHigh,
+                          title: Text(
+                            t.title,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : scheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                          ),
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            final ok = await taskMateProvider.assignTask(
+                              groupId: group.id,
+                              title: t.title,
+                              category: isHabit ? 'Habit' : 'Task',
+                              isHabit: isHabit,
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: ok
+                                      ? const Color(0xFF58CC02)
+                                      : Colors.redAccent,
+                                  content: Text(
+                                    ok
+                                        ? '⚡ Task "${t.title}" uploaded to squad!'
+                                        : 'This squad already has 3 active tasks.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 
-  Future<void> _pickScheduleTime(BuildContext context, TaskGroup group) async {
+  Future<void> _pickScheduleTime(
+    BuildContext context,
+    TaskGroup group, {
+    int taskIndex = 0,
+    GroupActiveTask? task,
+  }) async {
     final taskMateProvider = context.read<TaskMateProvider>();
+    final targetTask =
+        task ??
+        (group.activeTasks.length > taskIndex
+            ? group.activeTasks[taskIndex]
+            : group.activeTask);
     final now = DateTime.now();
 
     final pickedDate = await showDatePicker(
@@ -818,27 +871,39 @@ class _FriendsScreenState extends State<FriendsScreen>
 
     await taskMateProvider.setMySchedule(
       groupId: group.id,
-      taskTitle: group.activeTask?.title ?? 'Task Mate Goal',
+      taskTitle: targetTask?.title ?? 'Task Squad Goal',
       scheduledTime: scheduled,
+      taskIndex: taskIndex,
+      isHabit: targetTask?.isHabit ?? false,
     );
 
     if (context.mounted) {
+      final syncNote = (targetTask?.isHabit == true)
+          ? ' & synced to Habits'
+          : ' & added to Today Tasks';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFF1CB0F6),
           behavior: SnackBarBehavior.floating,
           content: Text(
-            '⏰ Scheduled for ${DateFormat('EEE, MMM d • h:mm a').format(scheduled)}! Device reminder set.',
+            '⏰ Scheduled for ${DateFormat('EEE, MMM d • h:mm a').format(scheduled)}$syncNote!',
           ),
         ),
       );
     }
   }
 
-  Future<void> _completeTask(BuildContext context, TaskGroup group) async {
+  Future<void> _completeTask(
+    BuildContext context,
+    TaskGroup group, {
+    int taskIndex = 0,
+  }) async {
     final taskMateProvider = context.read<TaskMateProvider>();
 
-    await taskMateProvider.completeTask(groupId: group.id);
+    await taskMateProvider.completeTask(
+      groupId: group.id,
+      taskIndex: taskIndex,
+    );
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -887,8 +952,8 @@ class _TaskMatesTab extends StatelessWidget {
   final bool isDark;
   final VoidCallback onCreateGroup;
   final Function(TaskGroup) onAssignTask;
-  final Function(TaskGroup) onPickTime;
-  final Function(TaskGroup) onCompleteTask;
+  final Function(TaskGroup, int) onPickTime;
+  final Function(TaskGroup, int) onCompleteTask;
 
   const _TaskMatesTab({
     required this.isDark,
@@ -954,30 +1019,40 @@ class _TaskMatesTab extends StatelessWidget {
     if (groups.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🤝', style: TextStyle(fontSize: 48)),
-              const SizedBox(height: 12),
-              Text(
-                'Task Mates Squads',
-                style: TextStyle(
-                  color: isDark ? Colors.white : scheme.onSurface,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 19,
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1CB0F6).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text('🤝', style: TextStyle(fontSize: 34)),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Text(
-                'Team up with up to 2 friends to tackle shared goals! Pick your own focus time, stay accountable, and earn DOUBLE reward (+200 EXP) upon finishing.',
+                'No Task Squads Yet',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Team up with up to 4 friends (up to 5 members total)! Upload up to 3 shared tasks/habits and earn double EXP (+200 EXP) when finished.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isDark
                       ? const Color(0xFF77878F)
                       : scheme.onSurfaceVariant,
-                  fontSize: 13.5,
-                  height: 1.45,
+                  fontSize: 13,
+                  height: 1.4,
                 ),
               ),
               const SizedBox(height: 20),
@@ -988,14 +1063,14 @@ class _TaskMatesTab extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 13,
+                    horizontal: 22,
+                    vertical: 12,
                   ),
                 ),
                 onPressed: onCreateGroup,
-                icon: const Icon(Icons.add_rounded),
+                icon: const Icon(Icons.group_add_rounded),
                 label: const Text(
-                  'Create Squad',
+                  'Create a Task Squad',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
               ),
@@ -1006,17 +1081,19 @@ class _TaskMatesTab extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        // Squads Header & Create Action
         Row(
           children: [
             Text(
-              'My Squads',
+              'YOUR SQUADS (${groups.length}/3)',
               style: TextStyle(
-                color: isDark ? Colors.white : scheme.onSurface,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
-                fontSize: 16.5,
+                color: isDark
+                    ? const Color(0xFF77878F)
+                    : scheme.onSurfaceVariant,
+                letterSpacing: 0.5,
               ),
             ),
             const Spacer(),
@@ -1042,11 +1119,6 @@ class _TaskMatesTab extends StatelessWidget {
 
         // Group Cards
         ...groups.map((group) {
-          final activeTask = group.activeTask;
-          final isCompleted = activeTask?.isCompletedBy(currentUid) ?? false;
-          final myScheduledTime = activeTask?.scheduledTimeFor(currentUid);
-          final isAssigner = activeTask?.assignedByUid == currentUid;
-
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
@@ -1133,8 +1205,8 @@ class _TaskMatesTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
 
-                // Active Task Section
-                if (!group.hasActiveTask)
+                // Active Tasks Section (Up to 3 tasks)
+                if (group.activeTasks.isEmpty)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -1146,7 +1218,7 @@ class _TaskMatesTab extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          'No Active Task',
+                          'No Active Tasks',
                           style: TextStyle(
                             color: isDark ? Colors.white : scheme.onSurface,
                             fontWeight: FontWeight.w700,
@@ -1155,7 +1227,7 @@ class _TaskMatesTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Assign a shared goal for the squad to conquer together!',
+                          'Upload up to 3 shared tasks/habits for the squad to conquer together!',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: isDark
@@ -1179,265 +1251,381 @@ class _TaskMatesTab extends StatelessWidget {
                           onPressed: () => onAssignTask(group),
                           icon: const Icon(Icons.add_task_rounded, size: 18),
                           label: const Text(
-                            'Assign Group Task',
+                            'Upload Task (0/3)',
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                       ],
                     ),
                   )
-                else
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: const Color(0xFF1CB0F6).withOpacity(0.5),
-                        width: 1.5,
+                else ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Squad Tasks (${group.activeTasks.length}/3)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: isDark
+                              ? const Color(0xFF77878F)
+                              : scheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFB300).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                '⚡ +200 EXP Double Reward',
-                                style: TextStyle(
-                                  color: Color(0xFFFFB300),
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 11,
-                                ),
-                              ),
+                      if (group.canAddMoreTasks)
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                            const Spacer(),
-                            if (isAssigner)
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.close_rounded,
-                                  size: 18,
-                                  color: Colors.redAccent,
-                                ),
-                                tooltip: 'Remove Task',
-                                onPressed: () =>
-                                    taskMateProvider.removeTask(group.id),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          activeTask!.title,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: isDark ? Colors.white : scheme.onSurface,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () => onAssignTask(group),
+                          icon: const Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: Color(0xFF1CB0F6),
+                          ),
+                          label: const Text(
+                            'Add Task',
+                            style: TextStyle(
+                              color: Color(0xFF1CB0F6),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
-                        Text(
-                          'Assigned by @${activeTask.assignedByUsername}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark
-                                ? const Color(0xFF77878F)
-                                : scheme.onSurfaceVariant,
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  for (
+                    int taskIdx = 0;
+                    taskIdx < group.activeTasks.length;
+                    taskIdx++
+                  ) ...[
+                    Builder(
+                      builder: (context) {
+                        final task = group.activeTasks[taskIdx];
+                        final isCompleted = task.isCompletedBy(currentUid);
+                        final myScheduledTime = task.scheduledTimeFor(
+                          currentUid,
+                        );
+                        final isAssigner =
+                            task.assignedByUid == currentUid ||
+                            group.isCreator(currentUid);
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: task.isHabit
+                                  ? const Color(
+                                      0xFF58CC02,
+                                    ).withValues(alpha: 0.5)
+                                  : const Color(
+                                      0xFF1CB0F6,
+                                    ).withValues(alpha: 0.5),
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1),
-                        const SizedBox(height: 10),
-
-                        // Members Schedule & Completion Status
-                        ...group.members.values.map((member) {
-                          final sched = activeTask.memberSchedules[member.uid];
-                          final hasDone = sched?.completed ?? false;
-                          final hasSched = sched?.scheduledTime != null;
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 13,
-                                  backgroundColor: const Color(0xFF58CC02),
-                                  child: Text(
-                                    member.displayName.isNotEmpty
-                                        ? member.displayName[0].toUpperCase()
-                                        : 'M',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    member.uid == currentUid
-                                        ? 'You'
-                                        : member.displayName,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: isDark
-                                          ? Colors.white
-                                          : scheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                if (hasDone)
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
-                                      vertical: 3,
+                                      vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
                                       color: const Color(
-                                        0xFF58CC02,
-                                      ).withOpacity(0.2),
+                                        0xFFFFB300,
+                                      ).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Text(
-                                      'Done ✅ (+200 EXP)',
+                                      '⚡ +200 EXP',
+                                      style: TextStyle(
+                                        color: Color(0xFFFFB300),
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                  if (task.isHabit) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFF58CC02,
+                                        ).withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        '🌱 Habit',
+                                        style: TextStyle(
+                                          color: Color(0xFF58CC02),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  const Spacer(),
+                                  if (isAssigner)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 18,
+                                        color: Colors.redAccent,
+                                      ),
+                                      tooltip: 'Remove Task',
+                                      onPressed: () =>
+                                          taskMateProvider.removeTask(
+                                            group.id,
+                                            taskIndex: taskIdx,
+                                          ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                task.title,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: isDark
+                                      ? Colors.white
+                                      : scheme.onSurface,
+                                ),
+                              ),
+                              Text(
+                                'Uploaded by @${task.assignedByUsername}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? const Color(0xFF77878F)
+                                      : scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 10),
+
+                              // Members Schedule & Completion Status
+                              ...group.members.values.map((member) {
+                                final sched = task.memberSchedules[member.uid];
+                                final hasDone = sched?.completed ?? false;
+                                final hasSched = sched?.scheduledTime != null;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 13,
+                                        backgroundColor: const Color(
+                                          0xFF58CC02,
+                                        ),
+                                        child: Text(
+                                          member.displayName.isNotEmpty
+                                              ? member.displayName[0]
+                                                    .toUpperCase()
+                                              : 'M',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          member.uid == currentUid
+                                              ? 'You'
+                                              : member.displayName,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: isDark
+                                                ? Colors.white
+                                                : scheme.onSurface,
+                                          ),
+                                        ),
+                                      ),
+                                      if (hasDone)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(
+                                              0xFF58CC02,
+                                            ).withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Done ✅ (+200 EXP)',
+                                            style: TextStyle(
+                                              color: Color(0xFF58CC02),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        )
+                                      else if (hasSched)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(
+                                              0xFF1CB0F6,
+                                            ).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            DateFormat(
+                                              'h:mm a',
+                                            ).format(sched!.scheduledTime!),
+                                            style: const TextStyle(
+                                              color: Color(0xFF1CB0F6),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        Text(
+                                          'No timer set',
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? const Color(0xFF77878F)
+                                                : scheme.onSurfaceVariant,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }),
+
+                              const SizedBox(height: 14),
+
+                              // Action Buttons for Current User
+                              if (isCompleted)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF58CC02,
+                                    ).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      '🎉 Task Complete! (+200 EXP Claimed)',
                                       style: TextStyle(
                                         color: Color(0xFF58CC02),
                                         fontWeight: FontWeight.w800,
-                                        fontSize: 11,
+                                        fontSize: 13,
                                       ),
                                     ),
-                                  )
-                                else if (hasSched)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF1CB0F6,
-                                      ).withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      DateFormat(
-                                        'h:mm a',
-                                      ).format(sched!.scheduledTime!),
-                                      style: const TextStyle(
-                                        color: Color(0xFF1CB0F6),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
+                                  ),
+                                )
+                              else
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        style: OutlinedButton.styleFrom(
+                                          side: BorderSide(
+                                            color: isDark
+                                                ? const Color(0xFF37464F)
+                                                : scheme.outlineVariant,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 11,
+                                          ),
+                                        ),
+                                        onPressed: () =>
+                                            onPickTime(group, taskIdx),
+                                        icon: const Icon(
+                                          Icons.schedule_rounded,
+                                          size: 16,
+                                          color: Color(0xFF1CB0F6),
+                                        ),
+                                        label: Text(
+                                          myScheduledTime != null
+                                              ? 'Change Timer'
+                                              : 'Set My Timer',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  )
-                                else
-                                  Text(
-                                    'No time set',
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? const Color(0xFF77878F)
-                                          : scheme.onSurfaceVariant,
-                                      fontSize: 11,
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF58CC02,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 11,
+                                          ),
+                                        ),
+                                        onPressed: () =>
+                                            onCompleteTask(group, taskIdx),
+                                        child: const Text(
+                                          'Complete (+200)',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        }),
-
-                        const SizedBox(height: 14),
-
-                        // Action Buttons for Current User
-                        if (isCompleted)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF58CC02).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                '🎉 Task Complete! (+200 EXP Claimed)',
-                                style: TextStyle(
-                                  color: Color(0xFF58CC02),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
+                                  ],
                                 ),
-                              ),
-                            ),
-                          )
-                        else
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(
-                                      color: isDark
-                                          ? const Color(0xFF37464F)
-                                          : scheme.outlineVariant,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 11,
-                                    ),
-                                  ),
-                                  onPressed: () => onPickTime(group),
-                                  icon: const Icon(
-                                    Icons.schedule_rounded,
-                                    size: 16,
-                                    color: Color(0xFF1CB0F6),
-                                  ),
-                                  label: Text(
-                                    myScheduledTime != null
-                                        ? 'Change Time'
-                                        : 'Set My Time',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: FilledButton(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF58CC02),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 11,
-                                    ),
-                                  ),
-                                  onPressed: () => onCompleteTask(group),
-                                  child: const Text(
-                                    'Complete (+200)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
-                      ],
+                        );
+                      },
                     ),
-                  ),
+                  ],
+                ],
               ],
             ),
           );
@@ -1853,138 +2041,190 @@ class _FriendsListTab extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final friend = friends[i];
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: const Color(0xFF58CC02),
-                backgroundImage: friend.photoUrl != null
-                    ? NetworkImage(friend.photoUrl!)
-                    : null,
-                child: friend.photoUrl == null
-                    ? Text(
-                        friend.displayName.isNotEmpty
-                            ? friend.displayName[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      friend.displayName,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : scheme.onSurface,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          friend.handle,
-                          style: TextStyle(
-                            color: isDark
-                                ? const Color(0xFF77878F)
-                                : scheme.onSurfaceVariant,
-                            fontSize: 13,
+        return InkWell(
+          onTap: () => context.push('/profile/view', extra: friend),
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFF58CC02),
+                  backgroundImage: friend.photoUrl != null
+                      ? NetworkImage(friend.photoUrl!)
+                      : null,
+                  child: friend.photoUrl == null
+                      ? Text(
+                          friend.displayName.isNotEmpty
+                              ? friend.displayName[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        friend.displayName,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : scheme.onSurface,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
                         ),
-                        if (friend.streakDays > 0) ...[
-                          const SizedBox(width: 8),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
                           Text(
-                            '🔥 ${friend.streakDays}',
-                            style: const TextStyle(
-                              color: Color(0xFFFF9600),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                            friend.handle,
+                            style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF77878F)
+                                  : scheme.onSurfaceVariant,
+                              fontSize: 13,
                             ),
                           ),
+                          if (friend.streakDays > 0) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '🔥 ${friend.streakDays}',
+                              style: const TextStyle(
+                                color: Color(0xFFFF9600),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isFollowingTab) ...[
+                  friend.isFollowing
+                      ? OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: isDark
+                                  ? const Color(0xFF37464F)
+                                  : scheme.outlineVariant,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                          ),
+                          onPressed: () => onUnfollow?.call(friend),
+                          child: const Text(
+                            'Following',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        )
+                      : FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1CB0F6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                          ),
+                          onPressed: () => onFollowBack?.call(friend),
+                          child: const Text(
+                            'Follow Back',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                  const SizedBox(width: 4),
+                ],
+                // Nudge Reminder Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.waving_hand_rounded,
+                    color: Color(0xFF1CB0F6),
+                    size: 20,
+                  ),
+                  tooltip: 'Send Task Reminder',
+                  onPressed: canSendReminder
+                      ? () => onSendReminder(friend)
+                      : null,
+                ),
+                // Gift 50 EXP Button
+                IconButton(
+                  icon: const Text('🎁', style: TextStyle(fontSize: 18)),
+                  tooltip: 'Gift 50 EXP',
+                  onPressed: () => onSendExp(friend),
+                ),
+                // More Actions (Pair / Unfollow)
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    color: isDark
+                        ? const Color(0xFF77878F)
+                        : scheme.onSurfaceVariant,
+                  ),
+                  color: scheme.surfaceContainerHigh,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  onSelected: (action) {
+                    if (action == 'pair') onPairQuest?.call(friend);
+                    if (action == 'unfollow') onUnfollow?.call(friend);
+                    if (action == 'follow') onFollowBack?.call(friend);
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'pair',
+                      child: Text(
+                        'Pair for Quest',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : scheme.onSurface,
+                        ),
+                      ),
                     ),
+                    if (isFollowingTab || friend.isFollowing)
+                      const PopupMenuItem(
+                        value: 'unfollow',
+                        child: Text(
+                          'Unfollow',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      )
+                    else
+                      const PopupMenuItem(
+                        value: 'follow',
+                        child: Text(
+                          'Follow Back',
+                          style: TextStyle(color: Color(0xFF1CB0F6)),
+                        ),
+                      ),
                   ],
                 ),
-              ),
-              // Nudge Reminder Button
-              IconButton(
-                icon: const Icon(
-                  Icons.waving_hand_rounded,
-                  color: Color(0xFF1CB0F6),
-                  size: 20,
-                ),
-                tooltip: 'Send Task Reminder',
-                onPressed: canSendReminder
-                    ? () => onSendReminder(friend)
-                    : null,
-              ),
-              // Gift 50 EXP Button
-              IconButton(
-                icon: const Text('🎁', style: TextStyle(fontSize: 18)),
-                tooltip: 'Gift 50 EXP',
-                onPressed: () => onSendExp(friend),
-              ),
-              // More Actions (Pair / Unfollow)
-              PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.more_vert_rounded,
-                  color: isDark
-                      ? const Color(0xFF77878F)
-                      : scheme.onSurfaceVariant,
-                ),
-                color: scheme.surfaceContainerHigh,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                onSelected: (action) {
-                  if (action == 'pair') onPairQuest?.call(friend);
-                  if (action == 'unfollow') onUnfollow?.call(friend);
-                  if (action == 'follow') onFollowBack?.call(friend);
-                },
-                itemBuilder: (ctx) => [
-                  PopupMenuItem(
-                    value: 'pair',
-                    child: Text(
-                      'Pair for Quest',
-                      style: TextStyle(
-                        color: isDark ? Colors.white : scheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  if (isFollowingTab)
-                    const PopupMenuItem(
-                      value: 'unfollow',
-                      child: Text(
-                        'Unfollow',
-                        style: TextStyle(color: Colors.redAccent),
-                      ),
-                    )
-                  else
-                    const PopupMenuItem(
-                      value: 'follow',
-                      child: Text(
-                        'Follow Back',
-                        style: TextStyle(color: Color(0xFF1CB0F6)),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

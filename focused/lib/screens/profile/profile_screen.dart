@@ -15,10 +15,12 @@ import '../../providers/user_stats_provider.dart';
 import '../../services/achievement_service.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../widgets/achievement_badge_art.dart';
+import '../../models/friend_user.dart';
 import '../settings/settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final FriendUser? friendUser;
+  const ProfileScreen({super.key, this.friendUser});
 
   static const _streakService = ProductivityStreakService();
   static const _achievementService = AchievementService();
@@ -37,18 +39,28 @@ class ProfileScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
 
-    final photo = account.photoUrl;
-    final streak = math.max(
-      _streakService.calculateCurrentStreak(
-        now: DateTime.now(),
-        activityDates: {
-          ...tasks.completionActivityDates(),
-          ...focus.focusActivityDates(),
-          ...habits.habitCompletionDates(),
-        },
-      ),
-      userStats.syncedStreakDays,
-    );
+    final isFriend = friendUser != null;
+    final activeDisplayName = isFriend
+        ? friendUser!.displayName
+        : (profile.displayName.isNotEmpty
+              ? profile.displayName
+              : account.displayName);
+    final activeHandle = isFriend ? friendUser!.handle : profile.handle;
+    final photo = isFriend ? friendUser!.photoUrl : account.photoUrl;
+
+    final streak = isFriend
+        ? friendUser!.streakDays
+        : math.max(
+            _streakService.calculateCurrentStreak(
+              now: DateTime.now(),
+              activityDates: {
+                ...tasks.completionActivityDates(),
+                ...focus.focusActivityDates(),
+                ...habits.habitCompletionDates(),
+              },
+            ),
+            userStats.syncedStreakDays,
+          );
 
     final localTotalFocus = focus.totalStoredFocusDuration;
     final effectiveTotalFocus = localTotalFocus > userStats.syncedFocusDuration
@@ -56,10 +68,16 @@ class ProfileScreen extends StatelessWidget {
         : userStats.syncedFocusDuration;
 
     final badges = _achievementService.buildBadges(
-      longestStreak: userStats.syncedLongestStreak,
-      longestLinkedTaskSession: focus.longestLinkedTaskSessionFocusDuration,
-      totalFocus: effectiveTotalFocus,
-      unlockedBadgeIds: userStats.unlockedBadgeIds,
+      longestStreak: isFriend
+          ? friendUser!.streakDays
+          : userStats.syncedLongestStreak,
+      longestLinkedTaskSession: isFriend
+          ? Duration.zero
+          : focus.longestLinkedTaskSessionFocusDuration,
+      totalFocus: isFriend
+          ? Duration(minutes: friendUser!.streakDays * 25)
+          : effectiveTotalFocus,
+      unlockedBadgeIds: isFriend ? const {} : userStats.unlockedBadgeIds,
     );
     final earned = badges
         .where((badge) => badge.achieved)
@@ -67,17 +85,24 @@ class ProfileScreen extends StatelessWidget {
 
     final followingCount = friendsProvider.following.length;
     final followersCount = friendsProvider.followers.length;
-    final xp = userStats.xpPoints;
+    final xp = isFriend ? friendUser!.xpPoints : userStats.xpPoints;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: isFriend
+            ? IconButton(
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: isDark ? Colors.white : scheme.onSurface,
+                ),
+                onPressed: () => Navigator.maybePop(context),
+              )
+            : null,
         title: Text(
-          profile.displayName.isNotEmpty
-              ? profile.displayName
-              : account.displayName,
+          activeDisplayName,
           style: TextStyle(
             color: isDark ? Colors.white : scheme.onSurface,
             fontWeight: FontWeight.w800,
@@ -95,21 +120,22 @@ class ProfileScreen extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Profile link copied: focused.app/${profile.handle}',
+                    'Profile link copied: focused.app/$activeHandle',
                   ),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
           ),
-          IconButton(
-            icon: Icon(
-              Icons.settings_outlined,
-              color: isDark ? Colors.white : scheme.onSurface,
+          if (!isFriend)
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: isDark ? Colors.white : scheme.onSurface,
+              ),
+              tooltip: 'Account Settings',
+              onPressed: () => SettingsScreen.editProfile(context),
             ),
-            tooltip: 'Account Settings',
-            onPressed: () => SettingsScreen.editProfile(context),
-          ),
         ],
       ),
       body: ListView(
@@ -139,7 +165,7 @@ class ProfileScreen extends StatelessWidget {
                   ? ClipOval(child: Image.network(photo, fit: BoxFit.cover))
                   : Center(
                       child: Text(
-                        _initials(profile.displayName),
+                        _initials(activeDisplayName),
                         style: const TextStyle(
                           fontSize: 42,
                           fontWeight: FontWeight.w900,
@@ -151,46 +177,64 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── @Username and Joined Year (tappable to edit) ──
+          // ── @Username and Joined Year ──
           Center(
-            child: InkWell(
-              onTap: () => _showEditUsernameDialog(
-                context,
-                profileProvider,
-                account.user?.uid,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 4,
-                  horizontal: 10,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${profile.handle.toUpperCase()} • Joined in ${profile.joinedYear}',
+            child: isFriend
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 10,
+                    ),
+                    child: Text(
+                      activeHandle.toUpperCase(),
                       style: TextStyle(
                         color: isDark
                             ? const Color(0xFF77878F)
                             : scheme.onSurfaceVariant,
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.2,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      Icons.edit_outlined,
-                      color: isDark
-                          ? const Color(0xFF77878F)
-                          : scheme.onSurfaceVariant,
-                      size: 14,
+                  )
+                : InkWell(
+                    onTap: () => _showEditUsernameDialog(
+                      context,
+                      profileProvider,
+                      account.user?.uid,
                     ),
-                  ],
-                ),
-              ),
-            ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 10,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${profile.handle.toUpperCase()} • Joined in ${profile.joinedYear}',
+                            style: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF77878F)
+                                  : scheme.onSurfaceVariant,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.edit_outlined,
+                            color: isDark
+                                ? const Color(0xFF77878F)
+                                : scheme.onSurfaceVariant,
+                            size: 14,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(height: 20),
 
@@ -271,32 +315,146 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 22),
 
-          // ── Big "+ Add Friends" Button (Theme Aligned) ──
-          SizedBox(
-            height: 52,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                backgroundColor: scheme.surfaceContainerHigh,
-                side: BorderSide(color: scheme.outlineVariant, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          // ── Action Buttons (Follow/Unfollow for Friend, Add Friends for Self) ──
+          if (isFriend) ...[
+            Builder(
+              builder: (context) {
+                final isFollowing = friendsProvider.following.any(
+                  (f) => f.uid == friendUser!.uid,
+                );
+                if (friendUser!.isSelf) {
+                  return Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '👤 Your Profile',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                if (isFollowing) {
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: scheme.surfaceContainerHigh,
+                            side: BorderSide(color: scheme.outlineVariant),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                          ),
+                          onPressed: () =>
+                              friendsProvider.unfollow(friendUser!.uid),
+                          icon: const Icon(
+                            Icons.check_rounded,
+                            color: Color(0xFF58CC02),
+                          ),
+                          label: const Text(
+                            'Following',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1CB0F6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                          ),
+                          onPressed: () async {
+                            final ok = await friendsProvider.sendReminder(
+                              friendUser!.uid,
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    ok
+                                        ? '🔔 Reminder sent to ${friendUser!.displayName}!'
+                                        : 'Daily limit of 3 reminders reached.',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.waving_hand_rounded, size: 18),
+                          label: const Text(
+                            'Nudge',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
+                return SizedBox(
+                  height: 52,
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1CB0F6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () => friendsProvider.follow(friendUser!),
+                    icon: const Icon(Icons.person_add_rounded),
+                    label: const Text(
+                      'Follow',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ] else ...[
+            SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: scheme.surfaceContainerHigh,
+                  side: BorderSide(color: scheme.outlineVariant, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-              ),
-              onPressed: () => context.push('/friends/add'),
-              icon: const Icon(
-                Icons.person_add_rounded,
-                color: Color(0xFF1CB0F6),
-              ),
-              label: const Text(
-                'Add Friends',
-                style: TextStyle(
+                onPressed: () => context.push('/friends/add'),
+                icon: const Icon(
+                  Icons.person_add_rounded,
                   color: Color(0xFF1CB0F6),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
+                ),
+                label: const Text(
+                  'Add Friends',
+                  style: TextStyle(
+                    color: Color(0xFF1CB0F6),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 32),
 
           // ── Overview Section ("সংক্ষিপ্ত বিবরণ") ──
@@ -535,32 +693,36 @@ class ProfileScreen extends StatelessWidget {
                           return;
                         }
 
-                        // Check uniqueness if changed
-                        if (newUsername != provider.profile.username) {
-                          setState(() => isChecking = true);
-                          final isAvailable = await context
-                              .read<FriendsProvider>()
-                              .checkUsernameAvailability(newUsername);
-                          setState(() => isChecking = false);
-
-                          if (!isAvailable) {
-                            setState(
-                              () => errorText =
-                                  'Username @$newUsername is already taken',
-                            );
-                            return;
-                          }
+                        final oldUsername = provider.profile.username;
+                        if (newUsername == oldUsername) {
+                          Navigator.pop(ctx);
+                          return;
                         }
 
-                        await provider.updateProfile(
-                          displayName: provider.profile.displayName,
-                          email: provider.profile.email,
-                          username: newUsername,
-                        );
+                        setState(() => isChecking = true);
 
-                        // Update in friends service if signed in
-                        if (uid != null && ctx.mounted) {
-                          ctx.read<FriendsProvider>().initForUser(uid);
+                        final friendsProv = context.read<FriendsProvider>();
+                        bool ok = true;
+                        if (uid != null) {
+                          ok = await friendsProv.updateUsername(
+                            oldUsername: oldUsername,
+                            newUsername: newUsername,
+                          );
+                        } else {
+                          await provider.updateProfile(
+                            displayName: provider.profile.displayName,
+                            email: provider.profile.email,
+                            username: newUsername,
+                          );
+                        }
+
+                        if (!ok) {
+                          setState(() {
+                            isChecking = false;
+                            errorText =
+                                'Username @$newUsername is already taken or unavailable';
+                          });
+                          return;
                         }
 
                         if (ctx.mounted) Navigator.pop(ctx);

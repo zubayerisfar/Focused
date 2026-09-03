@@ -2,9 +2,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/friend_user.dart';
+import '../models/habit.dart';
+import '../models/task.dart';
 import '../models/task_group.dart';
 import '../services/task_mate_service.dart';
 import '../services/task_notification_service.dart';
+import 'habit_provider.dart';
+import 'task_provider.dart';
 import 'user_profile_provider.dart';
 import 'user_stats_provider.dart';
 
@@ -13,6 +17,8 @@ class TaskMateProvider extends ChangeNotifier {
   final TaskNotificationService _notificationService;
   final UserStatsProvider _statsProvider;
   final UserProfileProvider _profileProvider;
+  TaskProvider? _taskProvider;
+  HabitProvider? _habitProvider;
 
   String _currentUid = '';
   List<TaskGroup> _groups = [];
@@ -24,16 +30,29 @@ class TaskMateProvider extends ChangeNotifier {
     required TaskNotificationService notificationService,
     required UserStatsProvider statsProvider,
     required UserProfileProvider profileProvider,
+    TaskProvider? taskProvider,
+    HabitProvider? habitProvider,
   }) : _service = service,
        _notificationService = notificationService,
        _statsProvider = statsProvider,
-       _profileProvider = profileProvider;
+       _profileProvider = profileProvider,
+       _taskProvider = taskProvider,
+       _habitProvider = habitProvider;
+
+  void attachProviders({
+    TaskProvider? taskProvider,
+    HabitProvider? habitProvider,
+  }) {
+    _taskProvider = taskProvider ?? _taskProvider;
+    _habitProvider = habitProvider ?? _habitProvider;
+  }
 
   List<TaskGroup> get groups => _groups;
   bool get isLoading => _isLoading;
   bool get canCreateGroup => _groups.length < 3;
   static const int maxGroups = 3;
-  static const int maxGroupFriends = 2; // Up to 2 friends + creator = 3 members
+  static const int maxGroupFriends =
+      4; // Up to 4 friends + creator = 5 members total
 
   void initForUser(String uid) {
     if (_currentUid == uid && _groupsSub != null) return;
@@ -65,7 +84,7 @@ class TaskMateProvider extends ChangeNotifier {
         );
   }
 
-  /// Creates a new Task Mate group with up to 2 friends
+  /// Creates a new Task Mate squad with up to 4 friends (5 members total)
   Future<bool> createGroup({
     required String name,
     required List<FriendUser> selectedFriends,
@@ -94,11 +113,26 @@ class TaskMateProvider extends ChangeNotifier {
     ];
 
     try {
-      await _service.createGroup(
+      final newGroupId = await _service.createGroup(
         name: name,
         creatorUid: _currentUid,
         members: allMembers,
       );
+
+      final newGroup = TaskGroup(
+        id: newGroupId,
+        name: name.trim().isEmpty ? 'Task Squad' : name.trim(),
+        createdBy: _currentUid,
+        memberUids: allMembers.map((m) => m.uid).toList(),
+        members: {for (final m in allMembers) m.uid: m},
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      if (!_groups.any((g) => g.id == newGroupId)) {
+        _groups = [newGroup, ..._groups];
+        notifyListeners();
+      }
       return true;
     } catch (e) {
       debugPrint('Could not create task group: $e');
@@ -106,10 +140,12 @@ class TaskMateProvider extends ChangeNotifier {
     }
   }
 
-  /// Assigns a shared task to the group. Returns false if a task is already active.
+  /// Assigns a shared task to the squad (up to 3 active tasks allowed).
   Future<bool> assignTask({
     required String groupId,
     required String title,
+    String? category,
+    bool isHabit = false,
   }) async {
     final myProfile = _profileProvider.profile;
     return _service.assignTask(
@@ -120,37 +156,84 @@ class TaskMateProvider extends ChangeNotifier {
           ? myProfile.displayName
           : 'Mate',
       assignerUsername: myProfile.username,
+      category: category,
+      isHabit: isHabit,
     );
   }
 
-  /// Removes the active task from the group
-  Future<void> removeTask(String groupId) async {
-    await _service.removeTask(groupId: groupId);
+  /// Removes a task from the squad (default: first task, or specific task index)
+  Future<void> removeTask(String groupId, {int taskIndex = 0}) async {
+    await _service.removeTask(groupId: groupId, taskIndex: taskIndex);
   }
 
-  /// Sets current member's chosen time and schedules a local notification
+  /// Sets current member's chosen time, schedules notifications, and auto-syncs to task list/habit
   Future<void> setMySchedule({
     required String groupId,
     required String taskTitle,
     required DateTime scheduledTime,
+    int taskIndex = 0,
+    bool isHabit = false,
   }) async {
     await _service.scheduleMemberTime(
       groupId: groupId,
       uid: _currentUid,
       scheduledTime: scheduledTime,
+      taskIndex: taskIndex,
     );
 
-    // Schedule local notification on device
+    // 1. Schedule local notification on device
     await _notificationService.scheduleTaskMateReminder(
       groupId: groupId,
       taskTitle: taskTitle,
       scheduledTime: scheduledTime,
     );
+
+    // 2. Automated Sync: Add to personal task list
+    if (_taskProvider != null) {
+      try {
+        await _taskProvider!.createTask(
+          title: taskTitle,
+          description: 'Task Squad',
+          priority: TaskPriority.important,
+          plannedDate: scheduledTime,
+          scheduledStart: scheduledTime,
+          scheduledEnd: scheduledTime.add(const Duration(minutes: 30)),
+        );
+      } catch (e) {
+        debugPrint('Auto-sync to task list error: $e');
+      }
+    }
+
+    // 3. Automated Sync: If habit category, auto-sync to habit
+    if (isHabit && _habitProvider != null) {
+      try {
+        await _habitProvider!.createHabit(
+          title: taskTitle,
+          goalType: HabitGoalType.checkIn,
+          targetValue: 1,
+          unit: 'times',
+          weekdays: {1, 2, 3, 4, 5, 6, 7},
+          iconCodePoint: 0xe156, // check_circle
+          colorValue: 0xFF58CC02,
+          reminderMinutesFromMidnight:
+              scheduledTime.hour * 60 + scheduledTime.minute,
+        );
+      } catch (e) {
+        debugPrint('Auto-sync to habit error: $e');
+      }
+    }
   }
 
   /// Marks task complete for current user and awards DOUBLE XP (+200 EXP)
-  Future<void> completeTask({required String groupId}) async {
-    await _service.completeMemberTask(groupId: groupId, uid: _currentUid);
+  Future<void> completeTask({
+    required String groupId,
+    int taskIndex = 0,
+  }) async {
+    await _service.completeMemberTask(
+      groupId: groupId,
+      uid: _currentUid,
+      taskIndex: taskIndex,
+    );
 
     // Award double reward: +200 EXP
     await _statsProvider.addXp(200);
