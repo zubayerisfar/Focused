@@ -23,6 +23,8 @@ class TaskProvider extends ChangeNotifier {
   final List<Task> _tasks = [];
   final List<TaskOccurrenceCompletion> _occurrenceCompletions = [];
 
+  void Function(Task task)? onTaskCompleted;
+
   TaskReminderScheduleResult? _lastReminderResult;
   final Random _random = Random.secure();
 
@@ -30,6 +32,7 @@ class TaskProvider extends ChangeNotifier {
     TaskStorageService? storageService,
     TaskNotificationService? notificationService,
     TaskOccurrenceCompletionStorageService? occurrenceCompletionStorage,
+    this.onTaskCompleted,
   }) : _storageService = storageService,
        _notificationService = notificationService,
        _occurrenceCompletionStorage = occurrenceCompletionStorage;
@@ -70,6 +73,8 @@ class TaskProvider extends ChangeNotifier {
     int? reminderMinutesBefore,
     int guardWarningSeconds = 30,
     DateTime? createdAt,
+    bool isSquadTask = false,
+    String? squadGroupId,
   }) async {
     final creationTime = createdAt ?? DateTime.now();
 
@@ -87,6 +92,8 @@ class TaskProvider extends ChangeNotifier {
       reminderMinutesBefore: reminderMinutesBefore,
       guardWarningSeconds: guardWarningSeconds,
       createdAt: creationTime,
+      isSquadTask: isSquadTask,
+      squadGroupId: squadGroupId,
     );
 
     await addTask(task);
@@ -280,6 +287,7 @@ class TaskProvider extends ChangeNotifier {
 
     if (updatedTask.isCompleted) {
       await _cancelReminderSafely(updatedTask.id);
+      onTaskCompleted?.call(updatedTask);
     } else {
       await _scheduleReminderSafely(updatedTask);
     }
@@ -312,6 +320,7 @@ class TaskProvider extends ChangeNotifier {
 
     if (completed) {
       await _completeOccurrence(task, day, completedAt ?? DateTime.now());
+      onTaskCompleted?.call(task);
     } else {
       await _uncompleteOccurrence(task, day);
     }

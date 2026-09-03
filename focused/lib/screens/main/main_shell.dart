@@ -79,8 +79,18 @@ class _MainShellState extends State<MainShell> {
             color: isDark
                 ? const Color(0xFF171A23)
                 : Theme.of(context).colorScheme.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
             border: Border(
-              top: BorderSide(color: Theme.of(context).dividerColor, width: 1),
+              top: BorderSide(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.6),
+                width: 1,
+              ),
             ),
           ),
           child: NavigationBarTheme(
@@ -157,20 +167,20 @@ class _MainShellState extends State<MainShell> {
                 ),
                 NavigationDestination(
                   icon: _NavIcon(
-                    assetName: 'nav_friends.svg',
-                    alternateAssetName: 'friends_icon.svg',
+                    assetName: 'group_icon.svg',
+                    fullAssetPath: 'assets/icon/group_icon.svg',
                     fallbackIcon: Icons.people_alt_outlined,
                     color: Color(0xFF9B51E0), // Purple
                     isSelected: false,
-                    size: 36,
+                    size: 32,
                   ),
                   selectedIcon: _NavIcon(
-                    assetName: 'nav_friends.svg',
-                    alternateAssetName: 'friends_icon.svg',
+                    assetName: 'group_icon.svg',
+                    fullAssetPath: 'assets/icon/group_icon.svg',
                     fallbackIcon: Icons.people_alt_rounded,
                     color: Color(0xFF9B51E0), // Purple
                     isSelected: true,
-                    size: 36,
+                    size: 32,
                   ),
                   label: 'Friends',
                 ),
@@ -203,6 +213,7 @@ class _MainShellState extends State<MainShell> {
 class _NavIcon extends StatelessWidget {
   final String assetName;
   final String? alternateAssetName;
+  final String? fullAssetPath;
   final IconData fallbackIcon;
   final Color color;
   final bool isSelected;
@@ -211,6 +222,7 @@ class _NavIcon extends StatelessWidget {
   const _NavIcon({
     required this.assetName,
     this.alternateAssetName,
+    this.fullAssetPath,
     required this.fallbackIcon,
     required this.color,
     required this.isSelected,
@@ -222,7 +234,18 @@ class _NavIcon extends StatelessWidget {
   static Future<String?> _resolveAssetPath(
     String primaryName, [
     String? alternateName,
+    String? fullPath,
   ]) async {
+    if (fullPath != null) {
+      if (_assetCache[fullPath] == true) return fullPath;
+      try {
+        await rootBundle.load(fullPath);
+        _assetCache[fullPath] = true;
+        return fullPath;
+      } catch (_) {
+        _assetCache[fullPath] = false;
+      }
+    }
     final primaryPath = 'assets/navbar_icon/$primaryName';
     if (_assetCache[primaryPath] == true) return primaryPath;
     try {
@@ -252,7 +275,7 @@ class _NavIcon extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return FutureBuilder<String?>(
-      future: _resolveAssetPath(assetName, alternateAssetName),
+      future: _resolveAssetPath(assetName, alternateAssetName, fullAssetPath),
       builder: (context, snapshot) {
         final path = snapshot.data;
         Widget iconWidget;

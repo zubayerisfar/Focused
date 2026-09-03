@@ -10,10 +10,7 @@ import '../../providers/habit_provider.dart';
 class HabitDetailsScreen extends StatelessWidget {
   final String habitId;
 
-  const HabitDetailsScreen({
-    super.key,
-    required this.habitId,
-  });
+  const HabitDetailsScreen({super.key, required this.habitId});
 
   @override
   Widget build(BuildContext context) {
@@ -29,18 +26,58 @@ class HabitDetailsScreen extends StatelessWidget {
 
     final today = DateTime.now();
     final scheduledToday = habit.occursOn(today);
-    final progress = scheduledToday ? provider.progressForDate(habit.id, today) : 0;
-    final completed = scheduledToday && provider.isCompletedForDate(habit, today);
+    final progress = scheduledToday
+        ? provider.progressForDate(habit.id, today)
+        : 0;
+    final completed =
+        scheduledToday && provider.isCompletedForDate(habit, today);
     final analytics = provider.analyticsFor(habit, asOf: today);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Habit'),
         actions: [
-          TextButton(
-            onPressed: () => context.push(
-              '/habit/edit/${Uri.encodeComponent(habit.id)}',
+          IconButton(
+            tooltip: 'Delete habit',
+            icon: Icon(
+              Icons.delete_outline_rounded,
+              color: Theme.of(context).colorScheme.error,
             ),
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Delete habit?'),
+                  content: const Text(
+                    'This also removes its local progress history.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirmed == true && context.mounted) {
+                await provider.deleteHabit(habit.id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
+              }
+            },
+          ),
+          TextButton(
+            onPressed: () =>
+                context.push('/habit/edit/${Uri.encodeComponent(habit.id)}'),
             child: const Text('Edit'),
           ),
           const SizedBox(width: 6),
@@ -54,14 +91,16 @@ class HabitDetailsScreen extends StatelessWidget {
           if (!scheduledToday)
             _InfoCard(
               title: 'Not scheduled today',
-              body: 'This routine is scheduled for ${_repeatText(habit).toLowerCase()}.',
+              body:
+                  'This routine is scheduled for ${_repeatText(habit).toLowerCase()}.',
             )
           else
             _TodayProgressCard(
               habit: habit,
               progress: progress,
               completed: completed,
-              onDecrease: habit.goalType == HabitGoalType.checkIn || progress == 0
+              onDecrease:
+                  habit.goalType == HabitGoalType.checkIn || progress == 0
                   ? null
                   : () => provider.setProgress(habit.id, today, progress - 1),
               onIncrease: habit.goalType == HabitGoalType.checkIn || completed
@@ -72,10 +111,7 @@ class HabitDetailsScreen extends StatelessWidget {
           const SizedBox(height: 24),
           _ReminderCard(habit: habit),
           const SizedBox(height: 24),
-          _AnalyticsSection(
-            habit: habit,
-            analytics: analytics,
-          ),
+          _AnalyticsSection(habit: habit, analytics: analytics),
         ],
       ),
     );
@@ -121,15 +157,15 @@ class _HabitHeader extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 HabitDetailsScreen._repeatText(habit),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -167,7 +203,9 @@ class _ReminderCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
-              enabled ? Icons.notifications_active_rounded : Icons.notifications_off_outlined,
+              enabled
+                  ? Icons.notifications_active_rounded
+                  : Icons.notifications_off_outlined,
               color: enabled ? habit.color : scheme.onSurfaceVariant,
             ),
           ),
@@ -178,9 +216,9 @@ class _ReminderCard extends StatelessWidget {
               children: [
                 Text(
                   'Reminder',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -190,16 +228,15 @@ class _ReminderCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
           TextButton(
-            onPressed: () => context.push(
-              '/habit/edit/${Uri.encodeComponent(habit.id)}',
-            ),
+            onPressed: () =>
+                context.push('/habit/edit/${Uri.encodeComponent(habit.id)}'),
             child: Text(enabled ? 'Change' : 'Add'),
           ),
         ],
@@ -212,10 +249,7 @@ class _AnalyticsSection extends StatelessWidget {
   final Habit habit;
   final HabitAnalyticsSummary analytics;
 
-  const _AnalyticsSection({
-    required this.habit,
-    required this.analytics,
-  });
+  const _AnalyticsSection({required this.habit, required this.analytics});
 
   @override
   Widget build(BuildContext context) {
@@ -224,16 +258,16 @@ class _AnalyticsSection extends StatelessWidget {
       children: [
         Text(
           'Habit analytics',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),
         Text(
           'Consistency is measured only on the days this habit is scheduled.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 14),
         LayoutBuilder(
@@ -248,14 +282,18 @@ class _AnalyticsSection extends StatelessWidget {
                   icon: Icons.local_fire_department_rounded,
                   value: '${analytics.currentStreak}',
                   label: 'Current streak',
-                  suffix: analytics.currentStreak == 1 ? 'occurrence' : 'occurrences',
+                  suffix: analytics.currentStreak == 1
+                      ? 'occurrence'
+                      : 'occurrences',
                 ),
                 _MetricCard(
                   width: width,
                   icon: Icons.emoji_events_outlined,
                   value: '${analytics.bestStreak}',
                   label: 'Best streak',
-                  suffix: analytics.bestStreak == 1 ? 'occurrence' : 'occurrences',
+                  suffix: analytics.bestStreak == 1
+                      ? 'occurrence'
+                      : 'occurrences',
                 ),
                 _MetricCard(
                   width: width,
@@ -264,7 +302,8 @@ class _AnalyticsSection extends StatelessWidget {
                       ? '—'
                       : _percent(analytics.weeklyCompletionRate),
                   label: 'This week',
-                  suffix: '${analytics.completedThisWeek}/${analytics.scheduledThisWeek} complete',
+                  suffix:
+                      '${analytics.completedThisWeek}/${analytics.scheduledThisWeek} complete',
                 ),
                 _MetricCard(
                   width: width,
@@ -273,22 +312,17 @@ class _AnalyticsSection extends StatelessWidget {
                       ? '—'
                       : _percent(analytics.monthCompletionRate),
                   label: 'This month',
-                  suffix: '${analytics.completedThisMonth}/${analytics.scheduledThisMonth} complete',
+                  suffix:
+                      '${analytics.completedThisMonth}/${analytics.scheduledThisMonth} complete',
                 ),
               ],
             );
           },
         ),
         const SizedBox(height: 20),
-        _RateCard(
-          habit: habit,
-          analytics: analytics,
-        ),
+        _RateCard(habit: habit, analytics: analytics),
         const SizedBox(height: 20),
-        _HistoryGrid(
-          habit: habit,
-          days: analytics.historyLast30Days,
-        ),
+        _HistoryGrid(habit: habit, days: analytics.historyLast30Days),
       ],
     );
   }
@@ -330,22 +364,19 @@ class _MetricCard extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 3),
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 3),
             Text(
               suffix,
               maxLines: 2,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -358,10 +389,7 @@ class _RateCard extends StatelessWidget {
   final Habit habit;
   final HabitAnalyticsSummary analytics;
 
-  const _RateCard({
-    required this.habit,
-    required this.analytics,
-  });
+  const _RateCard({required this.habit, required this.analytics});
 
   @override
   Widget build(BuildContext context) {
@@ -382,8 +410,8 @@ class _RateCard extends StatelessWidget {
                 child: Text(
                   'Consistency',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               Text(
@@ -434,10 +462,7 @@ class _HistoryGrid extends StatelessWidget {
   final Habit habit;
   final List<HabitHistoryDay> days;
 
-  const _HistoryGrid({
-    required this.habit,
-    required this.days,
-  });
+  const _HistoryGrid({required this.habit, required this.days});
 
   @override
   Widget build(BuildContext context) {
@@ -454,16 +479,16 @@ class _HistoryGrid extends StatelessWidget {
         children: [
           Text(
             'Last 30 days',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
             'Filled = completed • ring = scheduled • dash = rest day',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 14),
           GridView.builder(
@@ -478,7 +503,8 @@ class _HistoryGrid extends StatelessWidget {
             itemBuilder: (context, index) {
               final day = days[index];
               return Tooltip(
-                message: '${DateFormat('MMM d').format(day.date)} • '
+                message:
+                    '${DateFormat('MMM d').format(day.date)} • '
                     '${day.scheduled ? (day.completed ? 'Completed' : 'Not completed') : 'Rest day'}',
                 child: Container(
                   alignment: Alignment.center,
@@ -486,18 +512,23 @@ class _HistoryGrid extends StatelessWidget {
                     color: day.completed
                         ? habit.color
                         : day.scheduled
-                            ? habit.color.withOpacity(0.10)
-                            : scheme.surfaceContainerHighest.withOpacity(0.55),
+                        ? habit.color.withOpacity(0.10)
+                        : scheme.surfaceContainerHighest.withOpacity(0.55),
                     shape: BoxShape.circle,
                     border: day.scheduled && !day.completed
                         ? Border.all(color: habit.color.withOpacity(0.55))
                         : null,
                   ),
                   child: day.completed
-                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        )
                       : Text(
                           day.scheduled ? '${day.date.day}' : '–',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: day.scheduled
                                     ? habit.color
@@ -545,9 +576,9 @@ class _TodayProgressCard extends StatelessWidget {
         children: [
           Text(
             'Today',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
@@ -555,8 +586,8 @@ class _TodayProgressCard extends StatelessWidget {
                 ? (completed ? 'Completed' : 'Not completed')
                 : '$progress of ${habit.targetValue} ${habit.unit}',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           if (habit.goalType != HabitGoalType.checkIn) ...[
             const SizedBox(height: 12),
@@ -620,8 +651,8 @@ class _InfoCard extends StatelessWidget {
           Text(
             body,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,8 @@ import '../../models/task.dart';
 import '../../models/task_recurrence.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/user_stats_provider.dart';
+import '../../services/ad_service.dart';
 import '../../theme/app_theme.dart';
 
 class TaskDetailsScreen extends StatelessWidget {
@@ -57,17 +60,12 @@ class TaskDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Task'),
         actions: [
-          IconButton(
-            tooltip: 'Delete task',
-            icon: const Icon(Icons.delete_outline_rounded),
-            onPressed: () => _confirmDelete(context, task),
-          ),
           TextButton(
             onPressed: () =>
                 context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
             child: const Text('Edit'),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
         ],
       ),
       body: ListView(
@@ -98,7 +96,11 @@ class TaskDetailsScreen extends StatelessWidget {
                 child: _MetricCard(
                   value: _formatDuration(focused),
                   label: 'Focused',
-                  icon: Icons.center_focus_strong_rounded,
+                  customIcon: SvgPicture.asset(
+                    'assets/icon/focus_icon.svg',
+                    width: 24,
+                    height: 24,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -117,17 +119,62 @@ class TaskDetailsScreen extends StatelessWidget {
               onPressed: () => context.push(
                 '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(day)}',
               ),
-              icon: const Icon(Icons.play_arrow_rounded),
+              icon: SvgPicture.asset(
+                'assets/icon/focus_icon.svg',
+                width: 20,
+                height: 20,
+              ),
               label: const Text('Start focus'),
             ),
           if (!completed) const SizedBox(height: 10),
           OutlinedButton.icon(
-            onPressed: () => tasks.setCompletedForDate(
-              task.id,
-              day,
-              !completed,
-              completedAt: completed ? null : DateTime.now(),
-            ),
+            onPressed: () async {
+              final newCompleted = !completed;
+              await tasks.setCompletedForDate(
+                task.id,
+                day,
+                newCompleted,
+                completedAt: newCompleted ? DateTime.now() : null,
+              );
+
+              if (newCompleted && context.mounted) {
+                final stats = context.read<UserStatsProvider>();
+                await stats.addXp(50); // Standard task reward
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: const Color(0xFF58CC02),
+                      duration: const Duration(seconds: 4),
+                      content: const Row(
+                        children: [Text('🎉 +50 EXP earned!')],
+                      ),
+                      action: SnackBarAction(
+                        textColor: const Color(0xFFFFD700),
+                        label: '📺 DOUBLE EXP (+100)',
+                        onPressed: () {
+                          AdService.instance.showRewardedAd(
+                            onUserEarnedReward: (reward) async {
+                              await stats.addXp(50); // Bonus +50 EXP
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    backgroundColor: Color(0xFF10B981),
+                                    content: Text(
+                                      '⚡ Reward Doubled: +100 EXP total!',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
             icon: Icon(completed ? Icons.undo_rounded : Icons.check_rounded),
             label: Text(completed ? 'Mark incomplete' : 'Mark complete'),
           ),
@@ -204,10 +251,14 @@ class _TaskHeader extends StatelessWidget {
             color: color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(
-            completed ? Icons.check_rounded : Icons.task_alt_rounded,
-            color: color,
-            size: 30,
+          child: Center(
+            child: completed
+                ? Icon(Icons.check_rounded, color: color, size: 30)
+                : SvgPicture.asset(
+                    'assets/icon/task_icon.svg',
+                    width: 32,
+                    height: 32,
+                  ),
           ),
         ),
         const SizedBox(width: 14),
@@ -367,12 +418,14 @@ class _DetailRow {
 class _MetricCard extends StatelessWidget {
   final String value;
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? customIcon;
 
   const _MetricCard({
     required this.value,
     required this.label,
-    required this.icon,
+    this.icon,
+    this.customIcon,
   });
 
   @override
@@ -387,7 +440,8 @@ class _MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary),
+          customIcon ??
+              Icon(icon!, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 12),
           Text(
             value,

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -63,9 +64,11 @@ class ProfileScreen extends StatelessWidget {
           );
 
     final localTotalFocus = focus.totalStoredFocusDuration;
-    final effectiveTotalFocus = localTotalFocus > userStats.syncedFocusDuration
-        ? localTotalFocus
-        : userStats.syncedFocusDuration;
+    final effectiveTotalFocus = isFriend
+        ? Duration(minutes: friendUser!.totalFocusMinutes)
+        : (localTotalFocus > userStats.syncedFocusDuration
+              ? localTotalFocus
+              : userStats.syncedFocusDuration);
 
     final badges = _achievementService.buildBadges(
       longestStreak: isFriend
@@ -74,9 +77,7 @@ class ProfileScreen extends StatelessWidget {
       longestLinkedTaskSession: isFriend
           ? Duration.zero
           : focus.longestLinkedTaskSessionFocusDuration,
-      totalFocus: isFriend
-          ? Duration(minutes: friendUser!.streakDays * 25)
-          : effectiveTotalFocus,
+      totalFocus: effectiveTotalFocus,
       unlockedBadgeIds: isFriend ? const {} : userStats.unlockedBadgeIds,
     );
     final earned = badges
@@ -161,8 +162,23 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: photo != null
-                  ? ClipOval(child: Image.network(photo, fit: BoxFit.cover))
+              child: photo != null && photo.trim().isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        photo,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Text(
+                            _initials(activeDisplayName),
+                            style: const TextStyle(
+                              fontSize: 42,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
                   : Center(
                       child: Text(
                         _initials(activeDisplayName),
@@ -485,10 +501,14 @@ class ProfileScreen extends StatelessWidget {
                 isDark: isDark,
               ),
               _StatGridCard(
-                iconWidget: const Icon(
-                  Icons.center_focus_strong_rounded,
-                  size: 26,
-                  color: Color(0xFF1CB0F6),
+                iconWidget: SvgPicture.asset(
+                  'assets/icon/focus_icon.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF1CB0F6),
+                    BlendMode.srcIn,
+                  ),
                 ),
                 value: _formatDuration(effectiveTotalFocus),
                 label: 'Total Focus',

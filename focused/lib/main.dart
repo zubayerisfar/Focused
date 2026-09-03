@@ -242,7 +242,6 @@ Future<void> main() async {
     streakGoalStorage: streakGoalStorageService,
     userStatsStorage: userStatsStorageService,
     usageRecordStorage: usageRecordStorageService,
-    themeProvider: themeProvider,
   );
 
   final cloudSyncProvider = CloudSyncProvider(
@@ -294,6 +293,12 @@ Future<void> main() async {
     taskProvider: taskProvider,
     habitProvider: habitProvider,
   );
+
+  taskProvider.onTaskCompleted = (completedTask) {
+    unawaited(
+      taskMateProvider.syncTaskCompletionFromPersonalList(completedTask),
+    );
+  };
   void syncUserProviders() {
     if (accountProvider.isSignedIn && accountProvider.user != null) {
       final uid = accountProvider.user!.uid;

@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               _isRegister
                   ? 'Create an account with Google or email. Tasks and habits can '
-                      'sync across your devices; raw usage history stays on this device.'
+                        'sync across your devices; raw usage history stays on this device.'
                   : 'Sign in with Google or your Focused email/password.',
               style: TextStyle(
                 color: scheme.onSurfaceVariant,
@@ -167,8 +167,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     textInputAction: _isRegister
                         ? TextInputAction.next
                         : TextInputAction.done,
-                    onFieldSubmitted:
-                        _isRegister ? null : (_) => _submitEmail(),
+                    onFieldSubmitted: _isRegister
+                        ? null
+                        : (_) => _submitEmail(),
                     style: TextStyle(color: scheme.onSurface),
                     cursorColor: scheme.primary,
                     decoration: _authInputDecoration(
@@ -382,9 +383,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isRegister && !account.emailVerified) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Account created. A verification email was sent.',
-            ),
+            content: Text('Account created. A verification email was sent.'),
           ),
         );
       }
@@ -398,9 +397,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter your email address first.'),
-        ),
+        const SnackBar(content: Text('Enter your email address first.')),
       );
       return;
     }
@@ -411,9 +408,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password reset email sent.'),
-        ),
+        const SnackBar(content: Text('Password reset email sent.')),
       );
     } catch (_) {}
   }
@@ -422,9 +417,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final account = context.read<AccountProvider>();
 
     return context.read<UserProfileProvider>().updateProfile(
-          displayName: account.displayName,
-          email: user.email ?? '',
-        );
+      displayName: account.displayName,
+      email: user.email ?? '',
+    );
   }
 }
 
@@ -442,13 +437,12 @@ class _Brand extends StatelessWidget {
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: scheme.primaryContainer,
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: scheme.outlineVariant),
           ),
-          child: Icon(
-            Icons.center_focus_strong_rounded,
-            color: scheme.primary,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.asset('assets/icon/app_icon.png', fit: BoxFit.cover),
           ),
         ),
         const SizedBox(width: 12),
@@ -482,10 +476,7 @@ class _Brand extends StatelessWidget {
 }
 
 class _ModeSelector extends StatelessWidget {
-  const _ModeSelector({
-    required this.mode,
-    required this.onChanged,
-  });
+  const _ModeSelector({required this.mode, required this.onChanged});
 
   final _AuthMode mode;
   final ValueChanged<_AuthMode> onChanged;

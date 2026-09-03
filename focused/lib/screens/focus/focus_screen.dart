@@ -33,27 +33,17 @@ class FocusScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _FocusMetric(
-                  icon: SvgPicture.asset(
-                    'assets/icon/focus_icon.svg',
-                    width: 20,
-                    height: 20,
-                  ),
                   value: _formatDuration(focusedToday),
                   label: 'Today',
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _FocusMetric(
-                  icon: const FaIcon(FontAwesomeIcons.layerGroup, size: 18),
-                  value: '$sessionsToday',
-                  label: 'Sessions',
-                ),
+                child: _FocusMetric(value: '$sessionsToday', label: 'Sessions'),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _FocusMetric(
-                  icon: const FaIcon(FontAwesomeIcons.bolt, size: 18),
                   value: _formatDuration(longest),
                   label: 'Longest',
                 ),
@@ -226,13 +216,8 @@ class _FocusStartCard extends StatelessWidget {
 }
 
 class _FocusMetric extends StatelessWidget {
-  const _FocusMetric({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
+  const _FocusMetric({required this.value, required this.label});
 
-  final Widget icon;
   final String value;
   final String label;
 
@@ -240,7 +225,7 @@ class _FocusMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(13, 13, 10, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(19),
@@ -249,26 +234,21 @@ class _FocusMetric extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconTheme(
-            data: IconThemeData(color: scheme.primary),
-            child: icon,
-          ),
-          const SizedBox(height: 10),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 3),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

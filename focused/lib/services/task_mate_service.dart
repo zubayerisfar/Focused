@@ -75,8 +75,8 @@ class TaskMateService {
 
         final data = snap.data();
         final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
-        if (rawActiveTasks.length >= 3) {
-          // Already has 3 active tasks!
+        if (rawActiveTasks.length >= 5) {
+          // Already has 5 active tasks!
           return false;
         }
 

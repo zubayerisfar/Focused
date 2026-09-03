@@ -7,10 +7,7 @@ import '../../providers/habit_provider.dart';
 class HabitEditScreen extends StatefulWidget {
   final String? habitId;
 
-  const HabitEditScreen({
-    super.key,
-    this.habitId,
-  });
+  const HabitEditScreen({super.key, this.habitId});
 
   bool get isEditing => habitId != null;
 
@@ -76,6 +73,18 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Edit habit' : 'New habit'),
+        actions: [
+          if (widget.isEditing)
+            IconButton(
+              tooltip: 'Delete habit',
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: _saving ? null : _delete,
+            ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -105,10 +114,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
                   value: HabitGoalType.checkIn,
                   label: Text('Check-in'),
                 ),
-                ButtonSegment(
-                  value: HabitGoalType.count,
-                  label: Text('Count'),
-                ),
+                ButtonSegment(value: HabitGoalType.count, label: Text('Count')),
                 ButtonSegment(
                   value: HabitGoalType.duration,
                   label: Text('Duration'),
@@ -242,11 +248,13 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
               onPressed: _saving ? null : _save,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(_saving
-                    ? 'Saving…'
-                    : widget.isEditing
-                        ? 'Save changes'
-                        : 'Create habit'),
+                child: Text(
+                  _saving
+                      ? 'Saving…'
+                      : widget.isEditing
+                      ? 'Save changes'
+                      : 'Create habit',
+                ),
               ),
             ),
             if (widget.isEditing) ...[
@@ -266,9 +274,9 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
   }
 
   TimeOfDay get _reminderTime => TimeOfDay(
-        hour: _reminderMinutesFromMidnight ~/ 60,
-        minute: _reminderMinutesFromMidnight % 60,
-      );
+    hour: _reminderMinutesFromMidnight ~/ 60,
+    minute: _reminderMinutesFromMidnight % 60,
+  );
 
   Future<void> _pickReminderTime() async {
     final selected = await showTimePicker(
@@ -305,8 +313,9 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
           weekdays: _weekdays,
           iconCodePoint: _iconCodePoint,
           colorValue: _colorValue,
-          reminderMinutesFromMidnight:
-              _reminderEnabled ? _reminderMinutesFromMidnight : null,
+          reminderMinutesFromMidnight: _reminderEnabled
+              ? _reminderMinutesFromMidnight
+              : null,
         );
       } else {
         final existing = provider.getHabitById(widget.habitId!);
@@ -322,8 +331,9 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
             weekdays: Set<int>.from(_weekdays),
             iconCodePoint: _iconCodePoint,
             colorValue: _colorValue,
-            reminderMinutesFromMidnight:
-                _reminderEnabled ? _reminderMinutesFromMidnight : null,
+            reminderMinutesFromMidnight: _reminderEnabled
+                ? _reminderMinutesFromMidnight
+                : null,
           ),
         );
       }
@@ -333,16 +343,16 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
       if (_reminderEnabled &&
           reminderResult != null &&
           !reminderResult.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(reminderResult.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(reminderResult.message)));
       }
       Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not save habit.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not save habit.')));
       setState(() => _saving = false);
     }
   }
@@ -377,9 +387,9 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
       Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not delete habit.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not delete habit.')));
       setState(() => _saving = false);
     }
   }
@@ -393,9 +403,9 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }
@@ -516,7 +526,11 @@ class _StylePicker extends StatelessWidget {
                       : null,
                 ),
                 child: active
-                    ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      )
                     : null,
               ),
             );

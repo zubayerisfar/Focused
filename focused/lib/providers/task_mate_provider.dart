@@ -6,6 +6,7 @@ import '../models/friend_user.dart';
 import '../models/habit.dart';
 import '../models/task.dart';
 import '../models/task_group.dart';
+import '../models/task_recurrence.dart';
 import '../services/task_mate_service.dart';
 import '../services/task_notification_service.dart';
 import 'habit_provider.dart';
@@ -51,6 +52,7 @@ class TaskMateProvider extends ChangeNotifier {
   List<TaskGroup> get groups => _groups;
   bool get isLoading => _isLoading;
   bool get canCreateGroup => _groups.length < 3;
+  String get currentUid => _currentUid;
   static const int maxGroups = 3;
   static const int maxGroupFriends =
       4; // Up to 4 friends + creator = 5 members total
@@ -180,6 +182,8 @@ class TaskMateProvider extends ChangeNotifier {
     required String groupId,
     required String taskTitle,
     required DateTime scheduledTime,
+    DateTime? scheduledEnd,
+    int? reminderMinutesBefore,
     int taskIndex = 0,
     bool isHabit = false,
   }) async {
@@ -200,13 +204,19 @@ class TaskMateProvider extends ChangeNotifier {
     // 2. Automated Sync: Add to personal task list
     if (_taskProvider != null) {
       try {
+        final end =
+            scheduledEnd ?? scheduledTime.add(const Duration(minutes: 30));
         await _taskProvider!.createTask(
           title: taskTitle,
-          description: 'Task Squad',
+          description: '👥 Squad Quest',
           priority: TaskPriority.important,
           plannedDate: scheduledTime,
           scheduledStart: scheduledTime,
-          scheduledEnd: scheduledTime.add(const Duration(minutes: 30)),
+          scheduledEnd: end,
+          reminderMinutesBefore: reminderMinutesBefore,
+          recurrence: isHabit ? TaskRecurrence.daily : TaskRecurrence.none,
+          isSquadTask: true,
+          squadGroupId: groupId,
         );
       } catch (e) {
         debugPrint('Auto-sync to task list error: $e');
@@ -223,7 +233,7 @@ class TaskMateProvider extends ChangeNotifier {
           unit: 'times',
           weekdays: {1, 2, 3, 4, 5, 6, 7},
           iconCodePoint: 0xe156, // check_circle
-          colorValue: 0xFF58CC02,
+          colorValue: 0xFF9B51E0,
           reminderMinutesFromMidnight:
               scheduledTime.hour * 60 + scheduledTime.minute,
         );
@@ -233,10 +243,11 @@ class TaskMateProvider extends ChangeNotifier {
     }
   }
 
-  /// Marks task complete for current user and awards DOUBLE XP (+200 EXP)
+  /// Marks task complete for current user, synchronizes with personal task list, and awards XP
   Future<void> completeTask({
     required String groupId,
     int taskIndex = 0,
+    int xpAward = 200,
   }) async {
     await _service.completeMemberTask(
       groupId: groupId,
@@ -244,8 +255,72 @@ class TaskMateProvider extends ChangeNotifier {
       taskIndex: taskIndex,
     );
 
-    // Award double reward: +200 EXP locally and notify listeners
-    await _statsProvider.addXp(200);
+    // Synchronize completion with personal task list
+    if (_taskProvider != null) {
+      try {
+        final now = DateTime.now();
+        // Find squad task matching this group or task index
+        final matchingTasks = _taskProvider!.tasks.where((t) {
+          return (t.isSquadTask && t.squadGroupId == groupId) ||
+              t.description.contains('Squad');
+        }).toList();
+
+        for (final task in matchingTasks) {
+          if (task.recurrence == TaskRecurrence.none) {
+            if (!task.isCompleted) {
+              await _taskProvider!.setCompleted(task.id, true, time: now);
+            }
+          } else {
+            if (!_taskProvider!.isTaskCompletedForDate(task, now)) {
+              await _taskProvider!.setCompletedForDate(
+                task.id,
+                now,
+                true,
+                completedAt: now,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          'Synchronizing squad task completion to local tasks error: $e',
+        );
+      }
+    }
+
+    // Synchronize completion with habits if matching
+    if (_habitProvider != null) {
+      try {
+        final now = DateTime.now();
+        for (final habit in _habitProvider!.habits) {
+          if (!_habitProvider!.isCompletedForDate(habit, now)) {
+            // If habit name matches squad task, toggle complete
+            final group = _groups.firstWhere(
+              (g) => g.id == groupId,
+              orElse: () => TaskGroup(
+                id: '',
+                name: '',
+                createdBy: '',
+                memberUids: [],
+                members: {},
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+            if (taskIndex < group.activeTasks.length &&
+                group.activeTasks[taskIndex].title.toLowerCase() ==
+                    habit.title.toLowerCase()) {
+              await _habitProvider!.toggleCompleted(habit.id, now);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Synchronizing squad habit completion error: $e');
+      }
+    }
+
+    // Award reward XP locally and notify listeners
+    await _statsProvider.addXp(xpAward);
 
     // Directly persist to Firestore root user document
     if (_currentUid.isNotEmpty) {
@@ -254,10 +329,51 @@ class TaskMateProvider extends ChangeNotifier {
             .collection('users')
             .doc(_currentUid)
             .set({
-              'xpPoints': FieldValue.increment(200),
+              'xpPoints': FieldValue.increment(xpAward),
             }, SetOptions(merge: true));
       } catch (e) {
         debugPrint('Direct Firestore XP increment error: $e');
+      }
+    }
+  }
+
+  /// Awards additional bonus XP (e.g. from watching a rewarded video ad)
+  Future<void> awardBonusXp(int bonusXp) async {
+    await _statsProvider.addXp(bonusXp);
+    if (_currentUid.isNotEmpty) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_currentUid)
+            .set({
+              'xpPoints': FieldValue.increment(bonusXp),
+            }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Direct Firestore bonus XP increment error: $e');
+      }
+    }
+  }
+
+  /// Automatically called when a task is marked complete in personal list / planner
+  Future<void> syncTaskCompletionFromPersonalList(Task task) async {
+    if (_currentUid.isEmpty) return;
+
+    for (final group in _groups) {
+      for (int i = 0; i < group.activeTasks.length; i++) {
+        final activeTask = group.activeTasks[i];
+        final isMatch =
+            (task.isSquadTask && task.squadGroupId == group.id) ||
+            task.title.trim().toLowerCase() ==
+                activeTask.title.trim().toLowerCase();
+
+        if (isMatch) {
+          final mySchedule = activeTask.memberSchedules[_currentUid];
+          final isAlreadyDone = mySchedule?.completed == true;
+
+          if (!isAlreadyDone) {
+            await completeTask(groupId: group.id, taskIndex: i);
+          }
+        }
       }
     }
   }

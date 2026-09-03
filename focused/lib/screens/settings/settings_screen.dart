@@ -83,31 +83,46 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 18),
                   Row(
                     children: [
-                      Icon(
-                        Icons.schedule_rounded,
-                        color: scheme.primary,
-                        size: 24,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.notifications_active_rounded,
+                          color: scheme.primary,
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        'Daily App Summaries',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+                      Expanded(
+                        child: Text(
+                          'Daily App Summaries',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                              ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Text(
-                    'Get rich snapshots of your app usage and longest continuous app sessions delivered twice a day:',
+                    'Get two quick notifications each day showing how much time you spent on your phone.',
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
+                      fontSize: 13.5,
                       height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 14),
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: scheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(16),
@@ -117,20 +132,35 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Text('📊', style: TextStyle(fontSize: 18)),
-                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFFFB300,
+                                ).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.wb_sunny_rounded,
+                                color: Color(0xFFFFB300),
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    '5:00 PM • Afternoon Snapshot',
+                                    '5:00 PM — Afternoon check',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
+                                      fontSize: 14,
                                     ),
                                   ),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    'Review what took your attention during work hours',
+                                    'Screen time so far today and your most-used app.',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: scheme.onSurfaceVariant,
@@ -141,23 +171,38 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const Divider(height: 20),
+                        const Divider(height: 18),
                         Row(
                           children: [
-                            const Text('🌙', style: TextStyle(fontSize: 18)),
-                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF6366F1,
+                                ).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.nightlight_round,
+                                color: Color(0xFF6366F1),
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    '11:00 PM • Daily Wrap-up',
+                                    '11:00 PM — Night wrap-up',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
+                                      fontSize: 14,
                                     ),
                                   ),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    'Full day screen time & top apps breakdown',
+                                    'Total screen time for the whole day before bedtime.',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: scheme.onSurfaceVariant,
@@ -171,17 +216,26 @@ class SettingsScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Material(
                     color: Colors.transparent,
                     child: SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
                       title: const Text(
-                        'Enable scheduled notifications',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        'Send daily notifications',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
                       ),
-                      subtitle: const Text(
-                        'Fires daily at 5:00 PM and 11:00 PM',
+                      subtitle: Text(
+                        enabled
+                            ? 'You will receive updates at 5:00 PM and 11:00 PM'
+                            : 'Notifications are turned off',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                       value: enabled,
                       onChanged: (val) async {

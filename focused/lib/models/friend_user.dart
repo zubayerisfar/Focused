@@ -5,6 +5,7 @@ class FriendUser {
   final String? photoUrl;
   final int streakDays;
   final int xpPoints;
+  final int totalFocusMinutes;
   final bool isFollowing;
   final bool isSelf;
 
@@ -15,14 +16,22 @@ class FriendUser {
     this.photoUrl,
     this.streakDays = 0,
     this.xpPoints = 0,
+    this.totalFocusMinutes = 0,
     this.isFollowing = false,
     this.isSelf = false,
   });
 
   String get handle {
     final clean = username.trim();
-    if (clean.isNotEmpty) {
+    if (clean.isNotEmpty && clean != 'user') {
       return clean.startsWith('@') ? clean : '@$clean';
+    }
+    final nameClean = displayName.trim().toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      '',
+    );
+    if (nameClean.isNotEmpty && nameClean != 'focuseduser') {
+      return '@$nameClean';
     }
     return '@user';
   }
@@ -34,6 +43,7 @@ class FriendUser {
     String? photoUrl,
     int? streakDays,
     int? xpPoints,
+    int? totalFocusMinutes,
     bool? isFollowing,
     bool? isSelf,
   }) {
@@ -44,6 +54,7 @@ class FriendUser {
       photoUrl: photoUrl ?? this.photoUrl,
       streakDays: streakDays ?? this.streakDays,
       xpPoints: xpPoints ?? this.xpPoints,
+      totalFocusMinutes: totalFocusMinutes ?? this.totalFocusMinutes,
       isFollowing: isFollowing ?? this.isFollowing,
       isSelf: isSelf ?? this.isSelf,
     );
@@ -57,6 +68,7 @@ class FriendUser {
       'photoUrl': photoUrl,
       'streakDays': streakDays,
       'xpPoints': xpPoints,
+      'totalFocusMinutes': totalFocusMinutes,
       'isFollowing': isFollowing,
     };
   }
@@ -67,13 +79,17 @@ class FriendUser {
     bool isFollowing = false,
     bool isSelf = false,
   }) {
+    final rawUsername = (map['username'] ?? map['handle'] ?? '')
+        .toString()
+        .trim();
     return FriendUser(
       uid: (docId ?? map['uid'] ?? '').toString(),
       displayName: (map['displayName'] ?? 'Focused User').toString(),
-      username: (map['username'] ?? '').toString(),
+      username: rawUsername,
       photoUrl: map['photoUrl']?.toString(),
       streakDays: (map['streakDays'] as num?)?.toInt() ?? 0,
       xpPoints: (map['xpPoints'] as num?)?.toInt() ?? 0,
+      totalFocusMinutes: (map['totalFocusMinutes'] as num?)?.toInt() ?? 0,
       isFollowing: isFollowing || map['isFollowing'] == true,
       isSelf: isSelf,
     );

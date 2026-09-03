@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -29,8 +30,7 @@ class AppUsageAppDetailsScreen extends StatefulWidget {
       _AppUsageAppDetailsScreenState();
 }
 
-class _AppUsageAppDetailsScreenState
-    extends State<AppUsageAppDetailsScreen> {
+class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
   int _days = 7;
   late DateTime _endDay;
   late Future<List<AppUsageHistoryPoint>> _historyFuture;
@@ -44,25 +44,23 @@ class _AppUsageAppDetailsScreenState
     _endDay = _startOfDay(DateTime.now());
     _historyFuture = _load();
     _behaviorFuture = _loadBehavior();
-    unawaited(
-      context.read<UsageProvider>().ensureAppMetadata(widget.appId),
-    );
+    unawaited(context.read<UsageProvider>().ensureAppMetadata(widget.appId));
   }
 
   Future<List<AppUsageHistoryPoint>> _load() {
     return context.read<UsageProvider>().loadAppUsageHistory(
-          widget.appId,
-          days: _days,
-          endDay: _endDay,
-        );
+      widget.appId,
+      days: _days,
+      endDay: _endDay,
+    );
   }
 
   void _reload() {
     unawaited(
       context.read<UsageProvider>().ensureAppMetadata(
-            widget.appId,
-            force: true,
-          ),
+        widget.appId,
+        force: true,
+      ),
     );
     setState(() {
       _historyFuture = _load();
@@ -78,11 +76,7 @@ class _AppUsageAppDetailsScreenState
 
     final notificationAccess = await _notificationAccessService.hasAccess();
     final results = await Future.wait<dynamic>([
-      provider.loadAppOpenEvents(
-        start: today,
-        end: now,
-        appId: widget.appId,
-      ),
+      provider.loadAppOpenEvents(start: today, end: now, appId: widget.appId),
       provider.loadAppOpenEvents(
         start: yesterday,
         end: today,
@@ -108,10 +102,10 @@ class _AppUsageAppDetailsScreenState
 
     final todayOpens = List<AppOpenEvent>.from(results[0] as List);
     final yesterdayOpens = List<AppOpenEvent>.from(results[1] as List);
-    final todayNotifications =
-        List<NotificationEvent>.from(results[2] as List);
-    final yesterdayNotifications =
-        List<NotificationEvent>.from(results[3] as List);
+    final todayNotifications = List<NotificationEvent>.from(results[2] as List);
+    final yesterdayNotifications = List<NotificationEvent>.from(
+      results[3] as List,
+    );
 
     final openHours = List<int>.filled(24, 0);
     for (final event in todayOpens) {
@@ -157,11 +151,7 @@ class _AppUsageAppDetailsScreenState
 
   void _goEarlier() {
     setState(() {
-      _endDay = DateTime(
-        _endDay.year,
-        _endDay.month,
-        _endDay.day - _days,
-      );
+      _endDay = DateTime(_endDay.year, _endDay.month, _endDay.day - _days);
       _historyFuture = _load();
     });
   }
@@ -219,8 +209,7 @@ class _AppUsageAppDetailsScreenState
                 appName: appName,
                 iconBytes: metadata?.iconBytes,
                 category: category,
-                latestUsage:
-                    latest?.measured == true ? latest!.usage : null,
+                latestUsage: latest?.measured == true ? latest!.usage : null,
                 change: provider.getAppChangePercentById(widget.appId),
               ),
               const SizedBox(height: 20),
@@ -283,8 +272,7 @@ class _AppUsageAppDetailsScreenState
     );
   }
 
-  bool get _isCurrentWindow =>
-      !_endDay.isBefore(_startOfDay(DateTime.now()));
+  bool get _isCurrentWindow => !_endDay.isBefore(_startOfDay(DateTime.now()));
 
   bool _canGoEarlier(UsageProvider provider) {
     final start = provider.usageHistoryStartDay;
@@ -297,7 +285,6 @@ class _AppUsageAppDetailsScreenState
     return currentStart.isAfter(start);
   }
 }
-
 
 class _AppBehaviorData {
   const _AppBehaviorData({
@@ -338,9 +325,9 @@ class _BehaviorSection extends StatelessWidget {
         Text(
           'Today’s behaviour',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 12),
         _HourlyMetricCard(
@@ -360,10 +347,7 @@ class _BehaviorSection extends StatelessWidget {
         _MetricCountCard(
           title: 'Times opened',
           value: data.opensToday,
-          comparison: _countComparison(
-            data.opensToday,
-            data.opensYesterday,
-          ),
+          comparison: _countComparison(data.opensToday, data.opensYesterday),
           hourlyValues: data.hourlyOpens,
         ),
         const SizedBox(height: 12),
@@ -379,7 +363,8 @@ class _BehaviorSection extends StatelessWidget {
           )
         else
           _MessageCard(
-            text: 'Enable Notification Access in Settings to count notifications from this app. Focused does not store notification content.',
+            text:
+                'Enable Notification Access in Settings to count notifications from this app. Focused does not store notification content.',
           ),
         const SizedBox(height: 12),
         _FocusImpactCard(
@@ -417,7 +402,10 @@ class _HourlyMetricCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
@@ -431,7 +419,10 @@ class _HourlyMetricCard extends StatelessWidget {
               ),
               Text(
                 totalLabel,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -472,7 +463,10 @@ class _MetricCountCard extends StatelessWidget {
               ),
               Text(
                 '$value',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -486,7 +480,9 @@ class _MetricCountCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _HourlyBars(
-            values: hourlyValues.map((value) => value.toDouble()).toList(growable: false),
+            values: hourlyValues
+                .map((value) => value.toDouble())
+                .toList(growable: false),
           ),
         ],
       ),
@@ -602,7 +598,9 @@ class _HourlyBars extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: List.generate(24, (index) {
-              final fraction = maxValue <= 0 ? 0.0 : normalized[index] / maxValue;
+              final fraction = maxValue <= 0
+                  ? 0.0
+                  : normalized[index] / maxValue;
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 1),
@@ -724,10 +722,7 @@ class _CategoryCard extends StatelessWidget {
   final AppCategory selected;
   final ValueChanged<AppCategory> onChanged;
 
-  const _CategoryCard({
-    required this.selected,
-    required this.onChanged,
-  });
+  const _CategoryCard({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -744,9 +739,9 @@ class _CategoryCard extends StatelessWidget {
           Text(
             'Mark app category',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w700,
-                ),
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 5),
           Text(
@@ -785,8 +780,9 @@ class _CategoryCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                backgroundColor:
-                    Theme.of(context).colorScheme.surfaceContainerHigh,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHigh,
                 selectedColor: color.withOpacity(0.14),
                 side: BorderSide(
                   color: selectedNow
@@ -821,10 +817,13 @@ class _HistoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final requestedStart =
-        DateTime(endDay.year, endDay.month, endDay.day - (days - 1));
-    final start = availableStartDay != null &&
-            availableStartDay!.isAfter(requestedStart)
+    final requestedStart = DateTime(
+      endDay.year,
+      endDay.month,
+      endDay.day - (days - 1),
+    );
+    final start =
+        availableStartDay != null && availableStartDay!.isAfter(requestedStart)
         ? availableStartDay!
         : requestedStart;
     return Column(
@@ -839,9 +838,9 @@ class _HistoryHeader extends StatelessWidget {
                   Text(
                     'Usage history',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -911,10 +910,8 @@ class _UsageHistoryCard extends StatelessWidget {
     }
 
     final measured = points.where((point) => point.measured).toList();
-    final averageSeconds = measured.fold<int>(
-          0,
-          (sum, point) => sum + point.usage.inSeconds,
-        ) ~/
+    final averageSeconds =
+        measured.fold<int>(0, (sum, point) => sum + point.usage.inSeconds) ~/
         measured.length;
 
     return Container(
@@ -959,8 +956,9 @@ class _UsageHistoryCard extends StatelessWidget {
                 points: points,
                 lineColor: Theme.of(context).colorScheme.primary,
                 gridColor: Theme.of(context).dividerColor,
-                fillColor:
-                    Theme.of(context).colorScheme.primary.withOpacity(0.09),
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withOpacity(0.09),
               ),
               child: const SizedBox.expand(),
             ),
@@ -1048,6 +1046,27 @@ class _HistoryPainter extends CustomPainter {
       segmentPoints.clear();
     }
 
+    // Draw Y-axis usage duration labels
+    final textStyle = TextStyle(
+      color: gridColor.withOpacity(0.9),
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+    );
+
+    void drawTimeLabel(String text, double y) {
+      final span = TextSpan(text: text, style: textStyle);
+      final tp = TextPainter(text: span, textDirection: ui.TextDirection.ltr)
+        ..layout();
+      tp.paint(canvas, Offset(4, (y - 12).clamp(0, size.height - 14)));
+    }
+
+    drawTimeLabel(_duration(Duration(seconds: maxSeconds)), 0);
+    drawTimeLabel(
+      _duration(Duration(seconds: maxSeconds ~/ 2)),
+      size.height / 2,
+    );
+    drawTimeLabel('0m', size.height);
+
     for (var index = 0; index < points.length; index++) {
       final point = points[index];
       if (!point.measured) {
@@ -1058,8 +1077,9 @@ class _HistoryPainter extends CustomPainter {
       final x = points.length == 1
           ? 0.0
           : size.width * index / (points.length - 1);
-      final y = size.height -
-          (point.usage.inSeconds / maxSeconds) * size.height * 0.88;
+      final y =
+          size.height -
+          (point.usage.inSeconds / maxSeconds) * size.height * 0.82;
       final offset = Offset(x, y);
 
       currentPath ??= Path()..moveTo(offset.dx, offset.dy);
@@ -1078,6 +1098,41 @@ class _HistoryPainter extends CustomPainter {
       segmentPoints.add(offset);
     }
     finishSegment();
+
+    // Draw usage time labels above points for short intervals (e.g. 7d or 14d)
+    if (points.length <= 14) {
+      for (var index = 0; index < points.length; index++) {
+        final point = points[index];
+        if (!point.measured || point.usage.inMinutes == 0) continue;
+
+        final x = points.length == 1
+            ? 0.0
+            : size.width * index / (points.length - 1);
+        final y =
+            size.height -
+            (point.usage.inSeconds / maxSeconds) * size.height * 0.82;
+
+        final labelSpan = TextSpan(
+          text: _duration(point.usage),
+          style: TextStyle(
+            color: lineColor,
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+          ),
+        );
+        final labelTp = TextPainter(
+          text: labelSpan,
+          textDirection: ui.TextDirection.ltr,
+        )..layout();
+
+        final labelX = (x - labelTp.width / 2).clamp(
+          0.0,
+          size.width - labelTp.width,
+        );
+        final labelY = (y - 14).clamp(0.0, size.height - 14);
+        labelTp.paint(canvas, Offset(labelX, labelY));
+      }
+    }
   }
 
   @override
@@ -1134,15 +1189,15 @@ class _TrendText extends StatelessWidget {
     final color = up
         ? AppTheme.danger
         : down
-            ? AppTheme.success
-            : Theme.of(context).colorScheme.onSurfaceVariant;
+        ? AppTheme.success
+        : Theme.of(context).colorScheme.onSurfaceVariant;
     return Text(
-      '${up ? '↑' : down ? '↓' : '–'} ${change.abs().round()}%',
-      style: TextStyle(
-        color: color,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-      ),
+      '${up
+          ? '↑'
+          : down
+          ? '↓'
+          : '–'} ${change.abs().round()}%',
+      style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
     );
   }
 }
@@ -1170,8 +1225,8 @@ class _TrendBadge extends StatelessWidget {
     final color = up
         ? AppTheme.danger
         : down
-            ? AppTheme.success
-            : Theme.of(context).colorScheme.onSurfaceVariant;
+        ? AppTheme.success
+        : Theme.of(context).colorScheme.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
@@ -1179,7 +1234,11 @@ class _TrendBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(11),
       ),
       child: Text(
-        '${up ? 'Up' : down ? 'Down' : 'Same'} ${change.abs().round()}%',
+        '${up
+            ? 'Up'
+            : down
+            ? 'Down'
+            : 'Same'} ${change.abs().round()}%',
         style: TextStyle(
           color: color,
           fontWeight: FontWeight.w700,
@@ -1195,11 +1254,7 @@ class _MessageCard extends StatelessWidget {
   final String? action;
   final VoidCallback? onTap;
 
-  const _MessageCard({
-    required this.text,
-    this.action,
-    this.onTap,
-  });
+  const _MessageCard({required this.text, this.action, this.onTap});
 
   @override
   Widget build(BuildContext context) {

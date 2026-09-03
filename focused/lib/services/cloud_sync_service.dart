@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show ThemeMode;
 
 import '../models/device_usage_summary.dart';
 import '../models/focus_session.dart';
@@ -13,7 +12,6 @@ import '../models/task.dart';
 import '../models/task_occurrence_completion.dart';
 import '../models/user_cloud_stats.dart';
 import '../models/user_profile.dart';
-import '../providers/theme_provider.dart';
 import 'achievement_service.dart';
 import 'device_usage_summary_service.dart';
 import 'focus_session_storage_service.dart';
@@ -55,7 +53,6 @@ class CloudSyncService {
     required StreakGoalStorageService streakGoalStorage,
     UserCloudStatsStorageService? userStatsStorage,
     UsageRecordStore? usageRecordStorage,
-    ThemeProvider? themeProvider,
     DeviceUsageSummaryService? summaryService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _metadataStorage = metadataStorage,
@@ -67,7 +64,6 @@ class CloudSyncService {
        _streakGoalStorage = streakGoalStorage,
        _userStatsStorage = userStatsStorage,
        _usageRecordStorage = usageRecordStorage,
-       _themeProvider = themeProvider,
        _summaryService = summaryService ?? const DeviceUsageSummaryService();
 
   final FirebaseFirestore _firestore;
@@ -80,7 +76,6 @@ class CloudSyncService {
   final StreakGoalStorageService _streakGoalStorage;
   final UserCloudStatsStorageService? _userStatsStorage;
   final UsageRecordStore? _usageRecordStorage;
-  final ThemeProvider? _themeProvider;
   final DeviceUsageSummaryService _summaryService;
 
   Future<CloudSyncResult> sync({
@@ -303,13 +298,10 @@ class CloudSyncService {
       _SyncCollectionAdapter(
         name: 'settings',
         loadLocal: () {
-          final themeProvider = _themeProvider;
           return {
             'main': {
               'schemaVersion': 1,
               'streakGoalDays': _streakGoalStorage.loadGoalDays(),
-              if (themeProvider != null)
-                'themeMode': themeProvider.themeMode.name,
             },
           };
         },
@@ -317,15 +309,6 @@ class CloudSyncService {
           final value = payload['streakGoalDays'];
           if (value is num && value.toInt() > 0) {
             await _streakGoalStorage.saveGoalDays(value.toInt());
-          }
-          final themeName = payload['themeMode'];
-          final themeProvider = _themeProvider;
-          if (themeName is String && themeProvider != null) {
-            final mode = ThemeMode.values.firstWhere(
-              (m) => m.name == themeName,
-              orElse: () => ThemeMode.system,
-            );
-            await themeProvider.setThemeMode(mode);
           }
         },
         deleteLocal: (id) async {},

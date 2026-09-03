@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -21,7 +22,7 @@ extension PlannerCalendarModeLabel on PlannerCalendarMode {
   String get label {
     switch (this) {
       case PlannerCalendarMode.schedule:
-        return 'Schedule';
+        return 'Create your plan';
       case PlannerCalendarMode.day:
         return 'Day';
       case PlannerCalendarMode.threeDays:
@@ -605,8 +606,9 @@ class _ScheduleView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 4, 18, 110),
       children: [
         _CalendarModeIntro(
-          title: 'Schedule',
-          subtitle: 'Your next seven days in one continuous flow.',
+          title: 'Create your plan',
+          subtitle:
+              'Plan your next seven days and stay on track with your goals.',
           selectedDate: selectedDate,
         ),
         const SizedBox(height: 18),
@@ -1015,14 +1017,15 @@ class _PlannerTimelineTask extends StatelessWidget {
           : const [],
     );
 
+    final effectiveColor = task.isSquadTask ? const Color(0xFF9B51E0) : color;
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
             width: 62,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 13),
+            child: Center(
               child: Text(
                 DateFormat('h:mm a').format(occurrence.start),
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -1034,24 +1037,26 @@ class _PlannerTimelineTask extends StatelessWidget {
           ),
           SizedBox(
             width: 24,
-            child: Column(
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                const SizedBox(height: 16),
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: occurrence.isCompleted ? AppTheme.success : color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
                 if (!isLast)
-                  Expanded(
+                  Center(
                     child: Container(
                       width: 2,
                       color: Theme.of(context).dividerColor,
                     ),
                   ),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: occurrence.isCompleted
+                        ? AppTheme.success
+                        : effectiveColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1060,8 +1065,21 @@ class _PlannerTimelineTask extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Material(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(18),
+                color: task.isSquadTask
+                    ? const Color(0xFF9B51E0).withValues(alpha: 0.08)
+                    : Theme.of(context).colorScheme.surface,
+                borderRadius: task.isSquadTask
+                    ? null
+                    : BorderRadius.circular(18),
+                shape: task.isSquadTask
+                    ? RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        side: const BorderSide(
+                          color: Color(0xFF9B51E0),
+                          width: 1.5,
+                        ),
+                      )
+                    : null,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(18),
                   onTap: () => context.push(
@@ -1078,25 +1096,62 @@ class _PlannerTimelineTask extends StatelessWidget {
                           width: 4,
                           height: 46,
                           decoration: BoxDecoration(
-                            color: color,
+                            color: effectiveColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        const SizedBox(width: 11),
+                        const SizedBox(width: 8),
+                        SvgPicture.asset(
+                          task.isSquadTask
+                              ? 'assets/icon/group_task.svg'
+                              : 'assets/icon/task_icon.svg',
+                          width: 22,
+                          height: 22,
+                        ),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                task.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  decoration: occurrence.isCompleted
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      task.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        decoration: occurrence.isCompleted
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  if (task.isSquadTask) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFF9B51E0,
+                                        ).withValues(alpha: 0.18),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        '👥 Squad',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF9B51E0),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 3),
                               if (inFocus)
@@ -1192,14 +1247,6 @@ class _PlannerTimelineTask extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (!occurrence.isCompleted && !inFocus)
-                          IconButton(
-                            tooltip: 'Start focus',
-                            onPressed: () => context.push(
-                              '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(occurrence.start)}',
-                            ),
-                            icon: const Icon(Icons.center_focus_strong_rounded),
-                          ),
                         IconButton(
                           tooltip: occurrence.isCompleted ? 'Undo' : 'Complete',
                           onPressed: canToggle
@@ -1258,7 +1305,13 @@ class _AnytimePlannerTask extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
           child: Row(
             children: [
-              const Icon(Icons.all_inclusive_rounded, size: 18),
+              task.isSquadTask
+                  ? SvgPicture.asset(
+                      'assets/icon/group_task.svg',
+                      width: 18,
+                      height: 18,
+                    )
+                  : const Icon(Icons.all_inclusive_rounded, size: 18),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -1353,11 +1406,17 @@ class _AnytimeCalendarChip extends StatelessWidget {
       onLongPress: () =>
           context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
       child: ActionChip(
-        avatar: Icon(
-          complete ? Icons.check_circle_rounded : Icons.task_alt_rounded,
-          size: 17,
-          color: complete ? AppTheme.success : null,
-        ),
+        avatar: complete
+            ? const Icon(
+                Icons.check_circle_rounded,
+                size: 17,
+                color: AppTheme.success,
+              )
+            : SvgPicture.asset(
+                'assets/icon/task_icon.svg',
+                width: 17,
+                height: 17,
+              ),
         label: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 190),
           child: Text(task.title, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -2289,6 +2348,33 @@ class _HabitPlannerCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: () => context.push('/habit/${Uri.encodeComponent(habit.id)}'),
+        onLongPress: () async {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text('Delete "${habit.title}"?'),
+              content: const Text(
+                'This will delete the habit and its progress history.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
+          if (confirmed == true && context.mounted) {
+            await context.read<HabitProvider>().deleteHabit(habit.id);
+          }
+        },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -2408,10 +2494,14 @@ class _HabitEmptyState extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.repeat_rounded,
-            size: 42,
-            color: Theme.of(context).colorScheme.primary,
+          SvgPicture.asset(
+            'assets/icon/task_icon.svg',
+            width: 44,
+            height: 44,
+            colorFilter: ColorFilter.mode(
+              Theme.of(context).colorScheme.primary,
+              BlendMode.srcIn,
+            ),
           ),
           const SizedBox(height: 12),
           Text(

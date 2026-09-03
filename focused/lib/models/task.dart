@@ -42,6 +42,8 @@ class Task {
   final bool isCompleted;
   final DateTime createdAt;
   final DateTime? completedAt;
+  final bool isSquadTask;
+  final String? squadGroupId;
 
   Duration? get scheduledDuration {
     final start = scheduledStart;
@@ -75,6 +77,8 @@ class Task {
     this.isCompleted = false,
     required this.createdAt,
     this.completedAt,
+    this.isSquadTask = false,
+    this.squadGroupId,
   }) : id = id.trim(),
        title = title.trim() {
     if (this.id.isEmpty) throw ArgumentError('Task ID cannot be empty.');
@@ -142,6 +146,8 @@ class Task {
       isCompleted: true,
       createdAt: createdAt,
       completedAt: time,
+      isSquadTask: isSquadTask,
+      squadGroupId: squadGroupId,
     );
   }
 
@@ -163,6 +169,8 @@ class Task {
       isCompleted: false,
       createdAt: createdAt,
       completedAt: null,
+      isSquadTask: isSquadTask,
+      squadGroupId: squadGroupId,
     );
   }
 
@@ -184,6 +192,8 @@ class Task {
       'isCompleted': isCompleted,
       'createdAt': createdAt.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
+      'isSquadTask': isSquadTask,
+      'squadGroupId': squadGroupId,
     };
   }
 
@@ -221,6 +231,10 @@ class Task {
           : false,
       createdAt: _requiredDate(map, 'createdAt'),
       completedAt: _optionalDate(map['completedAt']),
+      isSquadTask: map['isSquadTask'] is bool
+          ? map['isSquadTask'] as bool
+          : false,
+      squadGroupId: map['squadGroupId'] as String?,
     );
   }
 

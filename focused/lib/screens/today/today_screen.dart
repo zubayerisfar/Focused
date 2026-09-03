@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -9,12 +10,15 @@ import '../../models/app_usage_app_entry.dart';
 import '../../models/habit.dart';
 import '../../models/task.dart';
 import '../../models/task_occurrence.dart';
+import '../../models/task_group.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/habit_provider.dart';
+import '../../providers/task_mate_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_stats_provider.dart';
+import '../../services/ad_service.dart';
 import '../../services/home_widget_service.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../theme/app_theme.dart';
@@ -145,13 +149,15 @@ class TodayScreen extends StatelessWidget {
                     topApps: usageProvider.topAppEntriesToday(limit: 3),
                     usageConnected: usageProvider.hasUsageAccess,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   _DailyPlanSection(
                     next: next,
                     date: now,
                     completedTasksCount: completedTasks,
                     totalTasksCount: totalTodayTasks,
                   ),
+                  const SizedBox(height: 24),
+                  const _ProductivityInsightCard(),
                   const SizedBox(height: 32),
                   _HabitTrackerSection(habits: habits, date: now),
                 ]),
@@ -346,8 +352,12 @@ class _DailyOverviewCard extends StatelessWidget {
                 child: _OverviewMetricCard(
                   title: 'Focused',
                   value: _formatDuration(focusedToday),
-                  icon: Icons.center_focus_strong_rounded,
-                  accent: scheme.primary,
+                  customIcon: SvgPicture.asset(
+                    'assets/icon/focus_icon.svg',
+                    width: 28,
+                    height: 28,
+                  ),
+                  accent: const Color(0xFFFF5B5B),
                   trendPercent: focusComparisonPercent,
                   isHigherBetter: true,
                 ),
@@ -359,8 +369,12 @@ class _DailyOverviewCard extends StatelessWidget {
                   value: usageToday == null
                       ? (usageConnected ? 'No data' : 'Connect')
                       : _formatDuration(usageToday!),
-                  icon: Icons.smartphone_rounded,
-                  accent: AppTheme.mist,
+                  customIcon: SvgPicture.asset(
+                    'assets/icon/app_usage_icon.svg',
+                    width: 28,
+                    height: 28,
+                  ),
+                  accent: const Color(0xFF6C5CE7),
                   trendPercent: usageToday == null ? null : comparisonPercent,
                   isHigherBetter: false,
                   onTap: () => context.push('/wellbeing'),
@@ -433,7 +447,8 @@ class _DailyOverviewCard extends StatelessWidget {
 class _OverviewMetricCard extends StatelessWidget {
   final String title;
   final String value;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? customIcon;
   final Color accent;
   final double? trendPercent;
   final bool isHigherBetter;
@@ -442,7 +457,8 @@ class _OverviewMetricCard extends StatelessWidget {
   const _OverviewMetricCard({
     required this.title,
     required this.value,
-    required this.icon,
+    this.icon,
+    this.customIcon,
     required this.accent,
     this.trendPercent,
     this.isHigherBetter = false,
@@ -477,7 +493,19 @@ class _OverviewMetricCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(icon, size: 19, color: accent),
+              if (customIcon != null)
+                Container(
+                  width: 38,
+                  height: 38,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(child: customIcon),
+                )
+              else if (icon != null)
+                Icon(icon, size: 22, color: accent),
             ],
           ),
           const SizedBox(height: 12),
@@ -739,6 +767,8 @@ class _DailyPlanSection extends StatelessWidget {
           _EmptyPlanCard(date: date)
         else
           _NextTaskCard(next: next!),
+        const SizedBox(height: 10),
+        const _TaskMatesSummaryCard(),
       ],
     );
   }
@@ -776,7 +806,7 @@ class _NextTaskCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(width: 13),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -808,7 +838,11 @@ class _NextTaskCard extends StatelessWidget {
                 onPressed: () => context.push(
                   '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(next.date)}',
                 ),
-                icon: const Icon(Icons.center_focus_strong_rounded),
+                icon: SvgPicture.asset(
+                  'assets/icon/focus_icon.svg',
+                  width: 22,
+                  height: 22,
+                ),
               ),
             ],
           ),
@@ -1073,4 +1107,333 @@ String _initials(String name) {
   if (words.isEmpty) return 'F';
   if (words.length == 1) return words.first[0].toUpperCase();
   return '${words.first[0]}${words.last[0]}'.toUpperCase();
+}
+
+class _TaskMatesSummaryCard extends StatelessWidget {
+  const _TaskMatesSummaryCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final taskMateProvider = context.watch<TaskMateProvider>();
+    final groups = taskMateProvider.groups;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    if (groups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final activeGroups = groups.where((g) => g.activeTasks.isNotEmpty).toList();
+    if (activeGroups.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final firstGroup = activeGroups.first;
+    final activeTaskCount = activeGroups.fold<int>(
+      0,
+      (sum, g) => sum + g.activeTasks.length,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF9B51E0).withValues(alpha: isDark ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFF9B51E0).withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => context.push('/friends?tab=squads'),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF9B51E0),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: SvgPicture.asset(
+                'assets/icon/group_task.svg',
+                width: 26,
+                height: 26,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Task Mates Squad',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : scheme.onSurface,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF9B51E0).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$activeTaskCount active',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF9B51E0),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${firstGroup.name}: "${firstGroup.activeTasks.first.title}"',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark
+                          ? const Color(0xFF77878F)
+                          : scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Color(0xFF9B51E0),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductivityInsightCard extends StatefulWidget {
+  const _ProductivityInsightCard();
+
+  @override
+  State<_ProductivityInsightCard> createState() =>
+      _ProductivityInsightCardState();
+}
+
+class _ProductivityInsightCardState extends State<_ProductivityInsightCard> {
+  bool _unlocked = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _unlocked
+              ? const Color(0xFF10B981).withValues(alpha: 0.4)
+              : Theme.of(context).dividerColor,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Productivity Insight',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: isDark ? Colors.white : scheme.onSurface,
+                ),
+              ),
+              if (_unlocked)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Unlocked',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (!_unlocked)
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1CB0F6),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () {
+                  AdService.instance.showRewardedAd(
+                    onUserEarnedReward: (reward) {
+                      if (mounted) {
+                        setState(() => _unlocked = true);
+                      }
+                    },
+                  );
+                },
+                icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
+                label: const Text(
+                  'Watch ad to unlock insight',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+              ),
+            )
+          else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Peak Focus: 9:00 AM – 11:30 AM',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF58CC02,
+                          ).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          '87% Focus',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF58CC02),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildVelocityBar('8a', 0.45, false, isDark, scheme),
+                      _buildVelocityBar('9a', 0.88, false, isDark, scheme),
+                      _buildVelocityBar('10a', 0.96, true, isDark, scheme),
+                      _buildVelocityBar('11a', 0.82, false, isDark, scheme),
+                      _buildVelocityBar('12p', 0.35, false, isDark, scheme),
+                      _buildVelocityBar('2p', 0.60, false, isDark, scheme),
+                      _buildVelocityBar('4p', 0.72, false, isDark, scheme),
+                      _buildVelocityBar('8p', 0.40, false, isDark, scheme),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVelocityBar(
+    String label,
+    double heightPercent,
+    bool isPeak,
+    bool isDark,
+    ColorScheme scheme,
+  ) {
+    const double maxHeight = 46.0;
+    final barHeight = maxHeight * heightPercent;
+    final color = isPeak
+        ? const Color(0xFFFF9600)
+        : (heightPercent >= 0.7
+              ? const Color(0xFF1CB0F6)
+              : const Color(0xFF9E9E9E).withValues(alpha: 0.4));
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isPeak)
+          const Text(
+            '★',
+            style: TextStyle(
+              fontSize: 9,
+              color: Color(0xFFFF9600),
+              fontWeight: FontWeight.bold,
+            ),
+          )
+        else
+          const SizedBox(height: 12),
+        Container(
+          width: 20,
+          height: barHeight,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(5),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: isPeak ? FontWeight.w800 : FontWeight.w500,
+            color: isPeak
+                ? (isDark ? Colors.white : Colors.black)
+                : scheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
 }
