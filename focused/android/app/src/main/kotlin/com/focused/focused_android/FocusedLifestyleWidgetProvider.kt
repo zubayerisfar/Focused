@@ -1,4 +1,4 @@
-package com.example.focused
+package com.focused.focused_android
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager

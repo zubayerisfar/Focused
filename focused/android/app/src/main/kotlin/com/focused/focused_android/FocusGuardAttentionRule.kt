@@ -1,4 +1,4 @@
-package com.example.focused
+package com.focused.focused_android
 
 internal data class FocusGuardAttentionResult(
     val outsideWorkspaceStartedAtMs: Long?,

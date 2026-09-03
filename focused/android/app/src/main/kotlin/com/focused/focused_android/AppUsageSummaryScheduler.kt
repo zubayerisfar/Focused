@@ -1,4 +1,4 @@
-package com.example.focused
+package com.focused.focused_android
 
 import android.app.AlarmManager
 import android.app.PendingIntent

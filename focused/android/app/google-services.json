@@ -7,18 +7,18 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:272738966733:android:63fbe8434d0f267f18dd84",
+        "mobilesdk_app_id": "1:272738966733:android:8094b3e457dd1ecd18dd84",
         "android_client_info": {
-          "package_name": "com.example.focused"
+          "package_name": "com.focused.focused_android"
         }
       },
       "oauth_client": [
         {
-          "client_id": "272738966733-og90d10a7o6ro9ckiijsc7cunp3e66b6.apps.googleusercontent.com",
+          "client_id": "272738966733-280c2n9p9f5nk8q3c56dldh4b27pj5ne.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.focused",
-            "certificate_hash": "ceee4e0dbdb1ca5a629f222018b83698777e3f4f"
+            "package_name": "com.focused.focused_android",
+            "certificate_hash": "7906d0fe041c50416ec256e00ab65dade68dd57d"
           }
         },
         {

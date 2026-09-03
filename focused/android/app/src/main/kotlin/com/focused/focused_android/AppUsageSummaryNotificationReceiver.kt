@@ -1,4 +1,4 @@
-package com.example.focused
+package com.focused.focused_android
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -21,9 +21,9 @@ import kotlin.math.max
 class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
 
     companion object {
-        const val ACTION_TRIGGER_5PM = "com.example.focused.USAGE_SUMMARY_5PM"
-        const val ACTION_TRIGGER_11PM = "com.example.focused.USAGE_SUMMARY_11PM"
-        const val ACTION_TEST_TRIGGER = "com.example.focused.USAGE_SUMMARY_TEST"
+        const val ACTION_TRIGGER_5PM = "com.focused.focused_android.USAGE_SUMMARY_5PM"
+        const val ACTION_TRIGGER_11PM = "com.focused.focused_android.USAGE_SUMMARY_11PM"
+        const val ACTION_TEST_TRIGGER = "com.focused.focused_android.USAGE_SUMMARY_TEST"
 
         private const val CHANNEL_ID = "focused_usage_summary_channel"
         private const val NOTIFICATION_ID_5PM = 9201

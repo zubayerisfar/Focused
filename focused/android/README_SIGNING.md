@@ -7,7 +7,7 @@ The previous project signed `release` with the local debug keystore. That is uns
 1. Create/choose one stable upload/release keystore and keep it private.
 2. Copy `key.properties.example` to `key.properties` and point it to that keystore.
 3. Run `./gradlew signingReport` (or `gradlew.bat signingReport` on Windows).
-4. Add the release SHA-1 and SHA-256 to Firebase Console → Project settings → Android app `com.example.focused`.
+4. Add the release SHA-1 and SHA-256 to Firebase Console → Project settings → Android app `com.focused.focused_android`.
 5. Add each development machine's DEBUG SHA-1/SHA-256 too if debug builds need Google Sign-In.
 6. Download a fresh `google-services.json` after changing Firebase Android/OAuth configuration and replace `android/app/google-services.json`.
 

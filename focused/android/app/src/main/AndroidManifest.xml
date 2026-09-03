@@ -52,9 +52,9 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="com.example.focused.USAGE_SUMMARY_5PM" />
-                <action android:name="com.example.focused.USAGE_SUMMARY_11PM" />
-                <action android:name="com.example.focused.USAGE_SUMMARY_TEST" />
+                <action android:name="com.focused.focused_android.USAGE_SUMMARY_5PM" />
+                <action android:name="com.focused.focused_android.USAGE_SUMMARY_11PM" />
+                <action android:name="com.focused.focused_android.USAGE_SUMMARY_TEST" />
             </intent-filter>
         </receiver>
 

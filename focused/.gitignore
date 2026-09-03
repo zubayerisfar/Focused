@@ -48,3 +48,6 @@ app.*.map.json
 /android/app/release
 
 firestore.rules
+focused-upload-keystore.jks
+android/key.properties
+android/*.jks

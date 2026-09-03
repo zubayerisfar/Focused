@@ -1,4 +1,4 @@
-package com.example.focused
+package com.focused.focused_android
 
 import android.content.BroadcastReceiver
 import android.content.Context

@@ -1,4 +1,4 @@
-package com.example.focused
+package com.focused.focused_android
 
 import android.app.AlarmManager
 import android.app.KeyguardManager
@@ -21,12 +21,12 @@ import kotlin.math.ceil
 
 class FocusGuardService : Service() {
     companion object {
-        const val ACTION_START = "com.example.focused.focusguard.START"
-        const val ACTION_STATE_UPDATED = "com.example.focused.focusguard.STATE_UPDATED"
+        const val ACTION_START = "com.focused.focused_android.focusguard.START"
+        const val ACTION_STATE_UPDATED = "com.focused.focused_android.focusguard.STATE_UPDATED"
         const val ACTION_ALLOWED_PACKAGES_UPDATED =
-            "com.example.focused.focusguard.ALLOWED_PACKAGES_UPDATED"
-        const val ACTION_DEADLINE = "com.example.focused.focusguard.DEADLINE"
-        const val ACTION_STOP = "com.example.focused.focusguard.STOP"
+            "com.focused.focused_android.focusguard.ALLOWED_PACKAGES_UPDATED"
+        const val ACTION_DEADLINE = "com.focused.focused_android.focusguard.DEADLINE"
+        const val ACTION_STOP = "com.focused.focused_android.focusguard.STOP"
 
         private const val ONGOING_CHANNEL_ID = "focused_focus_guard_ongoing"
         private const val ALERT_CHANNEL_ID = "focused_focus_guard_alerts"

@@ -90,14 +90,6 @@ Future<void> main() async {
   await syncMetadataStorageService.init();
   await userStatsStorageService.init();
 
-  final installationInfoService = AndroidInstallationInfoService();
-  final androidFirstInstallTime = await installationInfoService
-      .firstInstallTime();
-  final usageHistoryStartedAt = await syncMetadataStorageService
-      .getOrCreateUsageTrackingStartedAt(
-        installationStartedAt: androidFirstInstallTime,
-      );
-
   final taskNotificationService = TaskNotificationService();
   final habitNotificationService = HabitNotificationService();
   final focusGuardService = FocusGuardPlatformService();
@@ -149,7 +141,7 @@ Future<void> main() async {
     appMetadataService: appMetadataPlatformService,
     appMetadataStorageService: appMetadataStorageService,
     focusGuardController: focusGuardService,
-    historyStartedAt: usageHistoryStartedAt,
+    // No historyStartedAt clamp: reads full phone Digital Wellbeing history from 12:00 AM
   );
 
   final appLimitProvider = AppLimitProvider(

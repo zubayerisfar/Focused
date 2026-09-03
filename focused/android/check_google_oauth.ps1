@@ -8,7 +8,7 @@ if (-not (Test-Path $servicesPath)) {
 }
 
 $json = Get-Content $servicesPath -Raw | ConvertFrom-Json
-$packageName = 'com.example.focused'
+$packageName = 'com.focused.focused_android'
 $androidClient = $json.client | Where-Object {
     $_.client_info.android_client_info.package_name -eq $packageName
 } | Select-Object -First 1

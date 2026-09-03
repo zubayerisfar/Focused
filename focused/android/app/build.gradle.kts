@@ -28,7 +28,7 @@ if (releaseTaskRequested && !hasReleaseKeystore) {
 }
 
 android {
-    namespace = "com.example.focused"
+    namespace = "com.focused.focused_android"
 
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -40,7 +40,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.focused"
+        applicationId = "com.focused.focused_android"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -65,6 +65,15 @@ android {
             if (hasReleaseKeystore) {
                 signingConfig = signingConfigs.getByName("release")
             }
+
+            // Strips unused Java/Kotlin code, Firebase libraries, and reduces DEX size drastically
+            isMinifyEnabled = true
+            // Strips unused assets, layouts, and drawables from dependencies
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
