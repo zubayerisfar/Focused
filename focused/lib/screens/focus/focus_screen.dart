@@ -33,7 +33,7 @@ class FocusScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _FocusMetric(
-                  icon: const FaIcon(FontAwesomeIcons.stopwatch, size: 18),
+                  icon: const Icon(Icons.center_focus_strong_rounded, size: 20),
                   value: _formatDuration(focusedToday),
                   label: 'Today',
                 ),
@@ -177,9 +177,9 @@ class _FocusStartCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(15),
                 ),
                 alignment: Alignment.center,
-                child: FaIcon(
-                  running ? FontAwesomeIcons.clock : FontAwesomeIcons.bullseye,
-                  size: 20,
+                child: Icon(
+                  Icons.center_focus_strong_rounded,
+                  size: 24,
                   color: scheme.primary,
                 ),
               ),

@@ -10,6 +10,7 @@ import '../../providers/cloud_sync_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../providers/friends_provider.dart';
 import '../../services/app_usage_summary_service.dart';
 import '../../services/notification_access_service.dart';
 import 'deactivate_account_sheet.dart';
@@ -261,7 +262,13 @@ class SettingsScreen extends StatelessWidget {
                 icon: FontAwesomeIcons.userPen,
                 title: account.displayName,
                 subtitle: account.email,
-                onTap: () => _editProfile(context),
+                onTap: () => editProfile(context),
+              ),
+              _SettingsTile(
+                icon: FontAwesomeIcons.at,
+                title: 'Username',
+                subtitle: profile.handle,
+                onTap: () => editProfile(context),
               ),
               _SettingsTile(
                 icon: FontAwesomeIcons.flag,
@@ -269,7 +276,7 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: profile.nationality.trim().isEmpty
                     ? 'Not added'
                     : profile.nationality,
-                onTap: () => _editProfile(context),
+                onTap: () => editProfile(context),
               ),
               _SettingsTile(
                 icon: FontAwesomeIcons.cakeCandles,
@@ -277,7 +284,7 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: profile.birthday == null
                     ? 'Not added'
                     : DateFormat('MMMM d').format(profile.birthday!),
-                onTap: () => _editProfile(context),
+                onTap: () => editProfile(context),
               ),
               if (!account.signedInWithGoogle)
                 _SettingsTile(
@@ -394,15 +401,18 @@ class SettingsScreen extends StatelessWidget {
     } catch (_) {}
   }
 
-  static Future<void> _editProfile(BuildContext context) async {
+  static Future<void> editProfile(BuildContext context) async {
     final account = context.read<AccountProvider>();
     final localProfile = context.read<UserProfileProvider>();
     final current = localProfile.profile;
     final nameController = TextEditingController(text: account.displayName);
+    final usernameController = TextEditingController(text: current.username);
     final nationalityController = TextEditingController(
       text: current.nationality,
     );
     DateTime? selectedBirthday = current.birthday;
+    String? usernameError;
+    bool isCheckingUsername = false;
 
     final save = await showModalBottomSheet<bool>(
       context: context,
@@ -434,6 +444,21 @@ class SettingsScreen extends StatelessWidget {
                       decoration: const InputDecoration(
                         labelText: 'Display name',
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username (handle)',
+                        prefixText: '@ ',
+                        errorText: usernameError,
+                        helperText: 'Unique handle used by friends to find you',
+                      ),
+                      onChanged: (_) {
+                        if (usernameError != null) {
+                          setSheetState(() => usernameError = null);
+                        }
+                      },
                     ),
                     const SizedBox(height: 12),
                     InputDecorator(
@@ -516,8 +541,52 @@ class SettingsScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: () => Navigator.pop(sheetContext, true),
-                        child: const Text('Save profile'),
+                        onPressed: isCheckingUsername
+                            ? null
+                            : () async {
+                                final clean = usernameController.text
+                                    .trim()
+                                    .replaceAll('@', '');
+                                if (clean.isNotEmpty &&
+                                    clean != current.username) {
+                                  if (clean.length < 3) {
+                                    setSheetState(
+                                      () => usernameError =
+                                          'Username must be at least 3 characters',
+                                    );
+                                    return;
+                                  }
+                                  final friendsProvider = sheetContext
+                                      .read<FriendsProvider>();
+                                  setSheetState(
+                                    () => isCheckingUsername = true,
+                                  );
+                                  final isAvailable = await friendsProvider
+                                      .checkUsernameAvailability(clean);
+                                  if (!sheetContext.mounted) return;
+                                  setSheetState(
+                                    () => isCheckingUsername = false,
+                                  );
+                                  if (!isAvailable) {
+                                    setSheetState(
+                                      () => usernameError =
+                                          'Username @$clean is already taken',
+                                    );
+                                    return;
+                                  }
+                                }
+                                Navigator.pop(sheetContext, true);
+                              },
+                        child: isCheckingUsername
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Save profile'),
                       ),
                     ),
                   ],
@@ -530,16 +599,26 @@ class SettingsScreen extends StatelessWidget {
     );
 
     if (save == true && nameController.text.trim().isNotEmpty) {
+      final cleanUsername = usernameController.text.trim().replaceAll('@', '');
       await account.updateDisplayName(nameController.text);
       await localProfile.updateProfile(
         displayName: account.displayName,
         email: account.email,
+        username: cleanUsername.isNotEmpty ? cleanUsername : current.username,
         nationality: nationalityController.text.trim(),
         birthday: selectedBirthday,
         clearBirthday: selectedBirthday == null,
       );
+      if (account.isSignedIn && context.mounted) {
+        context.read<FriendsProvider>().initForUser(
+          account.user!.uid,
+          displayName: account.displayName,
+          photoUrl: account.photoUrl,
+        );
+      }
     }
     nameController.dispose();
+    usernameController.dispose();
     nationalityController.dispose();
   }
 

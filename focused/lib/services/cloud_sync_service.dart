@@ -116,22 +116,32 @@ class CloudSyncService {
 
     if (rootDocData != null && _userStatsStorage != null) {
       final remoteStreak = (rootDocData['streakDays'] as num?)?.toInt() ?? 0;
-      final remoteLongest = (rootDocData['longestStreak'] as num?)?.toInt() ?? 0;
-      final remoteFocusMinutes = (rootDocData['totalFocusMinutes'] as num?)?.toInt() ?? 0;
-      final remoteSessions = (rootDocData['completedSessionsCount'] as num?)?.toInt() ?? 0;
-      final remoteBadges = (rootDocData['unlockedBadgeIds'] as List<dynamic>?)
+      final remoteLongest =
+          (rootDocData['longestStreak'] as num?)?.toInt() ?? 0;
+      final remoteFocusMinutes =
+          (rootDocData['totalFocusMinutes'] as num?)?.toInt() ?? 0;
+      final remoteSessions =
+          (rootDocData['completedSessionsCount'] as num?)?.toInt() ?? 0;
+      final remoteBadges =
+          (rootDocData['unlockedBadgeIds'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           <String>[];
 
-      final localStats = _userStatsStorage!.loadStats();
+      final localStats = _userStatsStorage.loadStats();
       final effectiveStreak = math.max(localStats.streakDays, remoteStreak);
       final effectiveLongest = math.max(
         math.max(localStats.longestStreak, remoteLongest),
         effectiveStreak,
       );
-      final effectiveFocus = math.max(localStats.totalFocusMinutes, remoteFocusMinutes);
-      final effectiveSessions = math.max(localStats.completedSessionsCount, remoteSessions);
+      final effectiveFocus = math.max(
+        localStats.totalFocusMinutes,
+        remoteFocusMinutes,
+      );
+      final effectiveSessions = math.max(
+        localStats.completedSessionsCount,
+        remoteSessions,
+      );
       final mergedBadges = <String>{
         ...localStats.unlockedBadgeIds,
         ...remoteBadges,
@@ -150,7 +160,7 @@ class CloudSyncService {
           unlockedBadgeIds: mergedBadges.toList(),
           updatedAt: DateTime.now().toUtc(),
         );
-        await _userStatsStorage!.saveStats(updated);
+        await _userStatsStorage.saveStats(updated);
       }
 
       final remoteName = rootDocData['displayName'] as String?;
@@ -322,7 +332,7 @@ class CloudSyncService {
             return {'main': stats.toMap()};
           },
           applyRemote: (id, payload) async {
-            final statsStore = _userStatsStorage!;
+            final statsStore = _userStatsStorage;
             final remoteStats = UserCloudStats.fromMap(payload);
             final localStats = statsStore.loadStats();
             final mergedBadges = <String>{

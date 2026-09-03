@@ -57,7 +57,11 @@ class FriendUser {
     };
   }
 
-  factory FriendUser.fromMap(Map<String, dynamic> map, {String? docId, bool isFollowing = false}) {
+  factory FriendUser.fromMap(
+    Map<String, dynamic> map, {
+    String? docId,
+    bool isFollowing = false,
+  }) {
     return FriendUser(
       uid: (docId ?? map['uid'] ?? '').toString(),
       displayName: (map['displayName'] ?? 'Focused User').toString(),

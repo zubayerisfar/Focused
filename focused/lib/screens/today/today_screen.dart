@@ -800,7 +800,7 @@ class _NextTaskCard extends StatelessWidget {
                 onPressed: () => context.push(
                   '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(next.date)}',
                 ),
-                icon: const Icon(Icons.play_arrow_rounded),
+                icon: const Icon(Icons.center_focus_strong_rounded),
               ),
             ],
           ),
@@ -1038,14 +1038,6 @@ String _formatDuration(Duration duration) {
     return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   }
   return '${duration.inMinutes}m';
-}
-
-String _cleanAppName(String value) {
-  if (!value.contains('.')) return value.isEmpty ? 'Unknown app' : value;
-  final parts = value.split('.').where((part) => part.isNotEmpty).toList();
-  if (parts.isEmpty) return 'Unknown app';
-  final last = parts.last;
-  return '${last[0].toUpperCase()}${last.substring(1)}';
 }
 
 Color _priorityColor(TaskPriority priority) {

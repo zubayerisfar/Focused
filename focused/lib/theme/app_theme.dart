@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppTheme {
   // A deliberately softer palette than the earlier bright-blue treatment.
@@ -56,12 +57,40 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 72,
+        height: 68,
         backgroundColor: surface,
         indicatorColor: const Color(0xFFE8EAF5),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         elevation: 0,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: primaryBlue,
+            );
+          }
+          return const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: muted,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: primaryBlue, size: 24);
+          }
+          return const IconThemeData(color: muted, size: 24);
+        }),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: surface,
@@ -173,33 +202,33 @@ class AppTheme {
   }
 
   static ThemeData darkTheme() {
-    const scaffold = Color(0xFF050914);
-    const surface = Color(0xFF0B1423);
-    const text = Color(0xFFF3F7FF);
-    const muted = Color(0xFF91A2BB);
+    const scaffold = Color(0xFF14171E);
+    const surface = Color(0xFF1D212C);
+    const text = Color(0xFFF1F4F9);
+    const muted = Color(0xFF8E99AC);
 
     final scheme =
         ColorScheme.fromSeed(
           seedColor: const Color(0xFF6F9AFF),
           brightness: Brightness.dark,
         ).copyWith(
-          primary: const Color(0xFF7EA2FF),
-          onPrimary: const Color(0xFF06101F),
-          primaryContainer: const Color(0xFF152641),
+          primary: const Color(0xFF6F9AFF),
+          onPrimary: const Color(0xFF0D1424),
+          primaryContainer: const Color(0xFF26334D),
           onPrimaryContainer: const Color(0xFFDCE8FF),
           secondary: const Color(0xFF83B5C9),
-          secondaryContainer: const Color(0xFF12313E),
+          secondaryContainer: const Color(0xFF22353E),
           tertiary: const Color(0xFFC9A978),
           surface: surface,
-          surfaceContainerLowest: const Color(0xFF060B13),
-          surfaceContainerLow: const Color(0xFF09111E),
-          surfaceContainer: const Color(0xFF0D1727),
-          surfaceContainerHigh: const Color(0xFF111D30),
-          surfaceContainerHighest: const Color(0xFF16243A),
+          surfaceContainerLowest: const Color(0xFF101217),
+          surfaceContainerLow: const Color(0xFF181B24),
+          surfaceContainer: const Color(0xFF1D212C),
+          surfaceContainerHigh: const Color(0xFF232835),
+          surfaceContainerHighest: const Color(0xFF2A3040),
           onSurface: text,
           onSurfaceVariant: muted,
-          outline: const Color(0xFF42516A),
-          outlineVariant: const Color(0xFF1D2B40),
+          outline: const Color(0xFF434E64),
+          outlineVariant: const Color(0xFF2A3140),
           error: const Color(0xFFFF9DAF),
           errorContainer: const Color(0xFF3B1720),
         );
@@ -211,7 +240,7 @@ class AppTheme {
       scaffoldBackgroundColor: scaffold,
       canvasColor: scaffold,
       cardColor: surface,
-      dividerColor: const Color(0xFF1A2940),
+      dividerColor: const Color(0xFF262D3B),
       appBarTheme: const AppBarTheme(
         backgroundColor: scaffold,
         foregroundColor: text,
@@ -219,24 +248,52 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
       ),
-      navigationBarTheme: const NavigationBarThemeData(
-        height: 72,
-        backgroundColor: Color(0xFF08111D),
-        indicatorColor: Color(0xFF152641),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 68,
+        backgroundColor: const Color(0xFF171A23),
+        indicatorColor: const Color(0xFF26334D),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         elevation: 0,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF6F9AFF),
+            );
+          }
+          return const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: muted,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: Color(0xFF6F9AFF), size: 24);
+          }
+          return const IconThemeData(color: muted, size: 24);
+        }),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Color(0xFF0B1423),
+        backgroundColor: Color(0xFF1D212C),
         surfaceTintColor: Colors.transparent,
       ),
       dialogTheme: const DialogThemeData(
-        backgroundColor: Color(0xFF0D1727),
+        backgroundColor: Color(0xFF212532),
         surfaceTintColor: Colors.transparent,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF0A1321),
+        fillColor: const Color(0xFF1D212C),
         labelStyle: const TextStyle(color: Color(0xFF8EA1BD)),
         hintStyle: const TextStyle(color: Color(0xFF5E708A)),
         prefixIconColor: const Color(0xFF7187A7),
@@ -251,7 +308,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF1E304A)),
+          borderSide: const BorderSide(color: Color(0xFF2C3445)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
@@ -267,7 +324,7 @@ class AppTheme {
           minimumSize: const Size(0, 50),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           backgroundColor: const Color(0xFF6F9AFF),
-          foregroundColor: const Color(0xFF06101F),
+          foregroundColor: const Color(0xFF0D1424),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -279,7 +336,7 @@ class AppTheme {
           minimumSize: const Size(0, 48),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
           foregroundColor: const Color(0xFFE8EEF8),
-          side: const BorderSide(color: Color(0xFF243955)),
+          side: const BorderSide(color: Color(0xFF333D50)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

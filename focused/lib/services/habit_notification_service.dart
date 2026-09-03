@@ -240,13 +240,14 @@ class HabitNotificationService implements HabitReminderScheduler {
   }
 
   String _body(Habit habit) {
-    switch (habit.goalType) {
-      case HabitGoalType.checkIn:
-        return 'Time for your ${habit.title.toLowerCase()} habit.';
-      case HabitGoalType.count:
-      case HabitGoalType.duration:
-        return 'Today’s goal: ${habit.targetValue} ${habit.unit}.';
-    }
+    final habitMessages = [
+      'Discipline over motivation! Crush your "${habit.title}" habit now before the day ends! 🔥',
+      'Don\'t break your habit streak. Take 5 minutes for "${habit.title}" right now! ⚡',
+      'Winners build daily habits. Lock in for "${habit.title}" today! 💪',
+      'Small habits lead to giant success. Put distractions away and do "${habit.title}"! 🎯',
+      'Your future self will thank you. Complete "${habit.title}" now! 🚀',
+    ];
+    return habitMessages[habit.id.hashCode.abs() % habitMessages.length];
   }
 
   int _notificationId(String habitId, int weekday) {

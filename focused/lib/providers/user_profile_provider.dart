@@ -42,7 +42,9 @@ class UserProfileProvider extends ChangeNotifier {
           ? 'Focused User'
           : displayName.trim(),
       email: email.trim(),
-      username: username != null ? username.trim().replaceAll('@', '') : _profile.username,
+      username: username != null
+          ? username.trim().replaceAll('@', '')
+          : _profile.username,
       joinedYear: _profile.joinedYear,
       nationality: nationality ?? _profile.nationality,
       birthday: clearBirthday ? null : (birthday ?? _profile.birthday),

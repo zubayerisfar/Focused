@@ -15,13 +15,7 @@ import '../../providers/task_provider.dart';
 import '../../services/task_execution_analyzer.dart';
 import '../../theme/app_theme.dart';
 
-enum PlannerCalendarMode {
-  schedule,
-  day,
-  threeDays,
-  week,
-  month,
-}
+enum PlannerCalendarMode { schedule, day, threeDays, week, month }
 
 extension PlannerCalendarModeLabel on PlannerCalendarMode {
   String get label {
@@ -100,122 +94,200 @@ class _PlannerScreenState extends State<PlannerScreen> {
       child: SafeArea(
         bottom: false,
         child: Stack(
-        children: [
-          Column(
-            children: [
-              _PlannerHeader(
-                selectedDate: _selectedDate,
-                area: _area,
-                calendarMode: _calendarMode,
-                onPickDate: _pickDate,
-                onToday: () {
-                  setState(() {
-                    _selectedDate = _dateOnly(DateTime.now());
-                  });
-                },
-                onModeChanged: (mode) {
-                  setState(() {
-                    _calendarMode = mode;
-                  });
-                },
-                onSync: _syncPlanner,
-                onMenuAction: _handleMenuAction,
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 6, 18, 12),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<_PlannerArea>(
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.resolveWith((states) {
-                        if (states.contains(WidgetState.selected)) {
-                          return selectedBackground;
-                        }
-                        return baseTheme.colorScheme.surfaceContainer;
-                      }),
-                      foregroundColor: WidgetStateProperty.resolveWith((states) {
-                        return states.contains(WidgetState.selected)
-                            ? accent
-                            : baseTheme.colorScheme.onSurfaceVariant;
-                      }),
-                      side: WidgetStateProperty.resolveWith((states) {
-                        final selected = states.contains(WidgetState.selected);
-                        return BorderSide(
-                          width: selected ? 1.7 : 1,
-                          color: selected
-                              ? accent
-                              : baseTheme.colorScheme.outlineVariant,
-                        );
-                      }),
-                      textStyle: const WidgetStatePropertyAll(
-                        TextStyle(fontWeight: FontWeight.w700),
+          children: [
+            Column(
+              children: [
+                _PlannerHeader(
+                  selectedDate: _selectedDate,
+                  area: _area,
+                  calendarMode: _calendarMode,
+                  onPickDate: _pickDate,
+                  onToday: () {
+                    setState(() {
+                      _selectedDate = _dateOnly(DateTime.now());
+                    });
+                  },
+                  onModeChanged: (mode) {
+                    setState(() {
+                      _calendarMode = mode;
+                    });
+                  },
+                  onSync: _syncPlanner,
+                  onMenuAction: _handleMenuAction,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
+                  child: Container(
+                    height: 54,
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: baseTheme.colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: baseTheme.colorScheme.outlineVariant,
                       ),
                     ),
-                    segments: const [
-                      ButtonSegment(
-                        value: _PlannerArea.tasks,
-                        icon: FaIcon(FontAwesomeIcons.listCheck, size: 15),
-                        label: Text('Tasks'),
-                      ),
-                      ButtonSegment(
-                        value: _PlannerArea.habits,
-                        icon: FaIcon(FontAwesomeIcons.repeat, size: 15),
-                        label: Text('Habits'),
-                      ),
-                    ],
-                    selected: {_area},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (selection) {
-                      setState(() {
-                        _area = selection.first;
-                      });
-                    },
+                    child: Row(
+                      children: [
+                        // Tasks Toggle Tab
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (_area != _PlannerArea.tasks) {
+                                setState(() => _area = _PlannerArea.tasks);
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeInOut,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: _area == _PlannerArea.tasks
+                                    ? (isDark
+                                          ? const Color(0xFF1CB0F6)
+                                          : taskAccent)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: _area == _PlannerArea.tasks
+                                    ? [
+                                        BoxShadow(
+                                          color:
+                                              (isDark
+                                                      ? const Color(0xFF1CB0F6)
+                                                      : taskAccent)
+                                                  .withOpacity(0.35),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 220),
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: _area == _PlannerArea.tasks
+                                      ? FontWeight.w900
+                                      : FontWeight.w700,
+                                  color: _area == _PlannerArea.tasks
+                                      ? Colors.white
+                                      : (isDark
+                                            ? const Color(0xFF77878F)
+                                            : baseTheme
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                                  .withOpacity(0.6)),
+                                  letterSpacing: 0.2,
+                                ),
+                                child: const Text('Tasks'),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Habits Toggle Tab
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (_area != _PlannerArea.habits) {
+                                setState(() => _area = _PlannerArea.habits);
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeInOut,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: _area == _PlannerArea.habits
+                                    ? (isDark
+                                          ? const Color(0xFFC39BFF)
+                                          : habitAccent)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: _area == _PlannerArea.habits
+                                    ? [
+                                        BoxShadow(
+                                          color:
+                                              (isDark
+                                                      ? const Color(0xFFC39BFF)
+                                                      : habitAccent)
+                                                  .withOpacity(0.35),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 220),
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: _area == _PlannerArea.habits
+                                      ? FontWeight.w900
+                                      : FontWeight.w700,
+                                  color: _area == _PlannerArea.habits
+                                      ? (isDark
+                                            ? const Color(0xFF101217)
+                                            : Colors.white)
+                                      : (isDark
+                                            ? const Color(0xFF77878F)
+                                            : baseTheme
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                                  .withOpacity(0.6)),
+                                  letterSpacing: 0.2,
+                                ),
+                                child: const Text('Habits'),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: ColoredBox(
-                  color: pageTint,
-                  child: _area == _PlannerArea.tasks
-                    ? _TaskCalendarBody(
-                        mode: _calendarMode,
-                        selectedDate: _selectedDate,
-                        onDateSelected: (date) {
-                          setState(() {
-                            _selectedDate = _dateOnly(date);
-                          });
-                        },
-                      )
-                    : _HabitPlannerBody(
-                        selectedDate: _selectedDate,
-                        onDateSelected: (date) {
-                          setState(() {
-                            _selectedDate = _dateOnly(date);
-                          });
-                        },
-                      ),
+                Expanded(
+                  child: ColoredBox(
+                    color: pageTint,
+                    child: _area == _PlannerArea.tasks
+                        ? _TaskCalendarBody(
+                            mode: _calendarMode,
+                            selectedDate: _selectedDate,
+                            onDateSelected: (date) {
+                              setState(() {
+                                _selectedDate = _dateOnly(date);
+                              });
+                            },
+                          )
+                        : _HabitPlannerBody(
+                            selectedDate: _selectedDate,
+                            onDateSelected: (date) {
+                              setState(() {
+                                _selectedDate = _dateOnly(date);
+                              });
+                            },
+                          ),
+                  ),
+                ),
+              ],
+            ),
+            Positioned(
+              right: 18,
+              bottom: 18,
+              child: FloatingActionButton.extended(
+                heroTag: 'planner-create',
+                backgroundColor: accent,
+                foregroundColor: Colors.white,
+                elevation: isDark ? 4 : 2,
+                onPressed: () => context.push(
+                  _area == _PlannerArea.tasks ? '/task/new' : '/habit/new',
+                ),
+                icon: const FaIcon(FontAwesomeIcons.plus, size: 14),
+                label: Text(
+                  _area == _PlannerArea.tasks ? 'New task' : 'New habit',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
-            ],
-          ),
-          Positioned(
-            right: 18,
-            bottom: 18,
-            child: FloatingActionButton.extended(
-              heroTag: 'planner-create',
-              backgroundColor: accent,
-              foregroundColor: Colors.white,
-              elevation: isDark ? 4 : 2,
-              onPressed: () => context.push(
-                _area == _PlannerArea.tasks ? '/task/new' : '/habit/new',
-              ),
-              icon: const FaIcon(FontAwesomeIcons.plus, size: 14),
-              label: Text(
-                _area == _PlannerArea.tasks ? 'New task' : 'New habit',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
             ),
-          ),
           ],
         ),
       ),
@@ -238,7 +310,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
       _selectedDate = _dateOnly(picked);
     });
   }
-
 
   Future<void> _syncPlanner() async {
     final sync = context.read<CloudSyncProvider>();
@@ -380,10 +451,7 @@ class _PlannerHeader extends StatelessWidget {
               tooltip: 'Calendar view: ${calendarMode.label}',
               initialValue: calendarMode,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
-              ),
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
               onSelected: onModeChanged,
               itemBuilder: (context) {
                 return PlannerCalendarMode.values.map((mode) {
@@ -420,10 +488,7 @@ class _PlannerHeader extends StatelessWidget {
           PopupMenuButton<_PlannerMenuAction>(
             tooltip: 'More',
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
-            ),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             onSelected: onMenuAction,
             itemBuilder: (context) => const [
               PopupMenuItem(
@@ -450,7 +515,6 @@ class _PlannerHeader extends StatelessWidget {
   }
 }
 
-
 class _PlannerHeaderIconButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onPressed;
@@ -469,10 +533,7 @@ class _PlannerHeaderIconButton extends StatelessWidget {
       onPressed: onPressed,
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(
-        minWidth: 40,
-        minHeight: 40,
-      ),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       icon: child,
     );
   }
@@ -576,10 +637,7 @@ class _DayView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
 
-  const _DayView({
-    required this.selectedDate,
-    required this.onDateSelected,
-  });
+  const _DayView({required this.selectedDate, required this.onDateSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -607,16 +665,10 @@ class _DayView extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         if (anytime.isNotEmpty) ...[
-          _AnytimeCalendarStrip(
-            date: selectedDate,
-            tasks: anytime,
-          ),
+          _AnytimeCalendarStrip(date: selectedDate, tasks: anytime),
           const SizedBox(height: 14),
         ],
-        _DayTimeGrid(
-          date: selectedDate,
-          occurrences: occurrences,
-        ),
+        _DayTimeGrid(date: selectedDate, occurrences: occurrences),
       ],
     );
   }
@@ -679,10 +731,7 @@ class _MonthView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
 
-  const _MonthView({
-    required this.selectedDate,
-    required this.onDateSelected,
-  });
+  const _MonthView({required this.selectedDate, required this.onDateSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -697,8 +746,9 @@ class _MonthView extends StatelessWidget {
       (index) => gridStart.add(Duration(days: index)),
     );
 
-    final selectedOccurrences =
-        provider.scheduledOccurrencesForDate(selectedDate);
+    final selectedOccurrences = provider.scheduledOccurrencesForDate(
+      selectedDate,
+    );
     final selectedAnytime = provider
         .tasksForDate(selectedDate, includeCompleted: true)
         .where((task) => task.scheduledStart == null)
@@ -729,11 +779,7 @@ class _MonthView extends StatelessWidget {
                     tooltip: 'Previous month',
                     visualDensity: VisualDensity.compact,
                     onPressed: () => onDateSelected(
-                      DateTime(
-                        selectedDate.year,
-                        selectedDate.month - 1,
-                        1,
-                      ),
+                      DateTime(selectedDate.year, selectedDate.month - 1, 1),
                     ),
                     icon: const Icon(Icons.chevron_left_rounded),
                   ),
@@ -749,11 +795,7 @@ class _MonthView extends StatelessWidget {
                     tooltip: 'Next month',
                     visualDensity: VisualDensity.compact,
                     onPressed: () => onDateSelected(
-                      DateTime(
-                        selectedDate.year,
-                        selectedDate.month + 1,
-                        1,
-                      ),
+                      DateTime(selectedDate.year, selectedDate.month + 1, 1),
                     ),
                     icon: const Icon(Icons.chevron_right_rounded),
                   ),
@@ -766,8 +808,7 @@ class _MonthView extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: cells.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
                   childAspectRatio: 0.93,
                 ),
@@ -830,17 +871,13 @@ class _CalendarModeIntro extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
+              Text(title, style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 3),
               Text(
                 subtitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color:
-                          Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -889,22 +926,19 @@ class _AgendaDaySection extends StatelessWidget {
                       children: [
                         Text(
                           DateFormat('EEE').format(date),
-                          style:
-                              Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: _isToday(date)
-                                        ? Theme.of(context)
-                                            .colorScheme
-                                            .primary
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: _isToday(date)
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                         Text(
                           '${date.day}',
-                          style:
-                              Theme.of(context).textTheme.headlineMedium,
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
                       ],
                     ),
@@ -923,9 +957,7 @@ class _AgendaDaySection extends StatelessWidget {
           const SizedBox(height: 10),
         ],
         if (!hasItems && showEmpty)
-          _EmptyDay(
-            compact: showHeader,
-          )
+          _EmptyDay(compact: showHeader)
         else ...[
           ...List.generate(occurrences.length, (index) {
             return _PlannerTimelineTask(
@@ -938,10 +970,7 @@ class _AgendaDaySection extends StatelessWidget {
             ...anytime.map(
               (task) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _AnytimePlannerTask(
-                  task: task,
-                  date: date,
-                ),
+                child: _AnytimePlannerTask(task: task, date: date),
               ),
             ),
           ],
@@ -955,10 +984,7 @@ class _PlannerTimelineTask extends StatelessWidget {
   final TaskOccurrence occurrence;
   final bool isLast;
 
-  const _PlannerTimelineTask({
-    required this.occurrence,
-    required this.isLast,
-  });
+  const _PlannerTimelineTask({required this.occurrence, required this.isLast});
 
   @override
   Widget build(BuildContext context) {
@@ -966,8 +992,8 @@ class _PlannerTimelineTask extends StatelessWidget {
     final color = _priorityColor(task.priority);
     final today = _dateOnly(DateTime.now());
     final occurrenceDay = _dateOnly(occurrence.start);
-    final canToggle = task.recurrence == TaskRecurrence.none ||
-        !occurrenceDay.isAfter(today);
+    final canToggle =
+        task.recurrence == TaskRecurrence.none || !occurrenceDay.isAfter(today);
     final focusProvider = context.watch<FocusProvider>();
     final inFocus = focusProvider.isFocusingTaskOccurrence(
       task.id,
@@ -980,7 +1006,9 @@ class _PlannerTimelineTask extends StatelessWidget {
       activeTaskId: inFocus ? focusProvider.taskId : null,
       activeOccurrenceDate: inFocus ? focusProvider.taskOccurrenceDate : null,
       activeSessionStartedAt: inFocus ? focusProvider.sessionStartedAt : null,
-      activeTaskScheduledStart: inFocus ? focusProvider.taskScheduledStart : null,
+      activeTaskScheduledStart: inFocus
+          ? focusProvider.taskScheduledStart
+          : null,
       activeTaskScheduledEnd: inFocus ? focusProvider.taskScheduledEnd : null,
       activeFocusIntervals: inFocus
           ? focusProvider.currentFocusIntervalsSnapshot
@@ -998,10 +1026,9 @@ class _PlannerTimelineTask extends StatelessWidget {
               child: Text(
                 DateFormat('h:mm a').format(occurrence.start),
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color:
-                          Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ),
@@ -1014,8 +1041,7 @@ class _PlannerTimelineTask extends StatelessWidget {
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color:
-                        occurrence.isCompleted ? AppTheme.success : color,
+                    color: occurrence.isCompleted ? AppTheme.success : color,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1083,7 +1109,9 @@ class _PlannerTimelineTask extends StatelessWidget {
                                       width: 7,
                                       height: 7,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -1093,7 +1121,9 @@ class _PlannerTimelineTask extends StatelessWidget {
                                           .textTheme
                                           .labelSmall
                                           ?.copyWith(
-                                            color: Theme.of(context).colorScheme.primary,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
                                             fontWeight: FontWeight.w700,
                                           ),
                                     ),
@@ -1107,9 +1137,9 @@ class _PlannerTimelineTask extends StatelessWidget {
                                             .textTheme
                                             .labelSmall
                                             ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
                                               fontWeight: FontWeight.w700,
                                             ),
                                       ),
@@ -1126,9 +1156,9 @@ class _PlannerTimelineTask extends StatelessWidget {
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
                                             fontWeight: FontWeight.w700,
                                           ),
                                     ),
@@ -1142,9 +1172,9 @@ class _PlannerTimelineTask extends StatelessWidget {
                                             .textTheme
                                             .labelSmall
                                             ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
                                             ),
                                       ),
                                   ],
@@ -1152,13 +1182,11 @@ class _PlannerTimelineTask extends StatelessWidget {
                               else
                                 Text(
                                   '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
+                                  style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                 ),
                             ],
@@ -1170,20 +1198,18 @@ class _PlannerTimelineTask extends StatelessWidget {
                             onPressed: () => context.push(
                               '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(occurrence.start)}',
                             ),
-                            icon: const Icon(Icons.play_arrow_rounded),
+                            icon: const Icon(Icons.center_focus_strong_rounded),
                           ),
                         IconButton(
-                          tooltip: occurrence.isCompleted
-                              ? 'Undo'
-                              : 'Complete',
+                          tooltip: occurrence.isCompleted ? 'Undo' : 'Complete',
                           onPressed: canToggle
                               ? () => context
-                                  .read<TaskProvider>()
-                                  .setCompletedForDate(
-                                    task.id,
-                                    occurrence.start,
-                                    !occurrence.isCompleted,
-                                  )
+                                    .read<TaskProvider>()
+                                    .setCompletedForDate(
+                                      task.id,
+                                      occurrence.start,
+                                      !occurrence.isCompleted,
+                                    )
                               : null,
                           icon: Icon(
                             occurrence.isCompleted
@@ -1211,10 +1237,7 @@ class _AnytimePlannerTask extends StatelessWidget {
   final Task task;
   final DateTime date;
 
-  const _AnytimePlannerTask({
-    required this.task,
-    required this.date,
-  });
+  const _AnytimePlannerTask({required this.task, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -1229,9 +1252,8 @@ class _AnytimePlannerTask extends StatelessWidget {
         onTap: () => context.push(
           '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(date)}',
         ),
-        onLongPress: () => context.push(
-          '/task/edit/${Uri.encodeComponent(task.id)}',
-        ),
+        onLongPress: () =>
+            context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
           child: Row(
@@ -1245,23 +1267,17 @@ class _AnytimePlannerTask extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    decoration:
-                        complete ? TextDecoration.lineThrough : null,
+                    decoration: complete ? TextDecoration.lineThrough : null,
                   ),
                 ),
               ),
               IconButton(
                 tooltip: complete ? 'Undo' : 'Complete',
-                onPressed: () =>
-                    context.read<TaskProvider>().setCompletedForDate(
-                          task.id,
-                          date,
-                          !complete,
-                        ),
+                onPressed: () => context
+                    .read<TaskProvider>()
+                    .setCompletedForDate(task.id, date, !complete),
                 icon: Icon(
-                  complete
-                      ? Icons.check_circle_rounded
-                      : Icons.circle_outlined,
+                  complete ? Icons.check_circle_rounded : Icons.circle_outlined,
                   color: complete ? AppTheme.success : null,
                 ),
               ),
@@ -1277,10 +1293,7 @@ class _AnytimeCalendarStrip extends StatelessWidget {
   final DateTime date;
   final List<Task> tasks;
 
-  const _AnytimeCalendarStrip({
-    required this.date,
-    required this.tasks,
-  });
+  const _AnytimeCalendarStrip({required this.date, required this.tasks});
 
   @override
   Widget build(BuildContext context) {
@@ -1305,9 +1318,9 @@ class _AnytimeCalendarStrip extends StatelessWidget {
               const SizedBox(width: 7),
               Text(
                 'Anytime',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -1316,12 +1329,7 @@ class _AnytimeCalendarStrip extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: tasks
-                .map(
-                  (task) => _AnytimeCalendarChip(
-                    task: task,
-                    date: date,
-                  ),
-                )
+                .map((task) => _AnytimeCalendarChip(task: task, date: date))
                 .toList(),
           ),
         ],
@@ -1334,10 +1342,7 @@ class _AnytimeCalendarChip extends StatelessWidget {
   final Task task;
   final DateTime date;
 
-  const _AnytimeCalendarChip({
-    required this.task,
-    required this.date,
-  });
+  const _AnytimeCalendarChip({required this.task, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -1345,9 +1350,8 @@ class _AnytimeCalendarChip extends StatelessWidget {
     final complete = provider.isTaskCompletedForDate(task, date);
 
     return GestureDetector(
-      onLongPress: () => context.push(
-        '/task/edit/${Uri.encodeComponent(task.id)}',
-      ),
+      onLongPress: () =>
+          context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
       child: ActionChip(
         avatar: Icon(
           complete ? Icons.check_circle_rounded : Icons.task_alt_rounded,
@@ -1356,11 +1360,7 @@ class _AnytimeCalendarChip extends StatelessWidget {
         ),
         label: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 190),
-          child: Text(
-            task.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          child: Text(task.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
         onPressed: () => context.push(
           '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(date)}',
@@ -1374,10 +1374,7 @@ class _DayTimeGrid extends StatelessWidget {
   final DateTime date;
   final List<TaskOccurrence> occurrences;
 
-  const _DayTimeGrid({
-    required this.date,
-    required this.occurrences,
-  });
+  const _DayTimeGrid({required this.date, required this.occurrences});
 
   static const double _hourHeight = 68;
   static const double _timeWidth = 52;
@@ -1418,9 +1415,9 @@ class _DayTimeGrid extends StatelessWidget {
                         _hourLabel(hour),
                         textAlign: TextAlign.right,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     );
                   }),
@@ -1468,9 +1465,8 @@ class _DayTimeGrid extends StatelessWidget {
                           child: Text(
                             'No timed tasks on this day.',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ),
                       ),
@@ -1506,7 +1502,9 @@ class _MultiDayTimeGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allOccurrences = occurrencesByDay.values.expand((items) => items).toList();
+    final allOccurrences = occurrencesByDay.values
+        .expand((items) => items)
+        .toList();
     final range = _visibleHourRange(allOccurrences);
     final startHour = range.$1;
     final endHour = range.$2;
@@ -1545,7 +1543,8 @@ class _MultiDayTimeGrid extends StatelessWidget {
                             child: Text(
                               _hourLabel(hour),
                               textAlign: TextAlign.right,
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
                                     color: scheme.onSurfaceVariant,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1559,7 +1558,8 @@ class _MultiDayTimeGrid extends StatelessWidget {
               ),
               ...days.map((day) {
                 final key = _dateOnly(day);
-                final occurrences = occurrencesByDay[key] ?? const <TaskOccurrence>[];
+                final occurrences =
+                    occurrencesByDay[key] ?? const <TaskOccurrence>[];
                 final anytime = anytimeByDay[key] ?? const <Task>[];
 
                 return SizedBox(
@@ -1666,26 +1666,25 @@ class _MultiDayHeader extends StatelessWidget {
             Text(
               DateFormat('EEE').format(date),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: _isToday(date) ? scheme.primary : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: _isToday(date)
+                    ? scheme.primary
+                    : scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               '${date.day}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const Spacer(),
             Text(
               anytimeCount == 0 ? 'Timed plan' : '$anytimeCount anytime',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -1716,17 +1715,16 @@ Positioned _positionedGridTask(
   final effectiveEnd = occurrence.end.isAfter(dayEnd) ? dayEnd : occurrence.end;
   final durationMinutes = effectiveEnd.difference(occurrence.start).inMinutes;
   final rawHeight = durationMinutes / 60 * hourHeight;
-  final height = rawHeight.clamp(compact ? 24.0 : 30.0, compact ? 118.0 : 170.0).toDouble();
+  final height = rawHeight
+      .clamp(compact ? 24.0 : 30.0, compact ? 118.0 : 170.0)
+      .toDouble();
 
   return Positioned(
     top: topInset + rawTop.clamp(0.0, double.infinity).toDouble() + 3,
     left: left,
     right: right,
     height: height,
-    child: _GridTaskBlock(
-      occurrence: occurrence,
-      compact: compact,
-    ),
+    child: _GridTaskBlock(occurrence: occurrence, compact: compact),
   );
 }
 
@@ -1762,14 +1760,9 @@ Widget _currentTimeIndicator(
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        Expanded(
-          child: Container(height: 1.5, color: color),
-        ),
+        Expanded(child: Container(height: 1.5, color: color)),
       ],
     ),
   );
@@ -1779,10 +1772,7 @@ class _GridTaskBlock extends StatelessWidget {
   final TaskOccurrence occurrence;
   final bool compact;
 
-  const _GridTaskBlock({
-    required this.occurrence,
-    required this.compact,
-  });
+  const _GridTaskBlock({required this.occurrence, required this.compact});
 
   @override
   Widget build(BuildContext context) {
@@ -1804,9 +1794,8 @@ class _GridTaskBlock extends StatelessWidget {
         onTap: () => context.push(
           '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(occurrence.start)}',
         ),
-        onLongPress: () => context.push(
-          '/task/edit/${Uri.encodeComponent(task.id)}',
-        ),
+        onLongPress: () =>
+            context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final tiny = constraints.maxHeight < 39;
@@ -1825,8 +1814,8 @@ class _GridTaskBlock extends StatelessWidget {
                     color: occurrence.isCompleted
                         ? AppTheme.success
                         : inFocus
-                            ? Theme.of(context).colorScheme.primary
-                            : color,
+                        ? Theme.of(context).colorScheme.primary
+                        : color,
                     width: inFocus ? 4 : 3,
                   ),
                 ),
@@ -1855,11 +1844,11 @@ class _GridTaskBlock extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: compact ? 8.5 : null,
-                            height: 1.0,
-                          ),
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: compact ? 8.5 : null,
+                        height: 1.0,
+                      ),
                     ),
                   ] else if (showTime) ...[
                     const SizedBox(height: 2),
@@ -1868,10 +1857,10 @@ class _GridTaskBlock extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontSize: compact ? 9 : null,
-                            height: 1.0,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: compact ? 9 : null,
+                        height: 1.0,
+                      ),
                     ),
                   ],
                 ],
@@ -1892,12 +1881,14 @@ class _GridTaskBlock extends StatelessWidget {
     final earliest = occurrences
         .map((item) => item.start.hour)
         .reduce((a, b) => a < b ? a : b);
-    final latest = occurrences.map((item) {
-      if (!_sameDate(item.start, item.end)) {
-        return 24;
-      }
-      return item.end.minute == 0 ? item.end.hour : item.end.hour + 1;
-    }).reduce((a, b) => a > b ? a : b);
+    final latest = occurrences
+        .map((item) {
+          if (!_sameDate(item.start, item.end)) {
+            return 24;
+          }
+          return item.end.minute == 0 ? item.end.hour : item.end.hour + 1;
+        })
+        .reduce((a, b) => a > b ? a : b);
 
     startHour = earliest < startHour ? earliest : startHour;
     endHour = latest > endHour ? latest : endHour;
@@ -1939,9 +1930,7 @@ class _WeekDateStrip extends StatelessWidget {
 
         return Expanded(
           child: Padding(
-            padding: EdgeInsets.only(
-              right: index == 6 ? 0 : 5,
-            ),
+            padding: EdgeInsets.only(right: index == 6 ? 0 : 5),
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
               onTap: () => onDateSelected(date),
@@ -1957,26 +1946,17 @@ class _WeekDateStrip extends StatelessWidget {
                   children: [
                     Text(
                       DateFormat('E').format(date).substring(0, 1),
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelSmall
-                          ?.copyWith(
-                            color: selected
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .onPrimaryContainer
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: selected
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       '${date.day}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 5),
                     Container(
@@ -2014,15 +1994,10 @@ class _WeekdayHeader extends StatelessWidget {
               child: Center(
                 child: Text(
                   label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelSmall
-                      ?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -2067,9 +2042,7 @@ class _MonthDayCell extends StatelessWidget {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: today && !selected
-              ? Border.all(
-                  color: Theme.of(context).colorScheme.primary,
-                )
+              ? Border.all(color: Theme.of(context).colorScheme.primary)
               : null,
         ),
         child: Column(
@@ -2083,10 +2056,9 @@ class _MonthDayCell extends StatelessWidget {
                     : FontWeight.w600,
                 color: inMonth
                     ? Theme.of(context).colorScheme.onSurface
-                    : Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant
-                        .withOpacity(0.45),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withOpacity(0.45),
               ),
             ),
             const Spacer(),
@@ -2101,9 +2073,7 @@ class _MonthDayCell extends StatelessWidget {
                         width: 5,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: _priorityColor(
-                            task.priority,
-                          ),
+                          color: _priorityColor(task.priority),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -2120,9 +2090,7 @@ class _MonthDayCell extends StatelessWidget {
 class _EmptyDay extends StatelessWidget {
   final bool compact;
 
-  const _EmptyDay({
-    this.compact = false,
-  });
+  const _EmptyDay({this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -2148,9 +2116,8 @@ class _EmptyDay extends StatelessWidget {
             child: Text(
               'No plan for this day',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -2173,12 +2140,7 @@ class _HabitPlannerBody extends StatelessWidget {
     final provider = context.watch<HabitProvider>();
     final habits = provider.habitsForDate(selectedDate);
     final completed = habits
-        .where(
-          (habit) => provider.isCompletedForDate(
-            habit,
-            selectedDate,
-          ),
-        )
+        .where((habit) => provider.isCompletedForDate(habit, selectedDate))
         .length;
 
     return ListView(
@@ -2207,10 +2169,8 @@ class _HabitPlannerBody extends StatelessWidget {
                         ? 'No routines are scheduled for this date.'
                         : '$completed of ${habits.length} complete',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -2219,17 +2179,12 @@ class _HabitPlannerBody extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         if (habits.isEmpty)
-          _HabitEmptyState(
-            hasAny: provider.habits.isNotEmpty,
-          )
+          _HabitEmptyState(hasAny: provider.habits.isNotEmpty)
         else
           ...habits.map(
             (habit) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _HabitPlannerCard(
-                habit: habit,
-                date: selectedDate,
-              ),
+              child: _HabitPlannerCard(habit: habit, date: selectedDate),
             ),
           ),
       ],
@@ -2256,13 +2211,9 @@ class _WeekDateStripForHabits extends StatelessWidget {
         final date = start.add(Duration(days: index));
         final selected = _sameDate(date, selectedDate);
         final habits = provider.habitsForDate(date);
-        final complete = habits.isNotEmpty &&
-            habits.every(
-              (habit) => provider.isCompletedForDate(
-                habit,
-                date,
-              ),
-            );
+        final complete =
+            habits.isNotEmpty &&
+            habits.every((habit) => provider.isCompletedForDate(habit, date));
 
         return Expanded(
           child: Padding(
@@ -2282,37 +2233,27 @@ class _WeekDateStripForHabits extends StatelessWidget {
                   children: [
                     Text(
                       DateFormat('E').format(date).substring(0, 1),
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: selected
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .onPrimaryContainer
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                          ),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: selected
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       '${date.day}',
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 5),
                     Icon(
-                      complete
-                          ? Icons.check_circle_rounded
-                          : Icons.circle,
+                      complete ? Icons.check_circle_rounded : Icons.circle,
                       size: complete ? 8 : 5,
                       color: complete
                           ? AppTheme.success
                           : habits.isNotEmpty
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.transparent,
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
                     ),
                   ],
                 ),
@@ -2329,18 +2270,14 @@ class _HabitPlannerCard extends StatelessWidget {
   final Habit habit;
   final DateTime date;
 
-  const _HabitPlannerCard({
-    required this.habit,
-    required this.date,
-  });
+  const _HabitPlannerCard({required this.habit, required this.date});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HabitProvider>();
     final progress = provider.progressForDate(habit.id, date);
     final complete = provider.isCompletedForDate(habit, date);
-    final ratio =
-        (progress / habit.targetValue).clamp(0.0, 1.0).toDouble();
+    final ratio = (progress / habit.targetValue).clamp(0.0, 1.0).toDouble();
 
     final progressText = habit.goalType == HabitGoalType.checkIn
         ? (complete ? 'Done' : 'Check in')
@@ -2351,9 +2288,7 @@ class _HabitPlannerCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
-        onTap: () => context.push(
-          '/habit/${Uri.encodeComponent(habit.id)}',
-        ),
+        onTap: () => context.push('/habit/${Uri.encodeComponent(habit.id)}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -2365,11 +2300,7 @@ class _HabitPlannerCard extends StatelessWidget {
                   color: habit.color.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(
-                  habit.icon,
-                  color: habit.color,
-                  size: 26,
-                ),
+                child: Icon(habit.icon, color: habit.color, size: 26),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -2393,13 +2324,11 @@ class _HabitPlannerCard extends StatelessWidget {
                       children: [
                         Text(
                           progressText,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                         ),
                         if (habit.reminderTime != null)
@@ -2409,20 +2338,18 @@ class _HabitPlannerCard extends StatelessWidget {
                               Icon(
                                 Icons.notifications_none_rounded,
                                 size: 14,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 3),
                               Text(
                                 habit.reminderTime!.format(context),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
+                                style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w700,
                                     ),
                               ),
@@ -2438,8 +2365,7 @@ class _HabitPlannerCard extends StatelessWidget {
                           value: ratio,
                           minHeight: 7,
                           color: habit.color,
-                          backgroundColor:
-                              habit.color.withOpacity(0.12),
+                          backgroundColor: habit.color.withOpacity(0.12),
                         ),
                       ),
                     ],
@@ -2449,15 +2375,12 @@ class _HabitPlannerCard extends StatelessWidget {
               const SizedBox(width: 8),
               IconButton(
                 tooltip: complete ? 'Undo' : 'Complete',
-                onPressed: () =>
-                    context.read<HabitProvider>().toggleCompleted(
-                          habit.id,
-                          date,
-                        ),
+                onPressed: () => context.read<HabitProvider>().toggleCompleted(
+                  habit.id,
+                  date,
+                ),
                 icon: Icon(
-                  complete
-                      ? Icons.check_circle_rounded
-                      : Icons.circle_outlined,
+                  complete ? Icons.check_circle_rounded : Icons.circle_outlined,
                   color: complete ? habit.color : null,
                 ),
               ),
@@ -2472,9 +2395,7 @@ class _HabitPlannerCard extends StatelessWidget {
 class _HabitEmptyState extends StatelessWidget {
   final bool hasAny;
 
-  const _HabitEmptyState({
-    required this.hasAny,
-  });
+  const _HabitEmptyState({required this.hasAny});
 
   @override
   Widget build(BuildContext context) {
@@ -2494,9 +2415,7 @@ class _HabitEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            hasAny
-                ? 'No habits scheduled today'
-                : 'Build your first routine',
+            hasAny ? 'No habits scheduled today' : 'Build your first routine',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge,
           ),
@@ -2507,10 +2426,9 @@ class _HabitEmptyState extends StatelessWidget {
                 : 'Use the single New habit button to add a routine that repeats on the days you choose.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -2538,8 +2456,7 @@ Future<void> _showTaskCollectionSheet(
               children: [
                 Text(
                   title,
-                  style:
-                      Theme.of(sheetContext).textTheme.headlineMedium,
+                  style: Theme.of(sheetContext).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 14),
                 Expanded(
@@ -2547,20 +2464,17 @@ Future<void> _showTaskCollectionSheet(
                       ? Center(
                           child: Text(
                             'Nothing here.',
-                            style: Theme.of(sheetContext)
-                                .textTheme
-                                .bodyLarge
+                            style: Theme.of(sheetContext).textTheme.bodyLarge
                                 ?.copyWith(
-                                  color: Theme.of(sheetContext)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    sheetContext,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                           ),
                         )
                       : ListView.separated(
                           itemCount: tasks.length,
-                          separatorBuilder: (_, __) =>
-                              const Divider(height: 1),
+                          separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final task = tasks[index];
                             return ListTile(
@@ -2574,12 +2488,11 @@ Future<void> _showTaskCollectionSheet(
                               subtitle: task.plannedDate == null
                                   ? null
                                   : Text(
-                                      DateFormat('EEE, MMM d')
-                                          .format(task.plannedDate!),
+                                      DateFormat(
+                                        'EEE, MMM d',
+                                      ).format(task.plannedDate!),
                                     ),
-                              trailing: const Icon(
-                                Icons.chevron_right_rounded,
-                              ),
+                              trailing: const Icon(Icons.chevron_right_rounded),
                               onTap: () {
                                 Navigator.pop(sheetContext);
                                 context.push(
@@ -2627,8 +2540,7 @@ Future<void> _showCompletedSheet(BuildContext context) {
               children: [
                 Text(
                   'Completed',
-                  style:
-                      Theme.of(sheetContext).textTheme.headlineMedium,
+                  style: Theme.of(sheetContext).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 14),
                 Expanded(
@@ -2636,13 +2548,11 @@ Future<void> _showCompletedSheet(BuildContext context) {
                       ? Center(
                           child: Text(
                             'Completed work will appear here.',
-                            style: Theme.of(sheetContext)
-                                .textTheme
-                                .bodyLarge
+                            style: Theme.of(sheetContext).textTheme.bodyLarge
                                 ?.copyWith(
-                                  color: Theme.of(sheetContext)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    sheetContext,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                           ),
                         )
@@ -2747,7 +2657,6 @@ bool _sameDate(DateTime first, DateTime second) =>
     first.day == second.day;
 
 bool _isToday(DateTime date) => _sameDate(date, DateTime.now());
-
 
 String _startTimingLabel(DateTime actualStart, DateTime plannedStart) {
   final offset = actualStart.difference(plannedStart);

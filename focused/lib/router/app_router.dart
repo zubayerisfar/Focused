@@ -9,6 +9,8 @@ import '../screens/focus/focus_complete_screen.dart';
 import '../screens/focus/focus_session_details_screen.dart';
 import '../screens/focus/focus_session_screen.dart';
 import '../screens/focus/focus_setup_screen.dart';
+import '../screens/friends/add_friends_screen.dart';
+import '../screens/friends/friends_screen.dart';
 import '../screens/habits/habit_details_screen.dart';
 import '../screens/habits/habit_edit_screen.dart';
 import '../screens/main/main_shell.dart';
@@ -123,6 +125,17 @@ GoRouter createAppRouter({
       GoRoute(
         path: '/badges',
         builder: (context, state) => const BadgesScreen(),
+      ),
+      GoRoute(
+        path: '/friends',
+        builder: (context, state) {
+          final tab = state.uri.queryParameters['tab'];
+          return FriendsScreen(initialTabIndex: tab == 'followers' ? 1 : 0);
+        },
+      ),
+      GoRoute(
+        path: '/friends/add',
+        builder: (context, state) => const AddFriendsScreen(),
       ),
       GoRoute(
         path: '/settings',
@@ -269,8 +282,10 @@ int _mainTabIndex(String? raw) {
       return 1;
     case 'focus':
       return 2;
-    case 'settings':
+    case 'friends':
       return 3;
+    case 'settings':
+      return 4;
     case 'home':
     default:
       return 0;

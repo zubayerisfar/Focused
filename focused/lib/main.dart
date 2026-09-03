@@ -14,6 +14,7 @@ import 'providers/habit_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'providers/cloud_sync_provider.dart';
 import 'providers/friends_provider.dart';
+import 'providers/task_mate_provider.dart';
 import 'providers/streak_goal_provider.dart';
 import 'providers/task_provider.dart';
 import 'providers/theme_provider.dart';
@@ -23,6 +24,7 @@ import 'providers/user_stats_provider.dart';
 import 'router/app_router.dart';
 import 'services/account_lifecycle_service.dart';
 import 'services/friends_service.dart';
+import 'services/task_mate_service.dart';
 import 'services/android_installation_info_service.dart';
 import 'services/android_usage_stats_service.dart';
 import 'services/app_category_storage_service.dart';
@@ -270,12 +272,20 @@ Future<void> main() async {
     statsProvider: userStatsProvider,
     notificationService: taskNotificationService,
   );
+  final taskMateService = TaskMateService();
+  final taskMateProvider = TaskMateProvider(
+    service: taskMateService,
+    notificationService: taskNotificationService,
+    statsProvider: userStatsProvider,
+    profileProvider: userProfileProvider,
+  );
   if (accountProvider.isSignedIn) {
     friendsProvider.initForUser(
       accountProvider.user!.uid,
       displayName: accountProvider.displayName,
       photoUrl: accountProvider.photoUrl,
     );
+    taskMateProvider.initForUser(accountProvider.user!.uid);
   }
 
   runApp(
@@ -294,6 +304,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: habitProvider),
         ChangeNotifierProvider.value(value: userProfileProvider),
         ChangeNotifierProvider.value(value: friendsProvider),
+        ChangeNotifierProvider.value(value: taskMateProvider),
       ],
       child: FocusProductivityApp(routerConfig: router),
     ),

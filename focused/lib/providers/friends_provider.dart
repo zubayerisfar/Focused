@@ -20,10 +20,10 @@ class FriendsProvider extends ChangeNotifier {
     required UserProfileProvider profileProvider,
     required UserStatsProvider statsProvider,
     TaskNotificationService? notificationService,
-  })  : _friendsService = friendsService,
-        _profileProvider = profileProvider,
-        _statsProvider = statsProvider,
-        _notificationService = notificationService;
+  }) : _friendsService = friendsService,
+       _profileProvider = profileProvider,
+       _statsProvider = statsProvider,
+       _notificationService = notificationService;
 
   String _currentUid = '';
   List<FriendUser> _following = [];
@@ -57,7 +57,16 @@ class FriendsProvider extends ChangeNotifier {
     _checkDailyReset();
     return _remindersSentToday;
   }
+
   bool get canSendReminder => remindersSentToday < maxDailyReminders;
+
+  /// Checks if a username is available (unique)
+  Future<bool> checkUsernameAvailability(String username) async {
+    return _friendsService.isUsernameAvailable(
+      username: username,
+      currentUid: _currentUid,
+    );
+  }
 
   String get _todayKey {
     final now = DateTime.now();
@@ -210,7 +219,9 @@ class FriendsProvider extends ChangeNotifier {
 
     final index = _searchResults.indexWhere((u) => u.uid == targetUid);
     if (index != -1) {
-      _searchResults[index] = _searchResults[index].copyWith(isFollowing: false);
+      _searchResults[index] = _searchResults[index].copyWith(
+        isFollowing: false,
+      );
     }
     notifyListeners();
   }
@@ -291,7 +302,10 @@ class FriendsProvider extends ChangeNotifier {
     );
     _partnerQuest = quest;
     notifyListeners();
-    await _friendsService.setPartnerQuest(currentUid: _currentUid, quest: quest);
+    await _friendsService.setPartnerQuest(
+      currentUid: _currentUid,
+      quest: quest,
+    );
   }
 
   void _cancelSubs() {

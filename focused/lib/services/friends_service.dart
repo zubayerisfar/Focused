@@ -10,7 +10,7 @@ class FriendsService {
   final FirebaseFirestore _firestore;
 
   FriendsService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // ===========================================================================
   // PUBLIC PROFILE SYNC
@@ -31,8 +31,12 @@ class FriendsService {
     final cleanUsername = username.trim().replaceAll('@', '');
     final data = <String, dynamic>{
       'uid': uid,
-      'displayName': displayName.trim().isEmpty ? 'Focused User' : displayName.trim(),
-      'displayNameLower': (displayName.trim().isEmpty ? 'focused user' : displayName.trim()).toLowerCase(),
+      'displayName': displayName.trim().isEmpty
+          ? 'Focused User'
+          : displayName.trim(),
+      'displayNameLower':
+          (displayName.trim().isEmpty ? 'focused user' : displayName.trim())
+              .toLowerCase(),
       'username': cleanUsername,
       'usernameLower': cleanUsername.toLowerCase(),
       'photoUrl': photoUrl,
@@ -43,9 +47,137 @@ class FriendsService {
     };
 
     try {
-      await _firestore.collection('users').doc(uid).set(data, SetOptions(merge: true));
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .set(data, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Could not sync public profile to Firestore: $e');
+    }
+  }
+
+  /// Checks whether a username is unique across all users
+  Future<bool> isUsernameAvailable({
+    required String username,
+    required String currentUid,
+  }) async {
+    final clean = username.trim().toLowerCase().replaceAll('@', '');
+    if (clean.length < 3) return false;
+
+    try {
+      final snap = await _firestore
+          .collection('users')
+          .where('usernameLower', isEqualTo: clean)
+          .limit(2)
+          .get();
+
+      for (final doc in snap.docs) {
+        if (doc.id != currentUid) {
+          return false; // Already taken by another user
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error checking username availability: $e');
+      return true; // Fallback to allow in case of offline/transient error
+    }
+  }
+
+  /// Atomically reserves a username in `usernames/{usernameLower}`
+  Future<bool> reserveUsername({
+    required String uid,
+    required String username,
+  }) async {
+    final clean = username.trim().toLowerCase().replaceAll('@', '');
+    if (clean.length < 3) return false;
+
+    final docRef = _firestore.collection('usernames').doc(clean);
+    try {
+      return await _firestore.runTransaction((transaction) async {
+        final snap = await transaction.get(docRef);
+        if (snap.exists && snap.data()?['uid'] != uid) {
+          return false; // Taken!
+        }
+        transaction.set(docRef, {
+          'uid': uid,
+          'username': clean,
+          'reservedAt': FieldValue.serverTimestamp(),
+        });
+        return true;
+      });
+    } catch (e) {
+      debugPrint('Could not reserve username: $e');
+      return false;
+    }
+  }
+
+  /// Ensures full user initialization upon registration or sign in
+  Future<void> ensureUserDocumentInitialized({
+    required String uid,
+    required String displayName,
+    required String email,
+    String? photoUrl,
+  }) async {
+    if (uid.isEmpty) return;
+
+    final userDocRef = _firestore.collection('users').doc(uid);
+    try {
+      final userSnap = await userDocRef.get();
+      if (!userSnap.exists) {
+        final defaultUsername = email.isNotEmpty
+            ? email
+                  .split('@')
+                  .first
+                  .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
+                  .toLowerCase()
+            : displayName.replaceAll(RegExp(r'\s+'), '').toLowerCase();
+        final cleanUsername = defaultUsername.isEmpty
+            ? 'user_${uid.substring(0, 5)}'
+            : defaultUsername;
+
+        await _firestore.runTransaction((transaction) async {
+          transaction.set(userDocRef, {
+            'uid': uid,
+            'displayName': displayName.isEmpty ? 'Focused User' : displayName,
+            'displayNameLower':
+                (displayName.isEmpty ? 'focused user' : displayName)
+                    .toLowerCase(),
+            'username': cleanUsername,
+            'usernameLower': cleanUsername.toLowerCase(),
+            'photoUrl': photoUrl,
+            'status': 'active',
+            'streakDays': 0,
+            'xpPoints': 0,
+            'totalFocusMinutes': 0,
+            'followingCount': 0,
+            'followersCount': 0,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+          // Reserve in usernames collection
+          final usernameRef = _firestore
+              .collection('usernames')
+              .doc(cleanUsername.toLowerCase());
+          transaction.set(usernameRef, {
+            'uid': uid,
+            'reservedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+          // Private profile
+          final privateRef = userDocRef.collection('private').doc('profile');
+          transaction.set(privateRef, {
+            'email': email,
+            'nationality': '',
+            'birthday': null,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        });
+      } else {
+        await userDocRef.update({'updatedAt': FieldValue.serverTimestamp()});
+      }
+    } catch (e) {
+      debugPrint('Could not initialize user document: $e');
     }
   }
 
@@ -191,10 +323,10 @@ class FriendsService {
         .collection('following')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((d) {
-        return FriendUser.fromMap(d.data(), docId: d.id, isFollowing: true);
-      }).toList();
-    });
+          return snapshot.docs.map((d) {
+            return FriendUser.fromMap(d.data(), docId: d.id, isFollowing: true);
+          }).toList();
+        });
   }
 
   Stream<List<FriendUser>> streamFollowers(String currentUid) {
@@ -205,10 +337,10 @@ class FriendsService {
         .collection('followers')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((d) {
-        return FriendUser.fromMap(d.data(), docId: d.id);
-      }).toList();
-    });
+          return snapshot.docs.map((d) {
+            return FriendUser.fromMap(d.data(), docId: d.id);
+          }).toList();
+        });
   }
 
   // ===========================================================================
@@ -228,17 +360,18 @@ class FriendsService {
         .doc(targetUid)
         .collection('friend_reminders')
         .add({
-      'fromUid': currentUid,
-      'fromName': fromName,
-      'fromUsername': cleanUsername,
-      'message': '$fromName is telling you to finish your task today! 🔥',
-      'createdAt': FieldValue.serverTimestamp(),
-      'read': false,
-    });
+          'fromUid': currentUid,
+          'fromName': fromName,
+          'fromUsername': cleanUsername,
+          'message': '$fromName is telling you to finish your task today! 🔥',
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
+        });
   }
 
   /// Listens for incoming unread reminders to alert the user
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? listenForIncomingReminders({
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  listenForIncomingReminders({
     required String currentUid,
     required Function(String fromName, String message) onReminderReceived,
   }) {
@@ -251,18 +384,19 @@ class FriendsService {
         .where('read', isEqualTo: false)
         .snapshots()
         .listen((snap) {
-      for (final doc in snap.docs) {
-        final data = doc.data();
-        final fromName = data['fromName']?.toString() ?? 'A Friend';
-        final message = data['message']?.toString() ??
-            '$fromName is reminding you to finish your task!';
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final fromName = data['fromName']?.toString() ?? 'A Friend';
+            final message =
+                data['message']?.toString() ??
+                '$fromName is reminding you to finish your task!';
 
-        onReminderReceived(fromName, message);
+            onReminderReceived(fromName, message);
 
-        // Mark as read so it doesn't trigger repeatedly
-        doc.reference.update({'read': true});
-      }
-    });
+            // Mark as read so it doesn't trigger repeatedly
+            doc.reference.update({'read': true});
+          }
+        });
   }
 
   // ===========================================================================
@@ -283,13 +417,13 @@ class FriendsService {
         .doc(targetUid)
         .collection('exp_gifts')
         .add({
-      'fromUid': currentUid,
-      'fromName': fromName,
-      'fromUsername': cleanUsername,
-      'amount': amount,
-      'claimed': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+          'fromUid': currentUid,
+          'fromName': fromName,
+          'fromUsername': cleanUsername,
+          'amount': amount,
+          'claimed': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
   }
 
   /// Streams unclaimed EXP gifts for the current user
@@ -302,8 +436,10 @@ class FriendsService {
         .where('claimed', isEqualTo: false)
         .snapshots()
         .map((snap) {
-      return snap.docs.map((d) => ExpGift.fromMap(d.data(), docId: d.id)).toList();
-    });
+          return snap.docs
+              .map((d) => ExpGift.fromMap(d.data(), docId: d.id))
+              .toList();
+        });
   }
 
   /// Marks an EXP gift as claimed
@@ -332,9 +468,9 @@ class FriendsService {
         .doc('current')
         .snapshots()
         .map((doc) {
-      if (!doc.exists || doc.data() == null) return null;
-      return PartnerQuest.fromMap(doc.data()!);
-    });
+          if (!doc.exists || doc.data() == null) return null;
+          return PartnerQuest.fromMap(doc.data()!);
+        });
   }
 
   Future<void> setPartnerQuest({

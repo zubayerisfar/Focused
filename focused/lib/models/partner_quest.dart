@@ -21,8 +21,10 @@ class PartnerQuest {
     this.hoursRemaining = 24,
   });
 
-  int get combinedProgress => (myProgress + partnerProgress).clamp(0, totalTarget);
-  double get progressRatio => totalTarget == 0 ? 0 : (combinedProgress / totalTarget).clamp(0.0, 1.0);
+  int get combinedProgress =>
+      (myProgress + partnerProgress).clamp(0, totalTarget);
+  double get progressRatio =>
+      totalTarget == 0 ? 0 : (combinedProgress / totalTarget).clamp(0.0, 1.0);
   bool get isCompleted => combinedProgress >= totalTarget;
 
   PartnerQuest copyWith({
@@ -69,7 +71,8 @@ class PartnerQuest {
       partnerName: (map['partnerName'] ?? 'Friend').toString(),
       partnerUsername: (map['partnerUsername'] ?? '').toString(),
       partnerPhotoUrl: map['partnerPhotoUrl']?.toString(),
-      goalTitle: (map['goalTitle'] ?? 'Complete 10 Focus Sessions Together').toString(),
+      goalTitle: (map['goalTitle'] ?? 'Complete 10 Focus Sessions Together')
+          .toString(),
       totalTarget: (map['totalTarget'] as num?)?.toInt() ?? 10,
       myProgress: (map['myProgress'] as num?)?.toInt() ?? 0,
       partnerProgress: (map['partnerProgress'] as num?)?.toInt() ?? 0,

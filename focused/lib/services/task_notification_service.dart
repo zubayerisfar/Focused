@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -151,8 +152,8 @@ class TaskNotificationService {
         for (final schedule in plan.schedules) {
           await _notifications.zonedSchedule(
             _notificationId(task.id, schedule.slot),
-            task.title,
-            _body(task, reminderMinutes),
+            _engagingTaskTitle(task),
+            _engagingTaskBody(task, reminderMinutes),
             _toLocalTz(schedule.firstReminderAt),
             _details,
             androidScheduleMode: useExactScheduling
@@ -520,13 +521,12 @@ class TaskNotificationService {
   }
 
   Future<void> _showImmediateReminder(Task task, int reminderMinutes) async {
+    final title = _engagingTaskTitle(task);
+    final body = _engagingTaskBody(task, reminderMinutes);
     await _notifications.show(
       _notificationId(task.id, 9),
-      task.title,
-      reminderMinutes == 0
-          ? 'Your scheduled task starts now.'
-          : 'Your reminder time has already passed. '
-                'Your scheduled task is starting soon.',
+      title,
+      body,
       _details,
       payload: task.id,
     );
@@ -539,7 +539,8 @@ class TaskNotificationService {
     const androidDetails = AndroidNotificationDetails(
       'focused_friend_reminders',
       'Friend Task Reminders',
-      channelDescription: 'Notifications sent by your friends to remind you to finish your tasks.',
+      channelDescription:
+          'Notifications sent by your friends to remind you to finish your tasks.',
       importance: Importance.max,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
@@ -549,12 +550,83 @@ class TaskNotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
+    final titleVariations = [
+      '🔥 $fromName caught you slacking!',
+      '👀 $fromName is watching your streak!',
+      '😤 $fromName demands your best today!',
+      '⚡ Wake up! $fromName sent you a nudge!',
+    ];
+    final selectedTitle =
+        titleVariations[(fromName.hashCode ^ DateTime.now().minute).abs() %
+            titleVariations.length];
+
+    final urgentBody = message.isNotEmpty
+        ? message
+        : '$fromName says: "Put away the distractions and finish your task right now! No excuses!" 💥';
+
     await _notifications.show(
       DateTime.now().millisecondsSinceEpoch % 100000,
-      'Friend Reminder: $fromName',
-      message,
+      selectedTitle,
+      urgentBody,
       notificationDetails,
     );
+  }
+
+  Future<void> scheduleTaskMateReminder({
+    required String groupId,
+    required String taskTitle,
+    required DateTime scheduledTime,
+  }) async {
+    if (scheduledTime.isBefore(DateTime.now())) return;
+
+    final tzDate = tz.TZDateTime.from(scheduledTime, tz.local);
+    const androidDetails = AndroidNotificationDetails(
+      'focused_task_mates',
+      'Task Mate Reminders',
+      channelDescription:
+          'Scheduled reminders for your shared Task Mate goals.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    final titleList = [
+      '⚡ Task Mate Alert: Time to execute!',
+      '🔥 Your squad is waiting on "$taskTitle"!',
+      '🤝 Task Mate Showdown: Earn +200 EXP now!',
+      '😤 Don\'t let your team down! Lock in!',
+    ];
+    final selectedTitle =
+        titleList[(groupId.hashCode ^ taskTitle.hashCode).abs() %
+            titleList.length];
+
+    final bodyList = [
+      'Your shared squad task "$taskTitle" starts NOW. Finish it to secure your +200 EXP double reward! 🏆',
+      'Zero excuses! Lock in on "$taskTitle" right now before your mates finish first! 🚀 (+200 EXP)',
+      'Stop procrastinating. Your squad scheduled "$taskTitle" for this moment. Let\'s conquer it! 💪',
+    ];
+    final selectedBody =
+        bodyList[(taskTitle.hashCode ^ scheduledTime.minute).abs() %
+            bodyList.length];
+
+    final notifId = (groupId.hashCode ^ taskTitle.hashCode).abs() % 100000;
+    try {
+      await _notifications.zonedSchedule(
+        notifId,
+        selectedTitle,
+        selectedBody,
+        tzDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: 'task_mate_$groupId',
+      );
+    } catch (e) {
+      debugPrint('Could not schedule Task Mate reminder: $e');
+    }
   }
 
   tz.TZDateTime _toLocalTz(DateTime value) {
@@ -595,12 +667,37 @@ class TaskNotificationService {
         : TaskReminderScheduleStatus.scheduledInexact;
   }
 
-  String _body(Task task, int reminderMinutes) {
+  static String _engagingTaskTitle(Task task) {
+    final titles = [
+      '🔥 Don\'t break your streak! "${task.title}"',
+      '⚡ Lock in: "${task.title}" starts now!',
+      '⏱️ Time is running out: "${task.title}"',
+      '💪 No excuses today: "${task.title}"',
+      '🎯 Your future self is watching: "${task.title}"',
+    ];
+    return titles[(task.id.hashCode ^ task.title.hashCode).abs() %
+        titles.length];
+  }
+
+  static String _engagingTaskBody(Task task, int reminderMinutes) {
     if (reminderMinutes == 0) {
-      return 'Your scheduled task starts now.';
+      final immediate = [
+        'Stop scrolling right now. Put away distractions and crush this task! 🚀',
+        'Procrastination is the thief of your potential. Get to work right now! 😤',
+        'Champions show up even when they don\'t feel like it. Start now! 🔥',
+        'You scheduled this for a reason. Prove to yourself you can execute! 💥',
+        'Every minute wasted is a minute lost forever. Dive into focus mode! ⚡',
+      ];
+      return immediate[(task.id.hashCode).abs() % immediate.length];
     }
 
-    return 'Starts in $reminderMinutes minutes.';
+    final countdown = [
+      'Starting in $reminderMinutes mins! Clear your desk, close social media, and get ready! ⏱️',
+      'Countdown: $reminderMinutes mins left. Put your phone away and prepare to execute! 🎧',
+      'T-minus $reminderMinutes mins until deep work. No excuses, let\'s make today count! 💪',
+    ];
+    return countdown[(task.id.hashCode ^ reminderMinutes).abs() %
+        countdown.length];
   }
 
   int _notificationId(String taskId, int slot) {

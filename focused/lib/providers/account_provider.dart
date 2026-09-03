@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart'
 
 import '../services/account_lifecycle_service.dart';
 import '../services/auth_service.dart';
+import '../services/friends_service.dart';
 
 class AccountProvider extends ChangeNotifier {
   AccountProvider({
@@ -85,6 +86,7 @@ class AccountProvider extends ChangeNotifier {
         try {
           await _checkActiveStatusOrSignOut(user);
           _user = user;
+          unawaited(_initializeUserInDatabase(user));
         } catch (e) {
           _user = null;
           _errorMessage = e.toString();
@@ -94,6 +96,20 @@ class AccountProvider extends ChangeNotifier {
       }
       notifyListeners();
     });
+  }
+
+  Future<void> _initializeUserInDatabase(User user) async {
+    try {
+      final friendsService = FriendsService();
+      await friendsService.ensureUserDocumentInitialized(
+        uid: user.uid,
+        displayName: user.displayName ?? '',
+        email: user.email ?? '',
+        photoUrl: user.photoURL,
+      );
+    } catch (e) {
+      debugPrint('Error initializing user in Firestore: $e');
+    }
   }
 
   Future<User> registerWithEmail({
@@ -273,11 +289,9 @@ class AccountProvider extends ChangeNotifier {
     _errorMessage = null;
 
     try {
-      if (_lifecycleService != null) {
-        await _lifecycleService!.deactivateAccount(
-          uid: currentUser.uid,
-          reason: reason,
-        );
+      final lifecycle = _lifecycleService;
+      if (lifecycle != null) {
+        await lifecycle.deactivateAccount(uid: currentUser.uid, reason: reason);
       }
       await _onSignOutOrAccountWiped?.call();
       await _authService.signOut();
@@ -308,9 +322,10 @@ class AccountProvider extends ChangeNotifier {
         await _authService.reauthenticateWithPassword(password.trim());
       }
 
+      final lifecycle = _lifecycleService;
       try {
-        if (_lifecycleService != null) {
-          await _lifecycleService!.deleteAccount(
+        if (lifecycle != null) {
+          await lifecycle.deleteAccount(
             uid: currentUser.uid,
             firebaseUser: currentUser,
           );
@@ -321,8 +336,8 @@ class AccountProvider extends ChangeNotifier {
         if (error.code == 'requires-recent-login' && signedInWithGoogle) {
           // Token expired; perform interactive reauth and retry deletion once.
           await _authService.reauthenticateWithGoogle();
-          if (_lifecycleService != null) {
-            await _lifecycleService!.deleteAccount(
+          if (lifecycle != null) {
+            await lifecycle.deleteAccount(
               uid: currentUser.uid,
               firebaseUser: currentUser,
             );
