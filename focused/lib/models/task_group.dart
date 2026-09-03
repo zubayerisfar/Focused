@@ -71,6 +71,14 @@ class GroupActiveTask {
     this.isHabit = false,
   });
 
+  String get uploaderDisplay {
+    final uname = assignedByUsername.trim().replaceAll('@', '');
+    if (uname.isNotEmpty) return '@$uname';
+    final name = assignedByName.trim();
+    if (name.isNotEmpty) return name;
+    return 'Squad Member';
+  }
+
   factory GroupActiveTask.fromMap(Map<String, dynamic> map) {
     final rawSchedules = map['memberSchedules'] as Map<String, dynamic>? ?? {};
     final schedules = rawSchedules.map(

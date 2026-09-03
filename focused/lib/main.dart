@@ -271,6 +271,7 @@ Future<void> main() async {
   habitProvider.addListener(onLocalDataMutated);
   userProfileProvider.addListener(onLocalDataMutated);
   streakGoalProvider.addListener(onLocalDataMutated);
+  userStatsProvider.addListener(onLocalDataMutated);
 
   final router = createAppRouter(
     accountProvider: accountProvider,

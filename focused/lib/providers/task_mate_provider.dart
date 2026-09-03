@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/friend_user.dart';
@@ -71,8 +72,8 @@ class TaskMateProvider extends ChangeNotifier {
     _groupsSub = _service
         .streamMyGroups(uid)
         .listen(
-          (groupsList) {
-            _groups = groupsList;
+          (list) {
+            _groups = list;
             _isLoading = false;
             notifyListeners();
           },
@@ -84,7 +85,7 @@ class TaskMateProvider extends ChangeNotifier {
         );
   }
 
-  /// Creates a new Task Mate squad with up to 4 friends (5 members total)
+  /// Creates a new squad with chosen friends (up to 4 friends, max 5 members).
   Future<bool> createGroup({
     required String name,
     required List<FriendUser> selectedFriends,
@@ -99,14 +100,16 @@ class TaskMateProvider extends ChangeNotifier {
         displayName: myProfile.displayName.isNotEmpty
             ? myProfile.displayName
             : 'Me',
-        username: myProfile.username,
+        username: myProfile.username.isNotEmpty
+            ? myProfile.username
+            : myProfile.displayName,
         photoUrl: null,
       ),
       ...selectedFriends.map(
         (f) => TaskGroupMember(
           uid: f.uid,
           displayName: f.displayName,
-          username: f.username,
+          username: f.username.isNotEmpty ? f.username : f.displayName,
           photoUrl: f.photoUrl,
         ),
       ),
@@ -148,6 +151,12 @@ class TaskMateProvider extends ChangeNotifier {
     bool isHabit = false,
   }) async {
     final myProfile = _profileProvider.profile;
+    final resolvedUsername = myProfile.username.trim().isNotEmpty
+        ? myProfile.username.trim()
+        : (myProfile.handle.trim().isNotEmpty
+              ? myProfile.handle.trim()
+              : myProfile.displayName.trim());
+
     return _service.assignTask(
       groupId: groupId,
       title: title,
@@ -155,7 +164,7 @@ class TaskMateProvider extends ChangeNotifier {
       assignerName: myProfile.displayName.isNotEmpty
           ? myProfile.displayName
           : 'Mate',
-      assignerUsername: myProfile.username,
+      assignerUsername: resolvedUsername,
       category: category,
       isHabit: isHabit,
     );
@@ -235,8 +244,22 @@ class TaskMateProvider extends ChangeNotifier {
       taskIndex: taskIndex,
     );
 
-    // Award double reward: +200 EXP
+    // Award double reward: +200 EXP locally and notify listeners
     await _statsProvider.addXp(200);
+
+    // Directly persist to Firestore root user document
+    if (_currentUid.isNotEmpty) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_currentUid)
+            .set({
+              'xpPoints': FieldValue.increment(200),
+            }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Direct Firestore XP increment error: $e');
+      }
+    }
   }
 
   /// Leaves or deletes group

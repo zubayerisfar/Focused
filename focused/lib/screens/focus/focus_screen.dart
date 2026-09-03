@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/focus_session.dart';
-import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
 import '../../widgets/app_banner_ad_widget.dart';
+import '../../widgets/profile_streak_xp_bar.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
@@ -15,7 +16,6 @@ class FocusScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FocusProvider>();
-    final account = context.watch<AccountProvider>();
     final now = DateTime.now();
     final focusedToday = provider.focusedDurationForDate(now);
     final sessionsToday = provider.sessionCountForDate(now);
@@ -27,13 +27,17 @@ class FocusScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 110),
         children: [
-          _FocusHeader(account: account),
+          const _FocusHeader(),
           const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
                 child: _FocusMetric(
-                  icon: const Icon(Icons.center_focus_strong_rounded, size: 20),
+                  icon: SvgPicture.asset(
+                    'assets/icon/focus_icon.svg',
+                    width: 20,
+                    height: 20,
+                  ),
                   value: _formatDuration(focusedToday),
                   label: 'Today',
                 ),
@@ -99,9 +103,7 @@ class FocusScreen extends StatelessWidget {
 }
 
 class _FocusHeader extends StatelessWidget {
-  const _FocusHeader({required this.account});
-
-  final AccountProvider account;
+  const _FocusHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -112,27 +114,13 @@ class _FocusHeader extends StatelessWidget {
           Expanded(
             child: Text(
               'Focus',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+              ),
             ),
           ),
-          InkWell(
-            borderRadius: BorderRadius.circular(24),
-            onTap: () => context.push('/profile'),
-            child: CircleAvatar(
-              radius: 22,
-              backgroundImage: account.photoUrl == null
-                  ? null
-                  : NetworkImage(account.photoUrl!),
-              child: account.photoUrl == null
-                  ? Text(
-                      _initials(account.displayName),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    )
-                  : null,
-            ),
-          ),
+          const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
         ],
       ),
     );
@@ -177,10 +165,10 @@ class _FocusStartCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(15),
                 ),
                 alignment: Alignment.center,
-                child: Icon(
-                  Icons.center_focus_strong_rounded,
-                  size: 24,
-                  color: scheme.primary,
+                child: SvgPicture.asset(
+                  'assets/icon/focus_icon.svg',
+                  width: 26,
+                  height: 26,
                 ),
               ),
               const SizedBox(width: 12),
@@ -412,15 +400,4 @@ String _formatClock(Duration duration) {
   }
   return '${minutes.toString().padLeft(2, '0')}:'
       '${seconds.toString().padLeft(2, '0')}';
-}
-
-String _initials(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) return 'F';
-  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
 }

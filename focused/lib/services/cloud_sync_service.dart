@@ -196,8 +196,17 @@ class CloudSyncService {
         loadLocal: () => {
           for (final task in _taskStorage.loadTasks()) task.id: task.toMap(),
         },
-        applyRemote: (id, payload) =>
-            _taskStorage.saveTask(Task.fromMap(payload)),
+        applyRemote: (id, payload) async {
+          final remoteTask = Task.fromMap(payload);
+          final existing = _taskStorage.loadTask(id);
+          // If locally completed, do not revert to uncompleted from stale remote copy
+          if (existing != null &&
+              existing.isCompleted &&
+              !remoteTask.isCompleted) {
+            return;
+          }
+          await _taskStorage.saveTask(remoteTask);
+        },
         deleteLocal: _taskStorage.deleteTask,
       ),
     );
@@ -360,6 +369,9 @@ class CloudSyncService {
               ),
               unlockedBadgeIds: mergedBadges.toList(),
               updatedAt: DateTime.now().toUtc(),
+              xpPoints: math.max(localStats.xpPoints, remoteStats.xpPoints),
+              xpAdsWatchedToday: localStats.xpAdsWatchedToday,
+              xpAdsWatchedDate: localStats.xpAdsWatchedDate,
             );
             await statsStore.saveStats(merged);
           },
@@ -395,6 +407,7 @@ class CloudSyncService {
         'completedSessionsCount': currentStats.completedSessionsCount,
         'unlockedBadgesCount': currentStats.unlockedBadgeIds.length,
         'unlockedBadgeIds': currentStats.unlockedBadgeIds,
+        'xpPoints': currentStats.xpPoints,
         'lastSyncedAt': completedAt.toIso8601String(),
         'lastSyncedDeviceId': deviceId,
         if (deviceName != null) 'lastSyncedDeviceName': deviceName,
@@ -599,14 +612,16 @@ class CloudSyncService {
       final fingerprint = _fingerprint(entry.value);
       final previous = localMetadata[id];
       if (previous == null) {
-        if (remote.containsKey(id)) continue;
+        final remoteEnv = remote[id];
         final metadata = LocalSyncMetadata(
           collection: adapter.name,
           id: id,
-          createdAt: now,
-          updatedAt: now,
-          fingerprint: fingerprint,
-          originDeviceId: deviceId,
+          createdAt: remoteEnv?.createdAt ?? now,
+          updatedAt: remoteEnv?.updatedAt ?? now,
+          fingerprint: remoteEnv?.payload == null
+              ? fingerprint
+              : _fingerprint(remoteEnv!.payload!),
+          originDeviceId: remoteEnv?.originDeviceId ?? deviceId,
         );
         localMetadata[id] = metadata;
         await _metadataStorage.save(metadata);
@@ -738,8 +753,35 @@ class CloudSyncService {
       final localChangedSinceLastSync =
           localFingerprint != localMeta.fingerprint;
 
-      if (remoteEnvelope.updatedAt.isAfter(localMeta.updatedAt) ||
-          (remoteChangedSinceLastSync && !localChangedSinceLastSync)) {
+      if (localChangedSinceLastSync && !remoteChangedSinceLastSync) {
+        await _pushEnvelope(
+          collection: collection,
+          metadata: localMeta,
+          payload: localPayload,
+          deviceId: deviceId,
+        );
+        pushed++;
+      } else if (remoteChangedSinceLastSync && !localChangedSinceLastSync) {
+        if (remoteEnvelope.deletedAt != null) {
+          await adapter.deleteLocal(id);
+          deleted++;
+        } else if (remoteEnvelope.payload != null) {
+          await adapter.applyRemote(id, remoteEnvelope.payload!);
+          pulled++;
+        }
+
+        localMeta = LocalSyncMetadata(
+          collection: adapter.name,
+          id: id,
+          createdAt: remoteEnvelope.createdAt,
+          updatedAt: remoteEnvelope.updatedAt,
+          deletedAt: remoteEnvelope.deletedAt,
+          fingerprint: remoteFingerprint,
+          originDeviceId: remoteEnvelope.originDeviceId,
+        );
+        localMetadata[id] = localMeta;
+        await _metadataStorage.save(localMeta);
+      } else if (remoteEnvelope.updatedAt.isAfter(localMeta.updatedAt)) {
         if (remoteEnvelope.deletedAt != null) {
           await adapter.deleteLocal(id);
           deleted++;

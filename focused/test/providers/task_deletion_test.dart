@@ -19,6 +19,9 @@ class InMemoryTaskStorageService implements TaskStorageService {
   List<Task> loadTasks() => _store.values.toList();
 
   @override
+  Task? loadTask(String taskId) => _store[taskId];
+
+  @override
   Future<void> saveTask(Task task) async {
     _store[task.id] = task;
   }

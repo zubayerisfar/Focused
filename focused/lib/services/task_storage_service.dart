@@ -35,6 +35,13 @@ class TaskStorageService {
     return tasks;
   }
 
+  Task? loadTask(String taskId) {
+    final box = _requireBox();
+    final value = box.get(taskId);
+    if (value is! Map) return null;
+    return Task.fromMap(Map<dynamic, dynamic>.from(value));
+  }
+
   Future<void> saveTask(Task task) async {
     final box = _requireBox();
 
