@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import '../services/android_installation_info_service.dart';
 import '../services/cloud_sync_service.dart';
+export '../services/cloud_sync_service.dart'
+    show CloudSyncMode, CloudSyncResult;
 import '../services/network_connectivity_service.dart';
 import '../services/sync_metadata_storage_service.dart';
 import 'account_provider.dart';
@@ -73,7 +75,9 @@ class CloudSyncProvider extends ChangeNotifier {
 
     if (_accountProvider.isSignedIn) {
       unawaited(
-        syncNow(isManual: false).catchError((e) {
+        syncNow(mode: CloudSyncMode.uploadOnly, isManual: false).catchError((
+          e,
+        ) {
           debugPrint('Automated startup cloud sync: $e');
           return _lastResult ??
               CloudSyncResult(
@@ -88,7 +92,7 @@ class CloudSyncProvider extends ChangeNotifier {
   }
 
   Future<CloudSyncResult> syncNow({
-    CloudSyncMode mode = CloudSyncMode.bidirectional,
+    CloudSyncMode mode = CloudSyncMode.uploadOnly,
     bool isManual = true,
   }) async {
     if (_syncing) {
@@ -140,7 +144,9 @@ class CloudSyncProvider extends ChangeNotifier {
         deviceName: _deviceName,
         mode: mode,
       );
-      await _refreshLocalProviders();
+      if (mode != CloudSyncMode.uploadOnly) {
+        await _refreshLocalProviders();
+      }
       _lastResult = result;
       _lastSyncAt = result.syncedAt;
       _isNewDevice = false;
@@ -165,7 +171,9 @@ class CloudSyncProvider extends ChangeNotifier {
     unawaited(
       _refreshRegistrationState().then((_) {
         if (wasSignedOut && _accountProvider.isSignedIn && !_syncing) {
-          syncNow(isManual: false).catchError((e) {
+          syncNow(mode: CloudSyncMode.uploadOnly, isManual: false).catchError((
+            e,
+          ) {
             debugPrint('Automated post-login cloud sync: $e');
             return _lastResult ??
                 CloudSyncResult(
@@ -265,7 +273,9 @@ class CloudSyncProvider extends ChangeNotifier {
     _autoSyncTimer = Timer(const Duration(seconds: 2), () {
       if (_accountProvider.isSignedIn && !_syncing) {
         unawaited(
-          syncNow(isManual: false).catchError((e) {
+          syncNow(mode: CloudSyncMode.uploadOnly, isManual: false).catchError((
+            e,
+          ) {
             debugPrint('Automatic background sync: $e');
             return _lastResult ??
                 CloudSyncResult(

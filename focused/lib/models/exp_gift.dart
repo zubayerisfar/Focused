@@ -37,9 +37,18 @@ class ExpGift {
       fromUsername: (map['fromUsername'] ?? '').toString(),
       amount: (map['amount'] as num?)?.toInt() ?? 50,
       claimed: map['claimed'] == true,
-      createdAt: map['createdAt'] != null
-          ? DateTime.tryParse(map['createdAt'].toString())
-          : null,
+      createdAt: () {
+        final val = map['createdAt'];
+        if (val == null) return null;
+        if (val is DateTime) return val;
+        if (val is String) return DateTime.tryParse(val);
+        // Handle Cloud Firestore Timestamp
+        try {
+          return (val as dynamic).toDate() as DateTime?;
+        } catch (_) {
+          return null;
+        }
+      }(),
     );
   }
 }

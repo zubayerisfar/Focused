@@ -4,6 +4,7 @@ import 'package:usage_stats/usage_stats.dart';
 
 import '../models/app_open_event.dart';
 import '../models/app_usage_record.dart';
+import 'app_metadata_platform_service.dart';
 import 'app_open_counter.dart';
 import 'usage_event_normalizer.dart';
 import 'usage_stats_service.dart';
@@ -12,20 +13,68 @@ class AndroidUsageStatsService implements UsageStatsService {
   AndroidUsageStatsService({
     UsageEventNormalizer normalizer = const UsageEventNormalizer(),
     AppOpenCounter appOpenCounter = const AppOpenCounter(),
-  })  : _normalizer = normalizer,
-        _appOpenCounter = appOpenCounter;
+    AppMetadataPlatformService? appMetadataService,
+  }) : _normalizer = normalizer,
+       _appOpenCounter = appOpenCounter,
+       _appMetadataService = appMetadataService ?? AndroidAppMetadataService();
 
   final UsageEventNormalizer _normalizer;
   final AppOpenCounter _appOpenCounter;
+  final AppMetadataPlatformService _appMetadataService;
 
   final Map<String, String> _appNameCache = {};
+  String? _cachedDefaultLauncher;
 
   static const Duration _boundaryLookback = Duration(days: 1);
 
   static const Set<String> _ignoredPackages = {
+    // Core Android Framework & System UI
     'android',
     'com.android.systemui',
+    'com.android.keyguard',
+    'com.android.settings',
+    'com.google.android.permissioncontroller',
+    'com.android.permissioncontroller',
+    'com.google.android.packageinstaller',
+    'com.android.packageinstaller',
+    'com.android.intentresolver',
+    'com.android.documentsui',
+    'com.google.android.setupwizard',
+    'com.android.setupwizard',
+    'com.google.android.gms',
+    // OEM Launchers & Home Screens (Moto, Pixel, Samsung, Xiaomi, OnePlus, Nova, etc.)
+    'com.motorola.launcher3',
+    'com.motorola.launcher',
+    'com.motorola.gesture',
+    'com.google.android.apps.nexuslauncher',
+    'com.sec.android.app.launcher',
+    'com.miui.home',
+    'com.mi.android.globallauncher',
+    'com.oppo.launcher',
+    'com.oneplus.launcher',
+    'com.teslacoilsw.launcher',
+    'com.microsoft.launcher',
+    'com.android.launcher',
+    'com.android.launcher2',
+    'com.android.launcher3',
+    // Keyboards & Input Methods
+    'com.google.android.inputmethod.latin',
+    'com.touchtype.swiftkey',
+    'com.samsung.android.honeyboard',
   };
+
+  Future<Set<String>> _getEffectiveIgnoredPackages() async {
+    if (_cachedDefaultLauncher == null) {
+      try {
+        _cachedDefaultLauncher = await _appMetadataService
+            .getDefaultLauncherPackage();
+      } catch (_) {}
+    }
+    if (_cachedDefaultLauncher != null && _cachedDefaultLauncher!.isNotEmpty) {
+      return {..._ignoredPackages, _cachedDefaultLauncher!};
+    }
+    return _ignoredPackages;
+  }
 
   @override
   bool get isSupported => Platform.isAndroid;
@@ -75,6 +124,8 @@ class AndroidUsageStatsService implements UsageStatsService {
       throw StateError('Android Usage Access has not been granted.');
     }
 
+    final effectiveIgnored = await _getEffectiveIgnoredPackages();
+
     // Look behind the requested boundary so an app that entered the
     // foreground just before midnight/range start can still be reconstructed.
     final queryStart = start.subtract(_boundaryLookback);
@@ -92,11 +143,12 @@ class AndroidUsageStatsService implements UsageStatsService {
 
       final packageName = event.packageName;
       final isAppLifecycleEvent =
-          kind == UsageEventKind.foreground || kind == UsageEventKind.background;
+          kind == UsageEventKind.foreground ||
+          kind == UsageEventKind.background;
 
       if (isAppLifecycleEvent &&
           packageName != null &&
-          _ignoredPackages.contains(packageName)) {
+          effectiveIgnored.contains(packageName)) {
         continue;
       }
 
@@ -131,9 +183,8 @@ class AndroidUsageStatsService implements UsageStatsService {
 
     return List.unmodifiable(
       normalized.map(
-        (record) => record.copyWith(
-          appName: labels[record.appId] ?? record.appId,
-        ),
+        (record) =>
+            record.copyWith(appName: labels[record.appId] ?? record.appId),
       ),
     );
   }
@@ -156,6 +207,8 @@ class AndroidUsageStatsService implements UsageStatsService {
       throw StateError('Android Usage Access has not been granted.');
     }
 
+    final effectiveIgnored = await _getEffectiveIgnoredPackages();
+
     final queryStart = start.subtract(_boundaryLookback);
     final rawEvents = await UsageStats.queryEvents(queryStart, end);
     final points = <UsageEventPoint>[];
@@ -177,7 +230,7 @@ class AndroidUsageStatsService implements UsageStatsService {
       rangeStart: start,
       rangeEnd: end,
       events: points,
-      ignoredPackages: _ignoredPackages,
+      ignoredPackages: effectiveIgnored,
     );
     if (rawOpenings.isEmpty) return const [];
 

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/task_provider.dart';
+import '../../providers/usage_provider.dart';
 import '../focus/focus_screen.dart';
 import '../friends/friends_screen.dart';
 import '../planner/planner_screen.dart';
@@ -43,6 +46,19 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _currentIndex = _safeIndex(widget.initialIndex);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestInitialPermissions();
+    });
+  }
+
+  Future<void> _requestInitialPermissions() async {
+    if (!mounted) return;
+    // 1. Request native notification permission popup directly
+    await context.read<TaskProvider>().requestNotificationPermission();
+
+    // 2. Check and refresh usage permission state
+    if (!mounted) return;
+    await context.read<UsageProvider>().refreshPermissionAndUsage();
   }
 
   @override
@@ -167,20 +183,20 @@ class _MainShellState extends State<MainShell> {
                 ),
                 NavigationDestination(
                   icon: _NavIcon(
-                    assetName: 'group_icon.svg',
-                    fullAssetPath: 'assets/icon/group_icon.svg',
+                    assetName: 'nav_friends.svg',
+                    alternateAssetName: 'friends_icon.svg',
                     fallbackIcon: Icons.people_alt_outlined,
                     color: Color(0xFF9B51E0), // Purple
                     isSelected: false,
-                    size: 32,
+                    size: 36,
                   ),
                   selectedIcon: _NavIcon(
-                    assetName: 'group_icon.svg',
-                    fullAssetPath: 'assets/icon/group_icon.svg',
+                    assetName: 'nav_friends.svg',
+                    alternateAssetName: 'friends_icon.svg',
                     fallbackIcon: Icons.people_alt_rounded,
                     color: Color(0xFF9B51E0), // Purple
                     isSelected: true,
-                    size: 32,
+                    size: 36,
                   ),
                   label: 'Friends',
                 ),

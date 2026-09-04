@@ -7,7 +7,6 @@ import '../../models/task_recurrence.dart';
 import '../../models/task_reminder_result.dart';
 import '../../models/task_schedule_conflict.dart';
 import '../../providers/task_provider.dart';
-import '../../services/ad_service.dart';
 import '../../theme/app_theme.dart';
 
 class TaskEditScreen extends StatefulWidget {
@@ -602,13 +601,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         return;
       }
 
-      AdService.instance.showInterstitialAd(
-        onAdClosed: () {
-          if (mounted) {
-            Navigator.of(context).pop();
-          }
-        },
-      );
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (error) {
       if (!mounted) {
         return;

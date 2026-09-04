@@ -53,6 +53,38 @@ class TaskMateService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
+    // Notify other members of squad creation
+    final creatorName = members
+        .firstWhere(
+          (m) => m.uid == creatorUid,
+          orElse: () => TaskGroupMember(
+            uid: creatorUid,
+            displayName: 'A Friend',
+            username: '',
+          ),
+        )
+        .displayName;
+
+    final squadName = name.trim().isEmpty ? 'Task Squad' : name.trim();
+    for (final m in members) {
+      if (m.uid != creatorUid) {
+        try {
+          await _firestore
+              .collection('users')
+              .doc(m.uid)
+              .collection('group_notices')
+              .add({
+                'groupId': docRef.id,
+                'groupName': squadName,
+                'creatorUid': creatorUid,
+                'creatorName': creatorName,
+                'read': false,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+        } catch (_) {}
+      }
+    }
+
     return docRef.id;
   }
 
@@ -207,8 +239,15 @@ class TaskMateService {
       final currentMemberSched = Map<String, dynamic>.from(
         memberSchedules[uid] as Map? ?? {},
       );
+      final scheduledTime = currentMemberSched['scheduledTime'] is Timestamp
+          ? (currentMemberSched['scheduledTime'] as Timestamp).toDate()
+          : null;
+      final now = DateTime.now();
+      final isLate = scheduledTime != null && now.isAfter(scheduledTime);
+
       currentMemberSched['completed'] = true;
-      currentMemberSched['completedAt'] = Timestamp.now();
+      currentMemberSched['completedAt'] = Timestamp.fromDate(now);
+      currentMemberSched['completedLate'] = isLate;
       memberSchedules[uid] = currentMemberSched;
       targetTask['memberSchedules'] = memberSchedules;
 
@@ -218,10 +257,10 @@ class TaskMateService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } else {
+      final now = DateTime.now();
       await docRef.update({
         'activeTask.memberSchedules.$uid.completed': true,
-        'activeTask.memberSchedules.$uid.completedAt':
-            FieldValue.serverTimestamp(),
+        'activeTask.memberSchedules.$uid.completedAt': Timestamp.fromDate(now),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }

@@ -79,6 +79,7 @@ flutter:
     - assets/badges/
     - assets/navbar_icon/
     - assets/icon/
+    - assets/sound/
 
   fonts:
     - family: Quicksand

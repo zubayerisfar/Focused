@@ -317,13 +317,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
     if (!sync.canSync) return;
 
     try {
-      final result = await sync.syncNow();
+      final result = await sync.syncNow(
+        mode: CloudSyncMode.uploadOnly,
+        isManual: true,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Synced just now · ${result.pushed} uploaded · ${result.pulled} downloaded',
-          ),
+          content: Text('Uploaded to cloud · ${result.pushed} changes synced'),
         ),
       );
     } catch (_) {
@@ -1128,6 +1129,30 @@ class _PlannerTimelineTask extends StatelessWidget {
                                       ),
                                     ),
                                   ),
+                                  if (occurrence.isCompletedLate ||
+                                      task.isCompletedLate) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFFEF4444,
+                                        ).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        '⚠️ Late',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFFEF4444),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                   if (task.isSquadTask) ...[
                                     const SizedBox(width: 6),
                                     Container(

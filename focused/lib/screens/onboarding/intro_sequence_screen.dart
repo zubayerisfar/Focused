@@ -135,7 +135,7 @@ class _IntroSequenceScreenState extends State<IntroSequenceScreen> {
                       curve: Curves.easeInOutCubic,
                       child: _scene == 0
                           ? Text(
-                              'Welcome.',
+                              'Welcome',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: isDark
@@ -150,7 +150,7 @@ class _IntroSequenceScreenState extends State<IntroSequenceScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Let’s set up your account\nto get started.',
+                                  'Let’s set up your account\nto get started',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: isDark

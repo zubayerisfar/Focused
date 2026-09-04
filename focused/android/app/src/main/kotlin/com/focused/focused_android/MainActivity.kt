@@ -101,6 +101,22 @@ class MainActivity : FlutterActivity() {
                     }
                 }
 
+                "getDefaultLauncherPackage" -> {
+                    try {
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                        }
+                        val resolveInfo = packageManager.resolveActivity(
+                            homeIntent,
+                            PackageManager.MATCH_DEFAULT_ONLY,
+                        )
+                        val defaultLauncher = resolveInfo?.activityInfo?.packageName
+                        result.success(defaultLauncher)
+                    } catch (error: Throwable) {
+                        result.success(null)
+                    }
+                }
+
                 else -> result.notImplemented()
             }
         }

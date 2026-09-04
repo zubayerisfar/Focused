@@ -82,8 +82,8 @@ class WellbeingScreen extends StatelessWidget {
                 Expanded(
                   child: _EntryCard(
                     icon: FontAwesomeIcons.chartPie,
-                    title: 'Overall summary',
-                    subtitle: 'Focus, screen time and distractions',
+                    title: 'Overall\nsummary',
+                    subtitle: null,
                     accent: AppTheme.lavender,
                     onTap: () => context.push('/wellbeing/summary'),
                   ),
@@ -92,20 +92,16 @@ class WellbeingScreen extends StatelessWidget {
                 Expanded(
                   child: _EntryCard(
                     icon: FontAwesomeIcons.chartColumn,
-                    title: 'App usage stats',
-                    subtitle: 'Apps, trends and hourly activity',
+                    title: 'App usage\nstats',
+                    subtitle: null,
                     accent: Theme.of(context).colorScheme.primary,
                     onTap: () => context.push('/wellbeing/app-usage'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            _EntryCard(
-              icon: FontAwesomeIcons.hourglassHalf,
-              title: 'App Limits & Timers',
-              subtitle: 'Set daily screen time limits and over-usage warnings',
-              accent: const Color(0xFFF59E0B),
+            const SizedBox(height: 12),
+            _HighlightedLimitsCard(
               onTap: () => context.push('/wellbeing/limits'),
             ),
             const SizedBox(height: 28),
@@ -248,6 +244,7 @@ class _InteractiveUsagePie extends StatelessWidget {
               colors: colors,
               totalMilliseconds: visibleTotal,
               onOpenApp: onOpenApp,
+              usageProvider: context.watch<UsageProvider>(),
             ),
         ],
       ),
@@ -326,18 +323,21 @@ class _UsageLegendList extends StatelessWidget {
     required this.colors,
     required this.totalMilliseconds,
     required this.onOpenApp,
+    required this.usageProvider,
   });
 
   final List<AppUsageAppEntry> entries;
   final List<Color> colors;
   final int totalMilliseconds;
   final ValueChanged<AppUsageAppEntry> onOpenApp;
+  final UsageProvider usageProvider;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: List.generate(entries.length, (index) {
         final entry = entries[index];
+        final change = usageProvider.getAppChangePercentById(entry.appId);
 
         final percent = totalMilliseconds <= 0
             ? 0
@@ -369,13 +369,57 @@ class _UsageLegendList extends StatelessWidget {
                     ),
                     const SizedBox(width: 11),
                     Expanded(
-                      child: Text(
-                        entry.appName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.appName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          if (change != null) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                FaIcon(
+                                  change > 0
+                                      ? FontAwesomeIcons.arrowUp
+                                      : change < 0
+                                      ? FontAwesomeIcons.arrowDown
+                                      : FontAwesomeIcons.minus,
+                                  size: 9,
+                                  color: change > 0
+                                      ? AppTheme.danger
+                                      : change < 0
+                                      ? AppTheme.success
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${change.abs().round()}% vs yest',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: change > 0
+                                        ? AppTheme.danger
+                                        : change < 0
+                                        ? AppTheme.success
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '$percent%',
                       style: const TextStyle(fontWeight: FontWeight.w700),
@@ -554,23 +598,99 @@ class _UsageAccessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const FaIcon(FontAwesomeIcons.shieldHalved, size: 18),
-        title: Text(
-          supported
-              ? 'App usage access needed'
-              : 'App usage is unavailable here',
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        subtitle: Text(
-          supported
-              ? 'Allow Focused to read Android app-usage statistics.'
-              : 'This feature currently requires Android.',
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.security_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        supported
+                            ? 'Grant App Usage Access'
+                            : 'App usage is unavailable',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        supported
+                            ? 'Tap here to connect screen time & stats'
+                            : 'This feature currently requires Android.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Enable',
+                    style: TextStyle(
+                      color: Color(0xFF6366F1),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        trailing: onTap == null
-            ? null
-            : const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
       ),
     );
   }
@@ -587,7 +707,7 @@ class _EntryCard extends StatelessWidget {
 
   final FaIconData icon;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Color accent;
   final VoidCallback onTap;
 
@@ -600,8 +720,8 @@ class _EntryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 132),
-          padding: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(minHeight: 110),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: Theme.of(context).dividerColor),
@@ -609,22 +729,137 @@ class _EntryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FaIcon(icon, color: accent, size: 19),
+              FaIcon(icon, color: accent, size: 21),
               const SizedBox(height: 14),
               Text(
                 title,
                 maxLines: 2,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 11,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  height: 1.25,
                 ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HighlightedLimitsCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _HighlightedLimitsCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E212B) : const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFFF59E0B).withOpacity(0.55),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFF59E0B).withOpacity(0.12),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.18),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const FaIcon(
+                  FontAwesomeIcons.hourglassHalf,
+                  color: Color(0xFFF59E0B),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'App Limits & Timers',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'ACTIVE',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Set daily screen time limits and over-usage warnings',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFFF59E0B),
+                size: 24,
               ),
             ],
           ),

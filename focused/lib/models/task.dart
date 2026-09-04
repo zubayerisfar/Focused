@@ -61,6 +61,14 @@ class Task {
 
   int get defaultFocusMinutes => scheduledDurationMinutes ?? 60;
 
+  bool get isCompletedLate {
+    if (!isCompleted || completedAt == null) return false;
+    if (deadline != null && completedAt!.isAfter(deadline!)) return true;
+    if (scheduledEnd != null && completedAt!.isAfter(scheduledEnd!))
+      return true;
+    return false;
+  }
+
   Task({
     required String id,
     required String title,

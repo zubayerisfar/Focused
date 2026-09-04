@@ -4,11 +4,13 @@ class MemberTaskSchedule {
   final DateTime? scheduledTime;
   final bool completed;
   final DateTime? completedAt;
+  final bool completedLate;
 
   const MemberTaskSchedule({
     this.scheduledTime,
     this.completed = false,
     this.completedAt,
+    this.completedLate = false,
   });
 
   factory MemberTaskSchedule.fromMap(Map<String, dynamic>? map) {
@@ -21,6 +23,7 @@ class MemberTaskSchedule {
       completedAt: (map['completedAt'] is Timestamp)
           ? (map['completedAt'] as Timestamp).toDate()
           : null,
+      completedLate: map['completedLate'] as bool? ?? false,
     );
   }
 
@@ -33,6 +36,7 @@ class MemberTaskSchedule {
       'completedAt': completedAt != null
           ? Timestamp.fromDate(completedAt!)
           : null,
+      'completedLate': completedLate,
     };
   }
 
@@ -40,11 +44,13 @@ class MemberTaskSchedule {
     DateTime? scheduledTime,
     bool? completed,
     DateTime? completedAt,
+    bool? completedLate,
   }) {
     return MemberTaskSchedule(
       scheduledTime: scheduledTime ?? this.scheduledTime,
       completed: completed ?? this.completed,
       completedAt: completedAt ?? this.completedAt,
+      completedLate: completedLate ?? this.completedLate,
     );
   }
 }

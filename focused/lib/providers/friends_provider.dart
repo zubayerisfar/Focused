@@ -30,6 +30,7 @@ class FriendsProvider extends ChangeNotifier {
   List<FriendUser> _following = [];
   List<FriendUser> _followers = [];
   List<ExpGift> _unclaimedGifts = [];
+  List<Map<String, dynamic>> _groupNotices = [];
   PartnerQuest? _partnerQuest;
 
   // Search state
@@ -45,10 +46,13 @@ class FriendsProvider extends ChangeNotifier {
   StreamSubscription? _giftsSub;
   StreamSubscription? _questSub;
   StreamSubscription? _incomingRemindersSub;
+  StreamSubscription? _groupNoticesSub;
+  StreamSubscription? _groupNoticesListSub;
 
   List<FriendUser> get following => _following;
   List<FriendUser> get followers => _followers;
   List<ExpGift> get unclaimedGifts => _unclaimedGifts;
+  List<Map<String, dynamic>> get groupNotices => _groupNotices;
   PartnerQuest? get partnerQuest => _partnerQuest;
   bool get isSearching => _isSearching;
   List<FriendUser> get searchResults => _searchResults;
@@ -173,7 +177,19 @@ class FriendsProvider extends ChangeNotifier {
     });
 
     // 4. Stream Unclaimed EXP Gifts
+    Set<String>? _knownGiftIds;
     _giftsSub = _friendsService.streamUnclaimedExpGifts(uid).listen((gifts) {
+      if (_knownGiftIds != null) {
+        for (final gift in gifts) {
+          if (!_knownGiftIds!.contains(gift.id)) {
+            _notificationService?.showExpGiftNotification(
+              fromName: gift.fromName,
+              amount: gift.amount,
+            );
+          }
+        }
+      }
+      _knownGiftIds = gifts.map((g) => g.id).toSet();
       _unclaimedGifts = gifts;
       notifyListeners();
     });
@@ -196,6 +212,25 @@ class FriendsProvider extends ChangeNotifier {
         );
       },
     );
+
+    // 7. Listen for incoming squad creation notices
+    _groupNoticesSub = _friendsService.listenForIncomingGroupNotices(
+      currentUid: uid,
+      onGroupNoticeReceived: (groupName, creatorName) {
+        _notificationService?.showGroupCreationNotification(
+          groupName: groupName,
+          creatorName: creatorName,
+        );
+      },
+    );
+
+    // 8. Stream group notices list for history
+    _groupNoticesListSub = _friendsService.streamGroupNotices(uid).listen((
+      notices,
+    ) {
+      _groupNotices = notices;
+      notifyListeners();
+    });
   }
 
   // ===========================================================================
@@ -409,6 +444,18 @@ class FriendsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Claims all unclaimed EXP gifts at once (used by Notification Hub)
+  Future<int> claimAllExpGifts() async {
+    if (_unclaimedGifts.isEmpty) return 0;
+    int totalClaimed = 0;
+    final toClaim = List<ExpGift>.from(_unclaimedGifts);
+    for (final gift in toClaim) {
+      await claimExp(gift);
+      totalClaimed += gift.amount;
+    }
+    return totalClaimed;
+  }
+
   // ===========================================================================
   // PARTNER PAIRING
   // ===========================================================================
@@ -439,6 +486,8 @@ class FriendsProvider extends ChangeNotifier {
     _giftsSub?.cancel();
     _questSub?.cancel();
     _incomingRemindersSub?.cancel();
+    _groupNoticesSub?.cancel();
+    _groupNoticesListSub?.cancel();
   }
 
   @override

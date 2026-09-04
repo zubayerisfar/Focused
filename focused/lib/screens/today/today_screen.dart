@@ -345,42 +345,45 @@ class _DailyOverviewCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _OverviewMetricCard(
-                  title: 'Focused',
-                  value: _formatDuration(focusedToday),
-                  customIcon: SvgPicture.asset(
-                    'assets/icon/focus_icon.svg',
-                    width: 28,
-                    height: 28,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _OverviewMetricCard(
+                    title: 'Focused',
+                    value: _formatDuration(focusedToday),
+                    customIcon: SvgPicture.asset(
+                      'assets/icon/focus_icon.svg',
+                      width: 34,
+                      height: 34,
+                    ),
+                    accent: const Color(0xFFFF5B5B),
+                    trendPercent: focusComparisonPercent,
+                    isHigherBetter: true,
+                    onTap: () => _showFocusAnalysisSheet(context),
                   ),
-                  accent: const Color(0xFFFF5B5B),
-                  trendPercent: focusComparisonPercent,
-                  isHigherBetter: true,
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _OverviewMetricCard(
-                  title: 'App Usage',
-                  value: usageToday == null
-                      ? (usageConnected ? 'No data' : 'Connect')
-                      : _formatDuration(usageToday!),
-                  customIcon: SvgPicture.asset(
-                    'assets/icon/app_usage_icon.svg',
-                    width: 28,
-                    height: 28,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _OverviewMetricCard(
+                    title: 'App Usage',
+                    value: usageToday == null
+                        ? (usageConnected ? 'No data' : 'Connect')
+                        : _formatDuration(usageToday!),
+                    customIcon: SvgPicture.asset(
+                      'assets/icon/app_usage_icon.svg',
+                      width: 34,
+                      height: 34,
+                    ),
+                    accent: const Color(0xFF6C5CE7),
+                    trendPercent: usageToday == null ? null : comparisonPercent,
+                    isHigherBetter: false,
+                    onTap: () => context.push('/wellbeing'),
                   ),
-                  accent: const Color(0xFF6C5CE7),
-                  trendPercent: usageToday == null ? null : comparisonPercent,
-                  isHigherBetter: false,
-                  onTap: () => context.push('/wellbeing'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           if (topApps.isNotEmpty) ...[
             const SizedBox(height: 22),
@@ -442,6 +445,298 @@ class _DailyOverviewCard extends StatelessWidget {
       ),
     );
   }
+
+  void _showFocusAnalysisSheet(BuildContext context) {
+    final focusProvider = context.read<FocusProvider>();
+    final now = DateTime.now();
+    final todayDuration = focusProvider.focusedDurationForDate(now);
+    final todaySessions = focusProvider.sessionsForDate(now);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        final theme = Theme.of(bottomSheetContext);
+        final scheme = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(color: theme.dividerColor),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 24,
+            top: 14,
+            left: 20,
+            right: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4.5,
+                  decoration: BoxDecoration(
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF5B5B).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.insights_rounded,
+                      color: Color(0xFFFF5B5B),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Focus Analysis',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(bottomSheetContext).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (todaySessions.isEmpty || todayDuration.inMinutes == 0) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 36,
+                    horizontal: 20,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? scheme.surfaceContainerHighest.withValues(alpha: 0.3)
+                        : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: theme.dividerColor.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.hourglass_empty_rounded,
+                        size: 52,
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No focus information available for now',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Start a focus session today to analyze your productivity blocks, flow rate, and deep work time.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: scheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFFF5B5B,
+                          ).withValues(alpha: isDark ? 0.16 : 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFF5B5B,
+                            ).withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Time Focused',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatDuration(todayDuration),
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFFF5B5B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF1CB0F6,
+                          ).withValues(alpha: isDark ? 0.16 : 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF1CB0F6,
+                            ).withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Sessions',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${todaySessions.length}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1CB0F6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "Today's Sessions",
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: todaySessions.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final session = todaySessions[index];
+                      final duration = session.actualFocusDuration;
+                      final name = session.taskName.trim().isEmpty
+                          ? 'Quick Focus'
+                          : session.taskName;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? scheme.surfaceContainerHighest.withValues(
+                                  alpha: 0.35,
+                                )
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 18,
+                              color: Color(0xFFFF5B5B),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(duration),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(bottomSheetContext).pop();
+                  context.push('/focus/setup');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                label: const Text(
+                  'Start Focus Session',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _OverviewMetricCard extends StatelessWidget {
@@ -468,14 +763,35 @@ class _OverviewMetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final trend = trendPercent;
+    final isClickable = onTap != null;
 
     final content = Container(
       constraints: const BoxConstraints(minHeight: 142),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: isClickable
+            ? (isDark
+                  ? scheme.surfaceContainerHigh
+                  : accent.withValues(alpha: 0.05))
+            : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isClickable
+              ? accent.withValues(alpha: isDark ? 0.35 : 0.28)
+              : scheme.outlineVariant.withValues(alpha: 0.4),
+          width: isClickable ? 1.5 : 1.0,
+        ),
+        boxShadow: isClickable
+            ? [
+                BoxShadow(
+                  color: accent.withValues(alpha: isDark ? 0.12 : 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,32 +799,46 @@ class _OverviewMetricCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (isClickable) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: accent.withValues(alpha: 0.8),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (customIcon != null)
                 Container(
-                  width: 38,
-                  height: 38,
-                  padding: const EdgeInsets.all(4),
+                  width: 44,
+                  height: 44,
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    color: accent.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(child: customIcon),
                 )
               else if (icon != null)
-                Icon(icon, size: 22, color: accent),
+                Icon(icon, size: 24, color: accent),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             value,
             maxLines: 1,
@@ -529,10 +859,15 @@ class _OverviewMetricCard extends StatelessWidget {
 
     if (onTap == null) return content;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: content,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        splashColor: accent.withValues(alpha: 0.15),
+        highlightColor: accent.withValues(alpha: 0.08),
+        onTap: onTap,
+        child: content,
+      ),
     );
   }
 }
@@ -1308,6 +1643,7 @@ class _ProductivityInsightCardState extends State<_ProductivityInsightCard> {
                     onUserEarnedReward: (reward) {
                       if (mounted) {
                         setState(() => _unlocked = true);
+                        _openDetailedReport(context);
                       }
                     },
                   );
@@ -1319,70 +1655,77 @@ class _ProductivityInsightCardState extends State<_ProductivityInsightCard> {
                 ),
               ),
             )
-          else ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Peak Focus: 9:00 AM – 11:30 AM',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFF58CC02,
-                          ).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          '87% Focus',
+          else
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _openDetailedReport(context),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Peak Focus: 9:00 AM – 11:30 AM',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF58CC02),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildVelocityBar('8a', 0.45, false, isDark, scheme),
-                      _buildVelocityBar('9a', 0.88, false, isDark, scheme),
-                      _buildVelocityBar('10a', 0.96, true, isDark, scheme),
-                      _buildVelocityBar('11a', 0.82, false, isDark, scheme),
-                      _buildVelocityBar('12p', 0.35, false, isDark, scheme),
-                      _buildVelocityBar('2p', 0.60, false, isDark, scheme),
-                      _buildVelocityBar('4p', 0.72, false, isDark, scheme),
-                      _buildVelocityBar('8p', 0.40, false, isDark, scheme),
-                    ],
-                  ),
-                ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF58CC02,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            '87% Focus',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF58CC02),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildVelocityBar('8a', 0.45, false, isDark, scheme),
+                        _buildVelocityBar('9a', 0.88, false, isDark, scheme),
+                        _buildVelocityBar('10a', 0.96, true, isDark, scheme),
+                        _buildVelocityBar('11a', 0.82, false, isDark, scheme),
+                        _buildVelocityBar('12p', 0.35, false, isDark, scheme),
+                        _buildVelocityBar('2p', 0.60, false, isDark, scheme),
+                        _buildVelocityBar('4p', 0.72, false, isDark, scheme),
+                        _buildVelocityBar('8p', 0.40, false, isDark, scheme),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
         ],
       ),
     );
+  }
+
+  void _openDetailedReport(BuildContext context) {
+    context.push('/wellbeing/focus-interruptions');
   }
 
   Widget _buildVelocityBar(

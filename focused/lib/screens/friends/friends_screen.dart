@@ -11,7 +11,6 @@ import '../../models/task_group.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/friends_provider.dart';
 import '../../providers/task_mate_provider.dart';
-import '../../providers/task_provider.dart';
 import '../../providers/user_stats_provider.dart';
 import '../../services/ad_service.dart';
 import '../../widgets/profile_streak_xp_bar.dart';
@@ -28,6 +27,8 @@ class _FriendsScreenState extends State<FriendsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  bool _hasCheckedLoginGifts = false;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +40,90 @@ class _FriendsScreenState extends State<FriendsScreen>
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkUnclaimedGiftsPopup();
+    });
+  }
+
+  void _checkUnclaimedGiftsPopup() {
+    if (!mounted || _hasCheckedLoginGifts) return;
+    _hasCheckedLoginGifts = true;
+    final friendsProvider = context.read<FriendsProvider>();
+    final gifts = friendsProvider.unclaimedGifts;
+    if (gifts.isNotEmpty) {
+      final first = gifts.first;
+      final totalXp = gifts.fold<int>(0, (sum, g) => sum + g.amount);
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: Row(
+            children: [
+              SvgPicture.asset(
+                'assets/icon/gift_box_icon.svg',
+                width: 32,
+                height: 32,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'EXP Gifts Waiting!',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            gifts.length == 1
+                ? '🎁 You received +${first.amount} EXP from ${first.fromName}!'
+                : '🎁 You have ${gifts.length} gifts waiting (+total $totalXp EXP) from your friends!',
+            style: const TextStyle(fontSize: 14.5, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Later'),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF58CC02),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.check_circle_rounded, size: 18),
+              label: const Text(
+                'Claim All Now!',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final claimed = await friendsProvider.claimAllExpGifts();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: const Color(0xFF58CC02),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      content: Text(
+                        '🎉 Claimed +$claimed EXP into your balance!',
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -124,9 +209,61 @@ class _FriendsScreenState extends State<FriendsScreen>
             letterSpacing: -0.4,
           ),
         ),
-        actions: const [
-          ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
-          SizedBox(width: 14),
+        actions: [
+          // Notification Hub Icon with badge
+          Builder(
+            builder: (ctx) {
+              final unreadCount =
+                  unclaimedGifts.length +
+                  friendsProvider.groupNotices
+                      .where((n) => n['read'] == false)
+                      .length;
+              return Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: SvgPicture.asset(
+                      'assets/icon/group_tab_notification_icon.svg',
+                      width: 28,
+                      height: 28,
+                    ),
+                    tooltip: 'Squad Notifications & Gifts',
+                    onPressed: () => _openNotificationHub(context),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$unreadCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+          const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          const SizedBox(width: 14),
         ],
       ),
       body: NestedScrollView(
@@ -263,8 +400,8 @@ class _FriendsScreenState extends State<FriendsScreen>
               onAssignTask: (group) => _showAssignTaskSheet(context, group),
               onPickTime: (group, idx) =>
                   _pickScheduleTime(context, group, taskIndex: idx),
-              onCompleteTask: (group, idx) =>
-                  _completeTask(context, group, taskIndex: idx),
+              onStartTask: (group, idx) =>
+                  _startTask(context, group, taskIndex: idx),
             ),
 
             // 2. Following Tab
@@ -1254,6 +1391,113 @@ class _FriendsScreenState extends State<FriendsScreen>
     }
   }
 
+  Future<void> _startTask(
+    BuildContext context,
+    TaskGroup group, {
+    int taskIndex = 0,
+  }) async {
+    final targetTask = group.activeTasks.length > taskIndex
+        ? group.activeTasks[taskIndex]
+        : group.activeTask;
+    final taskTitle = targetTask?.title ?? 'Squad Goal';
+
+    // Show a quick dialog or bottom sheet offering to jump into Focus Mode or complete
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (bCtx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final scheme = Theme.of(context).colorScheme;
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF2B3D47)
+                      : scheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Squad Quest: $taskTitle',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Start a dedicated focus session to conquer this task with your squad!',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? const Color(0xFF77878F)
+                      : scheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF58CC02),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                  label: const Text(
+                    'Start Focus Session',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                  onPressed: () => Navigator.pop(bCtx, 'focus'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'I Finished It • Claim EXP',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: () => Navigator.pop(bCtx, 'complete'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!context.mounted) return;
+
+    if (action == 'focus') {
+      context.push('/focus/setup');
+    } else if (action == 'complete') {
+      await _completeTask(context, group, taskIndex: taskIndex);
+    }
+  }
+
   Future<void> _completeTask(
     BuildContext context,
     TaskGroup group, {
@@ -1481,6 +1725,33 @@ class _FriendsScreenState extends State<FriendsScreen>
       }
     }
   }
+
+  void _openNotificationHub(BuildContext context) {
+    final messenger = ScaffoldMessenger.of(context);
+    final friendsProvider = context.read<FriendsProvider>();
+    // Auto-claim all unclaimed gifts when opening the notification tab
+    friendsProvider.claimAllExpGifts().then((claimed) {
+      if (claimed > 0 && mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF58CC02),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            content: Text('🎉 Auto-claimed +$claimed EXP into your balance!'),
+          ),
+        );
+      }
+    });
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _FriendNotificationHubSheet(),
+    );
+  }
 }
 
 // ── TASK MATES TAB ──
@@ -1489,14 +1760,14 @@ class _TaskMatesTab extends StatelessWidget {
   final VoidCallback onCreateGroup;
   final Function(TaskGroup) onAssignTask;
   final Function(TaskGroup, int) onPickTime;
-  final Function(TaskGroup, int) onCompleteTask;
+  final Function(TaskGroup, int) onStartTask;
 
   const _TaskMatesTab({
     required this.isDark,
     required this.onCreateGroup,
     required this.onAssignTask,
     required this.onPickTime,
-    required this.onCompleteTask,
+    required this.onStartTask,
   });
 
   @override
@@ -1695,16 +1966,17 @@ class _TaskMatesTab extends StatelessWidget {
                             style: TextStyle(
                               color: isDark ? Colors.white : scheme.onSurface,
                               fontWeight: FontWeight.w800,
-                              fontSize: 16,
+                              fontSize: 18,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             '${group.members.length} members',
                             style: TextStyle(
                               color: isDark
                                   ? const Color(0xFF77878F)
                                   : scheme.onSurfaceVariant,
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1781,7 +2053,7 @@ class _TaskMatesTab extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        FilledButton.icon(
+                        FilledButton(
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF1CB0F6),
                             shape: RoundedRectangleBorder(
@@ -1793,8 +2065,7 @@ class _TaskMatesTab extends StatelessWidget {
                             ),
                           ),
                           onPressed: () => onAssignTask(group),
-                          icon: const Icon(Icons.add_task_rounded, size: 18),
-                          label: const Text(
+                          child: const Text(
                             'Upload Task (0/5)',
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
@@ -1817,7 +2088,7 @@ class _TaskMatesTab extends StatelessWidget {
                         ),
                       ),
                       if (group.canAddMoreTasks)
-                        TextButton.icon(
+                        TextButton(
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -1826,12 +2097,7 @@ class _TaskMatesTab extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                           ),
                           onPressed: () => onAssignTask(group),
-                          icon: const Icon(
-                            Icons.add_rounded,
-                            size: 16,
-                            color: Color(0xFF1CB0F6),
-                          ),
-                          label: const Text(
+                          child: const Text(
                             'Add Task',
                             style: TextStyle(
                               color: Color(0xFF1CB0F6),
@@ -1852,6 +2118,7 @@ class _TaskMatesTab extends StatelessWidget {
                       builder: (context) {
                         final task = group.activeTasks[taskIdx];
                         final isCompleted = task.isCompletedBy(currentUid);
+                        final mySchedule = task.memberSchedules[currentUid];
                         final myScheduledTime = task.scheduledTimeFor(
                           currentUid,
                         );
@@ -2018,7 +2285,7 @@ class _TaskMatesTab extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
-                                            fontSize: 14.5,
+                                            fontSize: 15.5,
                                             color: isDark
                                                 ? Colors.white
                                                 : scheme.onSurface,
@@ -2028,23 +2295,23 @@ class _TaskMatesTab extends StatelessWidget {
                                       if (hasDone)
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
+                                            horizontal: 10,
+                                            vertical: 4,
                                           ),
                                           decoration: BoxDecoration(
                                             color: const Color(
                                               0xFF58CC02,
-                                            ).withValues(alpha: 0.2),
+                                            ).withValues(alpha: 0.18),
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
                                           ),
                                           child: const Text(
-                                            'Done ✅ (+200 EXP)',
+                                            'Done',
                                             style: TextStyle(
                                               color: Color(0xFF58CC02),
                                               fontWeight: FontWeight.w800,
-                                              fontSize: 11,
+                                              fontSize: 12,
                                             ),
                                           ),
                                         )
@@ -2069,7 +2336,7 @@ class _TaskMatesTab extends StatelessWidget {
                                             style: const TextStyle(
                                               color: Color(0xFF1CB0F6),
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 11,
+                                              fontSize: 12,
                                             ),
                                           ),
                                         )
@@ -2080,7 +2347,7 @@ class _TaskMatesTab extends StatelessWidget {
                                             color: isDark
                                                 ? const Color(0xFF77878F)
                                                 : scheme.onSurfaceVariant,
-                                            fontSize: 11,
+                                            fontSize: 12,
                                           ),
                                         ),
                                     ],
@@ -2096,18 +2363,26 @@ class _TaskMatesTab extends StatelessWidget {
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF58CC02,
-                                    ).withValues(alpha: 0.15),
+                                    color: mySchedule?.completedLate == true
+                                        ? const Color(
+                                            0xFFF59E0B,
+                                          ).withValues(alpha: 0.15)
+                                        : const Color(
+                                            0xFF58CC02,
+                                          ).withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
-                                  child: const Center(
+                                  child: Center(
                                     child: Text(
-                                      '🎉 Task Complete! (+200 EXP Claimed)',
+                                      mySchedule?.completedLate == true
+                                          ? '⚠️ Completed (Late)'
+                                          : '🎉 Completed',
                                       style: TextStyle(
-                                        color: Color(0xFF58CC02),
+                                        color: mySchedule?.completedLate == true
+                                            ? const Color(0xFFF59E0B)
+                                            : const Color(0xFF58CC02),
                                         fontWeight: FontWeight.w800,
-                                        fontSize: 13,
+                                        fontSize: 13.5,
                                       ),
                                     ),
                                   ),
@@ -2167,12 +2442,12 @@ class _TaskMatesTab extends StatelessWidget {
                                           ),
                                         ),
                                         onPressed: () =>
-                                            onCompleteTask(group, taskIdx),
+                                            onStartTask(group, taskIdx),
                                         child: const Text(
-                                          'Complete (+200)',
+                                          'Start Task',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w800,
-                                            fontSize: 12,
+                                            fontSize: 13,
                                           ),
                                         ),
                                       ),
@@ -2804,6 +3079,262 @@ class _FriendsListTab extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _FriendNotificationHubSheet extends StatelessWidget {
+  const _FriendNotificationHubSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final friendsProvider = context.watch<FriendsProvider>();
+    final notices = friendsProvider.groupNotices;
+    final unclaimedGifts = friendsProvider.unclaimedGifts;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.75,
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2B3D47) : scheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              SvgPicture.asset(
+                'assets/icon/group_tab_notification_icon.svg',
+                width: 28,
+                height: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Squad Notifications',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? Colors.white : scheme.onSurface,
+                  ),
+                ),
+              ),
+              if (unclaimedGifts.isNotEmpty)
+                TextButton(
+                  onPressed: () async {
+                    final claimed = await friendsProvider.claimAllExpGifts();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: const Color(0xFF58CC02),
+                          content: Text('🎉 Claimed +$claimed EXP!'),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Claim All'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: notices.isEmpty && unclaimedGifts.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          size: 54,
+                          color: isDark ? Colors.white38 : Colors.black26,
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'All caught up!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white70 : scheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'You have no pending gifts or group notices.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? const Color(0xFF77878F)
+                                : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView(
+                    children: [
+                      if (unclaimedGifts.isNotEmpty) ...[
+                        Text(
+                          'GIFTS WAITING',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF58CC02),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...unclaimedGifts.map(
+                          (g) => Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF58CC02,
+                              ).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF58CC02,
+                                ).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  alignment: Alignment.center,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white24,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Text(
+                                    '🎁',
+                                    style: TextStyle(fontSize: 20),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '+${g.amount} EXP from ${g.fromName}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14.5,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Ready to claim & level up!',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF58CC02),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  onPressed: () => friendsProvider.claimExp(g),
+                                  child: const Text('Claim'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      if (notices.isNotEmpty) ...[
+                        Text(
+                          'SQUAD ACTIVITY',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF1CB0F6),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...notices.map(
+                          (n) => Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF1CB0F6,
+                                    ).withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.group_add_rounded,
+                                    color: Color(0xFF1CB0F6),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Added to "${n['groupName'] ?? 'Squad'}"',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'By ${n['creatorName'] ?? 'A friend'} • Squad active',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

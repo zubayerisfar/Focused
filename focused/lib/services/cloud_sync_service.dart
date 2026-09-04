@@ -562,7 +562,22 @@ class CloudSyncService {
     }
 
     if (mode == CloudSyncMode.uploadOnly) {
+      // First, mark any items removed from local storage as deleted in localMetadata
+      for (final entry in localMetadata.entries.toList(growable: false)) {
+        if (!entry.value.isDeleted && !localRecords.containsKey(entry.key)) {
+          final metadata = entry.value.copyWith(
+            updatedAt: now,
+            deletedAt: now,
+            clearFingerprint: true,
+            originDeviceId: deviceId,
+          );
+          localMetadata[entry.key] = metadata;
+          await _metadataStorage.save(metadata);
+        }
+      }
+
       var pushed = 0;
+      // 1. Push all active local records
       for (final entry in localRecords.entries) {
         final id = entry.key;
         final payload = entry.value;
@@ -587,6 +602,20 @@ class CloudSyncService {
         await _metadataStorage.save(meta);
         pushed++;
       }
+
+      // 2. Push deleted envelopes to cloud so remote knows they are deleted
+      for (final entry in localMetadata.entries) {
+        if (entry.value.isDeleted && !localRecords.containsKey(entry.key)) {
+          await _pushEnvelope(
+            collection: collection,
+            metadata: entry.value,
+            payload: null,
+            deviceId: deviceId,
+          );
+          pushed++;
+        }
+      }
+
       return _CollectionSyncResult(pushed: pushed, pulled: 0, deleted: 0);
     }
 
@@ -649,8 +678,34 @@ class CloudSyncService {
             deleted++;
           }
         } else if (remoteEnvelope.payload != null) {
-          await adapter.applyRemote(id, remoteEnvelope.payload!);
-          pulled++;
+          // Only pull remote records down if user is in downloadOnly mode (Settings screen)
+          // or if the record already exists locally. This prevents deleted tasks from resurrecting.
+          if (mode == CloudSyncMode.downloadOnly ||
+              localRecords.containsKey(id)) {
+            await adapter.applyRemote(id, remoteEnvelope.payload!);
+            pulled++;
+          } else {
+            // Locally it does not exist, so mark it deleted locally and push delete to remote
+            final deleteMeta = LocalSyncMetadata(
+              collection: adapter.name,
+              id: id,
+              createdAt: remoteEnvelope.createdAt,
+              updatedAt: now,
+              deletedAt: now,
+              fingerprint: null,
+              originDeviceId: deviceId,
+            );
+            localMetadata[id] = deleteMeta;
+            await _metadataStorage.save(deleteMeta);
+            await _pushEnvelope(
+              collection: collection,
+              metadata: deleteMeta,
+              payload: null,
+              deviceId: deviceId,
+            );
+            pushed++;
+            continue;
+          }
         }
         final metadata = LocalSyncMetadata(
           collection: adapter.name,
@@ -745,7 +800,16 @@ class CloudSyncService {
         );
         pushed++;
       } else if (remoteChangedSinceLastSync && !localChangedSinceLastSync) {
-        if (remoteEnvelope.deletedAt != null) {
+        if (localMeta.isDeleted) {
+          // Local item was deleted by user — do not let remote resurrect it
+          await _pushEnvelope(
+            collection: collection,
+            metadata: localMeta,
+            payload: null,
+            deviceId: deviceId,
+          );
+          pushed++;
+        } else if (remoteEnvelope.deletedAt != null) {
           await adapter.deleteLocal(id);
           deleted++;
         } else if (remoteEnvelope.payload != null) {
@@ -757,14 +821,17 @@ class CloudSyncService {
           collection: adapter.name,
           id: id,
           createdAt: remoteEnvelope.createdAt,
-          updatedAt: remoteEnvelope.updatedAt,
-          deletedAt: remoteEnvelope.deletedAt,
-          fingerprint: remoteFingerprint,
-          originDeviceId: remoteEnvelope.originDeviceId,
+          updatedAt: localMeta.isDeleted ? now : remoteEnvelope.updatedAt,
+          deletedAt: localMeta.isDeleted ? now : remoteEnvelope.deletedAt,
+          fingerprint: localMeta.isDeleted ? null : remoteFingerprint,
+          originDeviceId: localMeta.isDeleted
+              ? deviceId
+              : remoteEnvelope.originDeviceId,
         );
         localMetadata[id] = localMeta;
         await _metadataStorage.save(localMeta);
-      } else if (remoteEnvelope.updatedAt.isAfter(localMeta.updatedAt)) {
+      } else if (remoteEnvelope.updatedAt.isAfter(localMeta.updatedAt) &&
+          mode == CloudSyncMode.downloadOnly) {
         if (remoteEnvelope.deletedAt != null) {
           await adapter.deleteLocal(id);
           deleted++;

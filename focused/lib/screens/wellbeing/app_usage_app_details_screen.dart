@@ -30,10 +30,27 @@ class AppUsageAppDetailsScreen extends StatefulWidget {
       _AppUsageAppDetailsScreenState();
 }
 
+class _AppDailyOpensHistory {
+  final List<int> dailyCounts;
+  final List<DateTime> days;
+  final double averageOpens;
+  final int totalOpens;
+  final double? trend;
+
+  const _AppDailyOpensHistory({
+    required this.dailyCounts,
+    required this.days,
+    required this.averageOpens,
+    required this.totalOpens,
+    required this.trend,
+  });
+}
+
 class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
   int _days = 7;
   late DateTime _endDay;
   late Future<List<AppUsageHistoryPoint>> _historyFuture;
+  late Future<_AppDailyOpensHistory> _opensHistoryFuture;
   late Future<_AppBehaviorData> _behaviorFuture;
   final NotificationAccessService _notificationAccessService =
       NotificationAccessService();
@@ -43,6 +60,7 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
     super.initState();
     _endDay = _startOfDay(DateTime.now());
     _historyFuture = _load();
+    _opensHistoryFuture = _loadOpensHistory();
     _behaviorFuture = _loadBehavior();
     unawaited(context.read<UsageProvider>().ensureAppMetadata(widget.appId));
   }
@@ -55,6 +73,76 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
     );
   }
 
+  Future<_AppDailyOpensHistory> _loadOpensHistory() async {
+    final provider = context.read<UsageProvider>();
+    final startDay = DateTime(
+      _endDay.year,
+      _endDay.month,
+      _endDay.day - (_days - 1),
+    );
+    final nextDayOfEnd = _endDay.add(const Duration(days: 1));
+
+    // Previous window for trend
+    final prevEnd = DateTime(_endDay.year, _endDay.month, _endDay.day - _days);
+    final prevStart = DateTime(
+      prevEnd.year,
+      prevEnd.month,
+      prevEnd.day - (_days - 1),
+    );
+    final nextDayOfPrevEnd = prevEnd.add(const Duration(days: 1));
+
+    final results = await Future.wait([
+      provider.loadAppOpenEvents(
+        start: startDay,
+        end: nextDayOfEnd,
+        appId: widget.appId,
+      ),
+      provider.loadAppOpenEvents(
+        start: prevStart,
+        end: nextDayOfPrevEnd,
+        appId: widget.appId,
+      ),
+    ]);
+
+    final currentEvents = results[0];
+    final prevEvents = results[1];
+
+    final daysList = <DateTime>[];
+    for (int i = 0; i < _days; i++) {
+      daysList.add(DateTime(startDay.year, startDay.month, startDay.day + i));
+    }
+
+    final countsMap = <String, int>{};
+    for (final e in currentEvents) {
+      final key = '${e.timestamp.year}-${e.timestamp.month}-${e.timestamp.day}';
+      countsMap[key] = (countsMap[key] ?? 0) + 1;
+    }
+
+    final dailyCounts = daysList.map((d) {
+      final key = '${d.year}-${d.month}-${d.day}';
+      return countsMap[key] ?? 0;
+    }).toList();
+
+    final totalOpens = dailyCounts.fold<int>(0, (sum, c) => sum + c);
+    final avgOpens = dailyCounts.isEmpty ? 0.0 : totalOpens / dailyCounts.length;
+
+    double? trend;
+    final prevTotal = prevEvents.length;
+    if (prevTotal > 0) {
+      trend = ((totalOpens - prevTotal) / prevTotal) * 100.0;
+    } else if (totalOpens > 0) {
+      trend = 100.0;
+    }
+
+    return _AppDailyOpensHistory(
+      dailyCounts: dailyCounts,
+      days: daysList,
+      averageOpens: avgOpens,
+      totalOpens: totalOpens,
+      trend: trend,
+    );
+  }
+
   void _reload() {
     unawaited(
       context.read<UsageProvider>().ensureAppMetadata(
@@ -64,6 +152,7 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
     );
     setState(() {
       _historyFuture = _load();
+      _opensHistoryFuture = _loadOpensHistory();
       _behaviorFuture = _loadBehavior();
     });
   }
@@ -146,6 +235,7 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
     setState(() {
       _days = days;
       _historyFuture = _load();
+      _opensHistoryFuture = _loadOpensHistory();
     });
   }
 
@@ -153,6 +243,7 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
     setState(() {
       _endDay = DateTime(_endDay.year, _endDay.month, _endDay.day - _days);
       _historyFuture = _load();
+      _opensHistoryFuture = _loadOpensHistory();
     });
   }
 
@@ -166,6 +257,7 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
     setState(() {
       _endDay = candidate.isAfter(today) ? today : candidate;
       _historyFuture = _load();
+      _opensHistoryFuture = _loadOpensHistory();
     });
   }
 
@@ -243,6 +335,22 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
                 )
               else
                 _UsageHistoryCard(points: points, trend: trend),
+              const SizedBox(height: 16),
+              FutureBuilder<_AppDailyOpensHistory>(
+                future: _opensHistoryFuture,
+                builder: (context, opensSnapshot) {
+                  if (opensSnapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 180,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (opensSnapshot.hasError || opensSnapshot.data == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return _OpensHistoryCard(data: opensSnapshot.data!);
+                },
+              ),
               const SizedBox(height: 26),
               FutureBuilder<_AppBehaviorData>(
                 future: _behaviorFuture,
@@ -1138,6 +1246,223 @@ class _HistoryPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _HistoryPainter oldDelegate) =>
       oldDelegate.points != points || oldDelegate.lineColor != lineColor;
+}
+
+class _OpensHistoryPainter extends CustomPainter {
+  final List<int> dailyCounts;
+  final List<DateTime> days;
+  final Color barColor;
+  final Color gridColor;
+
+  const _OpensHistoryPainter({
+    required this.dailyCounts,
+    required this.days,
+    required this.barColor,
+    required this.gridColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = gridColor.withOpacity(0.7)
+      ..strokeWidth = 1;
+    for (var i = 0; i <= 3; i++) {
+      final y = size.height * i / 3;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+
+    final maxCount = math.max(
+      1,
+      dailyCounts.fold<int>(0, math.max),
+    );
+
+    // Draw Y-axis labels
+    final textStyle = TextStyle(
+      color: gridColor.withOpacity(0.9),
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+    );
+
+    void drawCountLabel(String text, double y) {
+      final span = TextSpan(text: text, style: textStyle);
+      final tp = TextPainter(text: span, textDirection: ui.TextDirection.ltr)
+        ..layout();
+      tp.paint(canvas, Offset(4, (y - 12).clamp(0, size.height - 14)));
+    }
+
+    drawCountLabel('$maxCount', 0);
+    drawCountLabel('${(maxCount / 2).round()}', size.height / 2);
+    drawCountLabel('0', size.height);
+
+    if (dailyCounts.isEmpty) return;
+
+    final n = dailyCounts.length;
+    final slotWidth = size.width / n;
+    final barWidth = (slotWidth * 0.55).clamp(3.0, 24.0);
+
+    for (var i = 0; i < n; i++) {
+      final count = dailyCounts[i];
+      final xCenter = slotWidth * i + slotWidth / 2;
+      final barHeight = (count / maxCount) * size.height * 0.80;
+      final top = size.height - barHeight;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          xCenter - barWidth / 2,
+          top,
+          barWidth,
+          barHeight.clamp(2.0, size.height),
+        ),
+        const Radius.circular(5),
+      );
+
+      final barPaint = Paint()
+        ..color = count > 0 ? barColor : barColor.withOpacity(0.18)
+        ..style = PaintingStyle.fill;
+      canvas.drawRRect(rect, barPaint);
+
+      // Label above bar for 7d or 14d
+      if (n <= 14 && count > 0) {
+        final labelSpan = TextSpan(
+          text: '$count',
+          style: TextStyle(
+            color: barColor,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        );
+        final labelTp = TextPainter(
+          text: labelSpan,
+          textDirection: ui.TextDirection.ltr,
+        )..layout();
+
+        final labelX = (xCenter - labelTp.width / 2).clamp(
+          0.0,
+          size.width - labelTp.width,
+        );
+        final labelY = (top - 14).clamp(0.0, size.height - 14);
+        labelTp.paint(canvas, Offset(labelX, labelY));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _OpensHistoryPainter oldDelegate) =>
+      oldDelegate.dailyCounts != dailyCounts ||
+      oldDelegate.barColor != barColor;
+}
+
+class _OpensHistoryCard extends StatelessWidget {
+  final _AppDailyOpensHistory data;
+
+  const _OpensHistoryCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final days = data.days;
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Daily Average',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          data.averageOpens.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'opens/day',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _TrendBadge(value: data.trend),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${data.totalOpens} total',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 170,
+            child: CustomPaint(
+              painter: _OpensHistoryPainter(
+                dailyCounts: data.dailyCounts,
+                days: data.days,
+                barColor: primary,
+                gridColor: Theme.of(context).dividerColor,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (days.isNotEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  DateFormat('MMM d').format(days.first),
+                  style: const TextStyle(fontSize: 10),
+                ),
+                Text(
+                  DateFormat('MMM d').format(days[days.length ~/ 2]),
+                  style: const TextStyle(fontSize: 10),
+                ),
+                Text(
+                  DateFormat('MMM d').format(days.last),
+                  style: const TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CategoryPill extends StatelessWidget {

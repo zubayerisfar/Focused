@@ -17,6 +17,14 @@ class TaskOccurrence {
 
   Duration get duration => end.difference(start);
 
+  bool get isCompletedLate {
+    if (!isCompleted || completedAt == null) return false;
+    if (completedAt!.isAfter(end)) return true;
+    if (task.deadline != null && completedAt!.isAfter(task.deadline!))
+      return true;
+    return false;
+  }
+
   TaskOccurrence withCompletion({
     required bool isCompleted,
     DateTime? completedAt,

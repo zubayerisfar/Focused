@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../models/app_category.dart';
@@ -42,11 +42,16 @@ class UsageProvider extends ChangeNotifier {
     FocusGuardController? focusGuardController,
     NotificationAccessService? notificationAccessService,
     DateTime? historyStartedAt,
-  }) : _usageStatsService = usageStatsService ?? AndroidUsageStatsService(),
+  }) : _appMetadataService = appMetadataService ?? AndroidAppMetadataService(),
+       _usageStatsService =
+           usageStatsService ??
+           AndroidUsageStatsService(
+             appMetadataService:
+                 appMetadataService ?? AndroidAppMetadataService(),
+           ),
        _storageService = storageService,
        _categoryStorageService = categoryStorageService,
        _focusAnalysisStorageService = focusAnalysisStorageService,
-       _appMetadataService = appMetadataService ?? AndroidAppMetadataService(),
        _appMetadataStorageService = appMetadataStorageService,
        _usageAnalyzer = usageAnalyzer ?? UsageAnalyzer(),
        _focusInterruptionAnalyzer =
@@ -937,9 +942,16 @@ class UsageProvider extends ChangeNotifier {
       return todayUsage.inSeconds == 0 ? 0 : null;
     }
 
-    return ((todayUsage.inSeconds - yesterdayUsage.inSeconds) /
-            yesterdayUsage.inSeconds) *
+    // If baseline usage yesterday is negligible (< 3 minutes), calculating a raw mathematical
+    // percentage produces nonsensical numbers (e.g. +8346%). We floor the baseline to at least 3 minutes
+    // or clamp to a sensible realistic display range (+999% max).
+    final effectiveBaselineSeconds = math.max(yesterdayUsage.inSeconds, 180);
+    final rawChange =
+        ((todayUsage.inSeconds - yesterdayUsage.inSeconds) /
+            effectiveBaselineSeconds) *
         100;
+
+    return rawChange.clamp(-100.0, 999.0);
   }
 
   Future<List<AppUsageHistoryPoint>> loadAppUsageHistory(

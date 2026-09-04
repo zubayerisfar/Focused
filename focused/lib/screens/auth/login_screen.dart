@@ -48,32 +48,19 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
           children: [
             const _Brand(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             Text(
-              _isRegister
-                  ? 'Create your private\nFocused account.'
-                  : 'Welcome back.',
+              _isRegister ? 'Create your account' : 'Welcome back',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: scheme.onSurface,
-                fontSize: 32,
-                height: 1.1,
+                fontSize: 28,
+                height: 1.15,
                 fontWeight: FontWeight.w800,
-                letterSpacing: -0.8,
+                letterSpacing: -0.6,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              _isRegister
-                  ? 'Create an account with Google or email. Tasks and habits can '
-                        'sync across your devices; raw usage history stays on this device.'
-                  : 'Sign in with Google or your Focused email/password.',
-              style: TextStyle(
-                color: scheme.onSurfaceVariant,
-                height: 1.5,
-                fontSize: 14.5,
-              ),
-            ),
-            const SizedBox(height: 26),
+            const SizedBox(height: 24),
             _ModeSelector(
               mode: _mode,
               onChanged: (mode) {
@@ -100,7 +87,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const _GoogleMark(),
                     const SizedBox(width: 11),
                     Text(
-                      'Continue with Google',
+                      _isRegister
+                          ? 'Continue with Google'
+                          : 'Login with Google',
                       style: TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w700,
@@ -265,29 +254,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
               ),
             ),
-            const SizedBox(height: 22),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.shield_outlined,
-                  size: 18,
-                  color: scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    'Your Focused account syncs productivity data across devices. '
-                    'Raw screen-time, app-open, and notification history stays local.',
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.45,
-                      fontSize: 12.2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -431,46 +397,26 @@ class _Brand extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Row(
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Image.asset('assets/icon/app_icon.png', fit: BoxFit.cover),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'FOCUSED',
-              style: TextStyle(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 2.2,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'PRIVATE • LOCAL FIRST',
-              style: TextStyle(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.7,
-                fontSize: 9.5,
-              ),
+    return Center(
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: scheme.outlineVariant),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-      ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(21),
+          child: Image.asset('assets/icon/app_icon.png', fit: BoxFit.cover),
+        ),
+      ),
     );
   }
 }

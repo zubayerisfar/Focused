@@ -163,6 +163,44 @@ class TaskNotificationService {
             payload: task.id,
           );
         }
+
+        // Schedule 30-minute late reminder if task has a scheduled start time
+        if (task.scheduledStart != null) {
+          final late30MinTime = task.scheduledStart!.add(
+            const Duration(minutes: 30),
+          );
+          if (late30MinTime.isAfter(now)) {
+            const lateSlot = 8;
+            await _notifications.zonedSchedule(
+              _notificationId(task.id, lateSlot),
+              '👀 You\'re 30 minutes late',
+              'You haven\'t started "${task.title}" yet. Don\'t lose your streak!',
+              _toLocalTz(late30MinTime),
+              _details,
+              androidScheduleMode: useExactScheduling
+                  ? AndroidScheduleMode.exactAllowWhileIdle
+                  : AndroidScheduleMode.inexactAllowWhileIdle,
+              payload: 'late30_${task.id}',
+            );
+          }
+        }
+
+        // Schedule deadline warning notification at scheduledEnd or deadline
+        final deadlineTime = task.scheduledEnd ?? task.deadline;
+        if (deadlineTime != null && deadlineTime.isAfter(now)) {
+          final deadlineSlot = 9; // Slot 9 dedicated to deadline missed alert
+          await _notifications.zonedSchedule(
+            _notificationId(task.id, deadlineSlot),
+            '🥺 Deadline reached',
+            'Time is up for "${task.title}". Complete it now to save your streak.',
+            _toLocalTz(deadlineTime),
+            _details,
+            androidScheduleMode: useExactScheduling
+                ? AndroidScheduleMode.exactAllowWhileIdle
+                : AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: 'deadline_${task.id}',
+          );
+        }
       }
 
       final pendingCount = await pendingReminderCountForTask(task.id);
@@ -537,24 +575,28 @@ class TaskNotificationService {
     required String message,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'focused_friend_reminders',
+      'focused_friend_reminders_v2',
       'Friend Task Reminders',
       channelDescription:
           'Notifications sent by your friends to remind you to finish your tasks.',
       importance: Importance.max,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
     );
     const notificationDetails = NotificationDetails(
       android: androidDetails,
-      iOS: DarwinNotificationDetails(),
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
     );
 
     final titleVariations = [
-      '🔥 $fromName caught you slacking!',
-      '👀 $fromName is watching your streak!',
-      '😤 $fromName demands your best today!',
-      '⚡ Wake up! $fromName sent you a nudge!',
+      '⚡ Reminder from $fromName',
+      '👀 Check-in from $fromName',
+      '🔥 Nudge from $fromName',
     ];
     final selectedTitle =
         titleVariations[(fromName.hashCode ^ DateTime.now().minute).abs() %
@@ -562,12 +604,74 @@ class TaskNotificationService {
 
     final urgentBody = message.isNotEmpty
         ? message
-        : '$fromName says: "Put away the distractions and finish your task right now! No excuses!" 💥';
+        : '$fromName wants to remind you: time to finish your task.';
 
     await _notifications.show(
       DateTime.now().millisecondsSinceEpoch % 100000,
       selectedTitle,
       urgentBody,
+      notificationDetails,
+    );
+  }
+
+  Future<void> showExpGiftNotification({
+    required String fromName,
+    required int amount,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'focused_exp_gifts_v2',
+      'EXP Gifts',
+      channelDescription:
+          'Notifications when friends send you EXP gifts to boost your level.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      '🎁 +$amount EXP from $fromName',
+      'Open Focused to claim your boost and level up.',
+      notificationDetails,
+    );
+  }
+
+  Future<void> showGroupCreationNotification({
+    required String groupName,
+    required String creatorName,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'focused_group_creations_v2',
+      'Squad Group Invites',
+      channelDescription:
+          'Notifications when friends invite you to join a new Task Squad.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      '👥 New Squad: $groupName',
+      '$creatorName added you to squad "$groupName". Team up and finish your goals.',
       notificationDetails,
     );
   }
@@ -581,33 +685,35 @@ class TaskNotificationService {
 
     final tzDate = tz.TZDateTime.from(scheduledTime, tz.local);
     const androidDetails = AndroidNotificationDetails(
-      'focused_task_mates',
+      'focused_task_mates_v2',
       'Task Mate Reminders',
       channelDescription:
           'Scheduled reminders for your shared Task Mate goals.',
       importance: Importance.max,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
     );
     const notificationDetails = NotificationDetails(
       android: androidDetails,
-      iOS: DarwinNotificationDetails(),
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
     );
 
     final titleList = [
-      '⚡ Task Mate Alert: Time to execute!',
-      '🔥 Your squad is waiting on "$taskTitle"!',
-      '🤝 Task Mate Showdown: Earn +200 EXP now!',
-      '😤 Don\'t let your team down! Lock in!',
+      '⚡ Squad Task: "$taskTitle"',
+      '🔥 Team Task: "$taskTitle"',
     ];
     final selectedTitle =
         titleList[(groupId.hashCode ^ taskTitle.hashCode).abs() %
             titleList.length];
 
     final bodyList = [
-      'Your shared squad task "$taskTitle" starts NOW. Finish it to secure your +200 EXP double reward! 🏆',
-      'Zero excuses! Lock in on "$taskTitle" right now before your mates finish first! 🚀 (+200 EXP)',
-      'Stop procrastinating. Your squad scheduled "$taskTitle" for this moment. Let\'s conquer it! 💪',
+      'Your shared squad task starts now. Finish it to earn +200 EXP.',
+      'Time to focus on "$taskTitle" with your squad.',
     ];
     final selectedBody =
         bodyList[(taskTitle.hashCode ^ scheduledTime.minute).abs() %
@@ -669,11 +775,10 @@ class TaskNotificationService {
 
   static String _engagingTaskTitle(Task task) {
     final titles = [
-      '🔥 Don\'t break your streak! "${task.title}"',
-      '⚡ Lock in: "${task.title}" starts now!',
-      '⏱️ Time is running out: "${task.title}"',
-      '💪 No excuses today: "${task.title}"',
-      '🎯 Your future self is watching: "${task.title}"',
+      '🔥 "${task.title}"',
+      '⚡ Time for "${task.title}"',
+      '🎯 Focus on "${task.title}"',
+      '💪 Start "${task.title}"',
     ];
     return titles[(task.id.hashCode ^ task.title.hashCode).abs() %
         titles.length];
@@ -682,22 +787,19 @@ class TaskNotificationService {
   static String _engagingTaskBody(Task task, int reminderMinutes) {
     if (reminderMinutes == 0) {
       final immediate = [
-        'Stop scrolling right now. Put away distractions and crush this task! 🚀',
-        'Procrastination is the thief of your potential. Get to work right now! 😤',
-        'Champions show up even when they don\'t feel like it. Start now! 🔥',
-        'You scheduled this for a reason. Prove to yourself you can execute! 💥',
-        'Every minute wasted is a minute lost forever. Dive into focus mode! ⚡',
+        'Time to get to work. Open Focused and start now.',
+        'Put away distractions and focus on this task.',
+        'Keep your streak going. Dive in today.',
+        'You scheduled this for now. Let\'s get it done.',
       ];
       return immediate[(task.id.hashCode).abs() % immediate.length];
     }
 
-    final countdown = [
-      'Starting in $reminderMinutes mins! Clear your desk, close social media, and get ready! ⏱️',
-      'Countdown: $reminderMinutes mins left. Put your phone away and prepare to execute! 🎧',
-      'T-minus $reminderMinutes mins until deep work. No excuses, let\'s make today count! 💪',
-    ];
-    return countdown[(task.id.hashCode ^ reminderMinutes).abs() %
-        countdown.length];
+    if (reminderMinutes == 1) {
+      return 'Starts in 1 minute. Get ready.';
+    }
+
+    return 'Starts in $reminderMinutes minutes. Clear your desk and get ready.';
   }
 
   int _notificationId(String taskId, int slot) {
@@ -729,16 +831,25 @@ class TaskNotificationService {
 
   static const NotificationDetails _details = NotificationDetails(
     android: AndroidNotificationDetails(
-      'task_reminders_v2',
+      'task_reminders_v3',
       'Task reminders',
       channelDescription: 'Reminders for scheduled Focused tasks',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
     ),
-    iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
-    macOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+      sound: 'notification_sound.mp3',
+    ),
+    macOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+      sound: 'notification_sound.mp3',
+    ),
   );
 }
 

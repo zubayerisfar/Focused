@@ -11,6 +11,8 @@ abstract class AppMetadataPlatformService {
     Iterable<String> packageNames, {
     int iconSize = 96,
   });
+
+  Future<String?> getDefaultLauncherPackage();
 }
 
 class AndroidAppMetadataService implements AppMetadataPlatformService {
@@ -23,6 +25,19 @@ class AndroidAppMetadataService implements AppMetadataPlatformService {
 
   @override
   bool get isSupported => Platform.isAndroid;
+
+  @override
+  Future<String?> getDefaultLauncherPackage() async {
+    if (!isSupported) return null;
+    try {
+      final res = await _channel.invokeMethod<String>(
+        'getDefaultLauncherPackage',
+      );
+      return res?.trim().isNotEmpty == true ? res!.trim() : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Future<List<AppMetadata>> loadMetadata(

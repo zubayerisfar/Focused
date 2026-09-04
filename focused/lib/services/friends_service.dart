@@ -625,6 +625,50 @@ class FriendsService {
         });
   }
 
+  /// Listens for incoming group notices to alert user of newly joined squads
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  listenForIncomingGroupNotices({
+    required String currentUid,
+    required Function(String groupName, String creatorName)
+    onGroupNoticeReceived,
+  }) {
+    if (currentUid.isEmpty) return null;
+
+    return _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('group_notices')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .listen((snap) {
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final groupName = data['groupName']?.toString() ?? 'Task Squad';
+            final creatorName = data['creatorName']?.toString() ?? 'A Friend';
+
+            onGroupNoticeReceived(groupName, creatorName);
+
+            // Mark as read
+            doc.reference.update({'read': true});
+          }
+        });
+  }
+
+  /// Streams all group notices for the notification hub
+  Stream<List<Map<String, dynamic>>> streamGroupNotices(String currentUid) {
+    if (currentUid.isEmpty) return Stream.value(const []);
+    return _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('group_notices')
+        .orderBy('createdAt', descending: true)
+        .limit(20)
+        .snapshots()
+        .map(
+          (snap) => snap.docs.map((d) => {...d.data(), 'id': d.id}).toList(),
+        );
+  }
+
   // ===========================================================================
   // EXP GIFTING & CLAIMING
   // ===========================================================================
