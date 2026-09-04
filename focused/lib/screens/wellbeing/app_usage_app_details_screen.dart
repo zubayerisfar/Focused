@@ -124,7 +124,9 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
     }).toList();
 
     final totalOpens = dailyCounts.fold<int>(0, (sum, c) => sum + c);
-    final avgOpens = dailyCounts.isEmpty ? 0.0 : totalOpens / dailyCounts.length;
+    final avgOpens = dailyCounts.isEmpty
+        ? 0.0
+        : totalOpens / dailyCounts.length;
 
     double? trend;
     final prevTotal = prevEvents.length;
@@ -210,6 +212,9 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
 
     return _AppBehaviorData(
       hourlyUsage: provider.hourlyUsageForAppToday(widget.appId),
+      usageToday: provider.appUsageToday(widget.appId),
+      usageYesterday: provider.appUsageYesterday(widget.appId),
+      usageChangePercent: provider.getAppChangePercentById(widget.appId),
       opensToday: todayOpens.length,
       opensYesterday: yesterdayOpens.length,
       hourlyOpens: openHours,
@@ -339,7 +344,8 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
               FutureBuilder<_AppDailyOpensHistory>(
                 future: _opensHistoryFuture,
                 builder: (context, opensSnapshot) {
-                  if (opensSnapshot.connectionState == ConnectionState.waiting) {
+                  if (opensSnapshot.connectionState ==
+                      ConnectionState.waiting) {
                     return const SizedBox(
                       height: 180,
                       child: Center(child: CircularProgressIndicator()),
@@ -397,6 +403,9 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
 class _AppBehaviorData {
   const _AppBehaviorData({
     required this.hourlyUsage,
+    required this.usageToday,
+    required this.usageYesterday,
+    required this.usageChangePercent,
     required this.opensToday,
     required this.opensYesterday,
     required this.hourlyOpens,
@@ -409,6 +418,9 @@ class _AppBehaviorData {
   });
 
   final List<Duration> hourlyUsage;
+  final Duration usageToday;
+  final Duration usageYesterday;
+  final double? usageChangePercent;
   final int opensToday;
   final int opensYesterday;
   final List<int> hourlyOpens;
@@ -437,6 +449,8 @@ class _BehaviorSection extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
+        const SizedBox(height: 12),
+        _YesterdayVsTodayCard(data: data),
         const SizedBox(height: 12),
         _HourlyMetricCard(
           title: 'Today’s hourly usage',
@@ -480,6 +494,192 @@ class _BehaviorSection extends StatelessWidget {
           interruptions: data.focusInterruptions,
         ),
       ],
+    );
+  }
+}
+
+class _YesterdayVsTodayCard extends StatelessWidget {
+  const _YesterdayVsTodayCard({required this.data});
+
+  final _AppBehaviorData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final change = data.usageChangePercent;
+
+    return _MetricSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Yesterday vs. Today',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Direct comparison of screen time and launches',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (change != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        (change > 0
+                                ? AppTheme.danger
+                                : change < 0
+                                ? AppTheme.success
+                                : theme.colorScheme.onSurfaceVariant)
+                            .withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        change > 0
+                            ? Icons.arrow_upward_rounded
+                            : change < 0
+                            ? Icons.arrow_downward_rounded
+                            : Icons.remove_rounded,
+                        size: 13,
+                        color: change > 0
+                            ? AppTheme.danger
+                            : change < 0
+                            ? AppTheme.success
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${change.abs().round()}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: change > 0
+                              ? AppTheme.danger
+                              : change < 0
+                              ? AppTheme.success
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Yesterday',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _duration(data.usageYesterday),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${data.opensYesterday} opens',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Today',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _duration(data.usageToday),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${data.opensToday} opens',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1271,10 +1471,7 @@ class _OpensHistoryPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
 
-    final maxCount = math.max(
-      1,
-      dailyCounts.fold<int>(0, math.max),
-    );
+    final maxCount = math.max(1, dailyCounts.fold<int>(0, math.max));
 
     // Draw Y-axis labels
     final textStyle = TextStyle(
@@ -1401,7 +1598,9 @@ class _OpensHistoryCard extends StatelessWidget {
                           'opens/day',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

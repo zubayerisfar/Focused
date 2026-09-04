@@ -389,7 +389,7 @@ class _UsageLegendList extends StatelessWidget {
                                       : change < 0
                                       ? FontAwesomeIcons.arrowDown
                                       : FontAwesomeIcons.minus,
-                                  size: 9,
+                                  size: 8.5,
                                   color: change > 0
                                       ? AppTheme.danger
                                       : change < 0
@@ -400,10 +400,10 @@ class _UsageLegendList extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  '${change.abs().round()}% vs yest',
+                                  '${change.abs().round()}%',
                                   style: TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
                                     color: change > 0
                                         ? AppTheme.danger
                                         : change < 0

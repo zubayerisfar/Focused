@@ -139,7 +139,7 @@ class UsageProvider extends ChangeNotifier {
   UsageDataProvenance get todayProvenance => _todayProvenance;
   UsageDataProvenance get yesterdayProvenance => _yesterdayProvenance;
   DateTime? get usageHistoryStartDay =>
-      _historyStartedAt == null ? null : _startOfDay(_historyStartedAt!);
+      _historyStartedAt == null ? null : _startOfDay(_historyStartedAt);
 
   Map<String, FocusAnalysisResult> get storedFocusAnalyses =>
       Map<String, FocusAnalysisResult>.unmodifiable(_focusAnalysesBySessionId);
@@ -942,16 +942,32 @@ class UsageProvider extends ChangeNotifier {
       return todayUsage.inSeconds == 0 ? 0 : null;
     }
 
-    // If baseline usage yesterday is negligible (< 3 minutes), calculating a raw mathematical
-    // percentage produces nonsensical numbers (e.g. +8346%). We floor the baseline to at least 3 minutes
-    // or clamp to a sensible realistic display range (+999% max).
-    final effectiveBaselineSeconds = math.max(yesterdayUsage.inSeconds, 180);
+    // Baseline normalization:
+    // When yesterday usage is very small (e.g. 1-10 mins) and today is larger (e.g. 1h),
+    // raw division causes absurd spikes like +604%.
+    // We normalize baseline to at least 15 minutes (900 seconds) for sensible optimal/excess comparison,
+    // and clamp between -100% and +200%.
+    final effectiveBaselineSeconds = math.max(yesterdayUsage.inSeconds, 900);
     final rawChange =
         ((todayUsage.inSeconds - yesterdayUsage.inSeconds) /
             effectiveBaselineSeconds) *
         100;
 
-    return rawChange.clamp(-100.0, 999.0);
+    return rawChange.clamp(-100.0, 200.0);
+  }
+
+  Duration appUsageToday(String appId) {
+    if (_todaySummary == null) return Duration.zero;
+    return _usageForAppInRecords(appId, _todaySummary!.date, _todayRecords);
+  }
+
+  Duration appUsageYesterday(String appId) {
+    if (_yesterdaySummary == null) return Duration.zero;
+    return _usageForAppInRecords(
+      appId,
+      _yesterdaySummary!.date,
+      _yesterdayRecords,
+    );
   }
 
   Future<List<AppUsageHistoryPoint>> loadAppUsageHistory(

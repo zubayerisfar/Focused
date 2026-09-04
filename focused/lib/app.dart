@@ -49,6 +49,18 @@ class _FocusProductivityAppState extends State<FocusProductivityApp>
       darkTheme: AppTheme.darkTheme(),
       themeMode: themeProvider.themeMode,
       routerConfig: widget.routerConfig,
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: mediaQuery.textScaler.clamp(
+              minScaleFactor: 0.85,
+              maxScaleFactor: 1.15,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

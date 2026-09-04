@@ -113,11 +113,26 @@ class _MainShellState extends State<MainShell> {
             data: NavigationBarThemeData(
               indicatorColor: Colors.transparent,
               overlayColor: WidgetStateProperty.all(Colors.transparent),
-              height: 66,
+              height: 68,
+              labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
+                states,
+              ) {
+                final isSelected = states.contains(WidgetState.selected);
+                return TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: -0.1,
+                  color: isSelected
+                      ? (isDark ? Colors.white : const Color(0xFF1E293B))
+                      : (isDark
+                            ? Colors.white.withValues(alpha: 0.55)
+                            : const Color(0xFF64748B)),
+                );
+              }),
             ),
             child: NavigationBar(
               selectedIndex: _currentIndex,
-              height: 66,
+              height: 68,
               elevation: 0,
               shadowColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
@@ -128,7 +143,7 @@ class _MainShellState extends State<MainShell> {
                   });
                 }
               },
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               destinations: const [
                 NavigationDestination(
                   icon: _NavIcon(
@@ -136,14 +151,14 @@ class _MainShellState extends State<MainShell> {
                     fallbackIcon: Icons.home_outlined,
                     color: Color(0xFFFF8228), // Orange
                     isSelected: false,
-                    size: 36,
+                    size: 24,
                   ),
                   selectedIcon: _NavIcon(
                     assetName: 'nav_home.svg',
                     fallbackIcon: Icons.home_rounded,
                     color: Color(0xFFFF8228), // Orange
                     isSelected: true,
-                    size: 36,
+                    size: 24,
                   ),
                   label: 'Home',
                 ),
@@ -153,14 +168,14 @@ class _MainShellState extends State<MainShell> {
                     fallbackIcon: Icons.view_timeline_outlined,
                     color: Color(0xFF58CC02), // Green
                     isSelected: false,
-                    size: 36,
+                    size: 24,
                   ),
                   selectedIcon: _NavIcon(
                     assetName: 'nav_planner.svg',
                     fallbackIcon: Icons.view_timeline_rounded,
                     color: Color(0xFF58CC02), // Green
                     isSelected: true,
-                    size: 36,
+                    size: 24,
                   ),
                   label: 'Planner',
                 ),
@@ -170,14 +185,14 @@ class _MainShellState extends State<MainShell> {
                     fallbackIcon: Icons.center_focus_strong_outlined,
                     color: Color(0xFFFF5252), // Red
                     isSelected: false,
-                    size: 36,
+                    size: 24,
                   ),
                   selectedIcon: _NavIcon(
                     assetName: 'nav_focus.svg',
                     fallbackIcon: Icons.center_focus_strong_rounded,
                     color: Color(0xFFFF5252), // Red
                     isSelected: true,
-                    size: 36,
+                    size: 24,
                   ),
                   label: 'Focus',
                 ),
@@ -188,7 +203,7 @@ class _MainShellState extends State<MainShell> {
                     fallbackIcon: Icons.people_alt_outlined,
                     color: Color(0xFF9B51E0), // Purple
                     isSelected: false,
-                    size: 36,
+                    size: 24,
                   ),
                   selectedIcon: _NavIcon(
                     assetName: 'nav_friends.svg',
@@ -196,7 +211,7 @@ class _MainShellState extends State<MainShell> {
                     fallbackIcon: Icons.people_alt_rounded,
                     color: Color(0xFF9B51E0), // Purple
                     isSelected: true,
-                    size: 36,
+                    size: 24,
                   ),
                   label: 'Friends',
                 ),
@@ -206,14 +221,14 @@ class _MainShellState extends State<MainShell> {
                     fallbackIcon: Icons.settings_outlined,
                     color: Color(0xFF0EA5E9), // Bluish
                     isSelected: false,
-                    size: 36,
+                    size: 24,
                   ),
                   selectedIcon: _NavIcon(
                     assetName: 'nav_settings.svg',
                     fallbackIcon: Icons.settings_rounded,
                     color: Color(0xFF0EA5E9), // Bluish
                     isSelected: true,
-                    size: 36,
+                    size: 24,
                   ),
                   label: 'Settings',
                 ),
@@ -229,7 +244,6 @@ class _MainShellState extends State<MainShell> {
 class _NavIcon extends StatelessWidget {
   final String assetName;
   final String? alternateAssetName;
-  final String? fullAssetPath;
   final IconData fallbackIcon;
   final Color color;
   final bool isSelected;
@@ -238,11 +252,10 @@ class _NavIcon extends StatelessWidget {
   const _NavIcon({
     required this.assetName,
     this.alternateAssetName,
-    this.fullAssetPath,
     required this.fallbackIcon,
     required this.color,
     required this.isSelected,
-    this.size = 36.0,
+    this.size = 24.0,
   });
 
   static final Map<String, bool> _assetCache = {};
@@ -250,18 +263,7 @@ class _NavIcon extends StatelessWidget {
   static Future<String?> _resolveAssetPath(
     String primaryName, [
     String? alternateName,
-    String? fullPath,
   ]) async {
-    if (fullPath != null) {
-      if (_assetCache[fullPath] == true) return fullPath;
-      try {
-        await rootBundle.load(fullPath);
-        _assetCache[fullPath] = true;
-        return fullPath;
-      } catch (_) {
-        _assetCache[fullPath] = false;
-      }
-    }
     final primaryPath = 'assets/navbar_icon/$primaryName';
     if (_assetCache[primaryPath] == true) return primaryPath;
     try {
@@ -291,7 +293,7 @@ class _NavIcon extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return FutureBuilder<String?>(
-      future: _resolveAssetPath(assetName, alternateAssetName, fullAssetPath),
+      future: _resolveAssetPath(assetName, alternateAssetName),
       builder: (context, snapshot) {
         final path = snapshot.data;
         Widget iconWidget;
@@ -313,42 +315,25 @@ class _NavIcon extends StatelessWidget {
           );
         }
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 12 : 6,
-                vertical: isSelected ? 4 : 4,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? color.withValues(alpha: isDark ? 0.24 : 0.14)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: AnimatedScale(
-                scale: isSelected ? 1.12 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                child: iconWidget,
-              ),
-            ),
-            const SizedBox(height: 3),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              width: isSelected ? 14 : 0,
-              height: 3,
-              decoration: BoxDecoration(
-                color: isSelected ? color : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSelected ? 10 : 4,
+            vertical: 4,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withValues(alpha: isDark ? 0.22 : 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: AnimatedScale(
+            scale: isSelected ? 1.08 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: iconWidget,
+          ),
         );
       },
     );
