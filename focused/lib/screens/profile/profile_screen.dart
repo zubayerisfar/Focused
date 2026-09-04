@@ -505,10 +505,6 @@ class ProfileScreen extends StatelessWidget {
                   'assets/icon/focus_icon.svg',
                   width: 24,
                   height: 24,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF1CB0F6),
-                    BlendMode.srcIn,
-                  ),
                 ),
                 value: _formatDuration(effectiveTotalFocus),
                 label: 'Total Focus',

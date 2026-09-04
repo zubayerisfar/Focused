@@ -2519,15 +2519,7 @@ class _HabitEmptyState extends StatelessWidget {
       ),
       child: Column(
         children: [
-          SvgPicture.asset(
-            'assets/icon/task_icon.svg',
-            width: 44,
-            height: 44,
-            colorFilter: ColorFilter.mode(
-              Theme.of(context).colorScheme.primary,
-              BlendMode.srcIn,
-            ),
-          ),
+          SvgPicture.asset('assets/icon/task_icon.svg', width: 44, height: 44),
           const SizedBox(height: 12),
           Text(
             hasAny ? 'No habits scheduled today' : 'Build your first routine',
