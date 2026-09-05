@@ -12,6 +12,7 @@ import '../../settings/models/notification_event.dart';
 import '../models/app_usage_history_point.dart';
 import '../providers/usage_provider.dart';
 import '../../../core/services/notification_access_service.dart';
+import '../../../core/services/ad_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_icon.dart';
 
@@ -52,6 +53,7 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
   late Future<List<AppUsageHistoryPoint>> _historyFuture;
   late Future<_AppDailyOpensHistory> _opensHistoryFuture;
   late Future<_AppBehaviorData> _behaviorFuture;
+  bool _isBehaviorUnlocked = false;
   final NotificationAccessService _notificationAccessService =
       NotificationAccessService();
 
@@ -376,7 +378,19 @@ class _AppUsageAppDetailsScreenState extends State<AppUsageAppDetailsScreen> {
                       onTap: _reload,
                     );
                   }
-                  return _BehaviorSection(data: behaviorSnapshot.data!);
+                  return _BehaviorSection(
+                    data: behaviorSnapshot.data!,
+                    isUnlocked: _isBehaviorUnlocked,
+                    onUnlock: () {
+                      AdService.instance.showRewardedInterstitialAd(
+                        onUserEarnedReward: (reward) {
+                          if (mounted) {
+                            setState(() => _isBehaviorUnlocked = true);
+                          }
+                        },
+                      );
+                    },
+                  );
                 },
               ),
             ],
@@ -433,9 +447,15 @@ class _AppBehaviorData {
 }
 
 class _BehaviorSection extends StatelessWidget {
-  const _BehaviorSection({required this.data});
+  const _BehaviorSection({
+    required this.data,
+    required this.isUnlocked,
+    required this.onUnlock,
+  });
 
   final _AppBehaviorData data;
+  final bool isUnlocked;
+  final VoidCallback onUnlock;
 
   @override
   Widget build(BuildContext context) {
@@ -450,7 +470,11 @@ class _BehaviorSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        _YesterdayVsTodayCard(data: data),
+        _YesterdayVsTodayCard(
+          data: data,
+          isUnlocked: isUnlocked,
+          onUnlock: onUnlock,
+        ),
         const SizedBox(height: 12),
         _HourlyMetricCard(
           title: 'Today’s hourly usage',
@@ -499,13 +523,21 @@ class _BehaviorSection extends StatelessWidget {
 }
 
 class _YesterdayVsTodayCard extends StatelessWidget {
-  const _YesterdayVsTodayCard({required this.data});
+  const _YesterdayVsTodayCard({
+    required this.data,
+    required this.isUnlocked,
+    required this.onUnlock,
+  });
 
   final _AppBehaviorData data;
+  final bool isUnlocked;
+  final VoidCallback onUnlock;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final scheme = theme.colorScheme;
     final change = data.usageChangePercent;
 
     return _MetricSurface(
@@ -535,7 +567,7 @@ class _YesterdayVsTodayCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (change != null)
+              if (isUnlocked && change != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -583,101 +615,227 @@ class _YesterdayVsTodayCard extends StatelessWidget {
                     ],
                   ),
                 ),
+              if (isUnlocked) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Unlocked',
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.35),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Yesterday',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _duration(data.usageYesterday),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${data.opensYesterday} opens',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+          if (!isUnlocked) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? scheme.surfaceContainerHighest.withValues(alpha: 0.25)
+                    : scheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: 0.6),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1CB0F6).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.lock_rounded,
+                      color: Color(0xFF1CB0F6),
+                      size: 26,
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Today',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
+                  const SizedBox(height: 10),
+                  Text(
+                    'Unlock yesterday vs today comparison',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Watch a quick 5-second ad to unlock full screen time & launch comparison.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 12,
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1CB0F6), Color(0xFF0075FF)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF1CB0F6,
+                          ).withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: onUnlock,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.play_circle_fill_rounded,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Watch 5s ad to unlock',
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _duration(data.usageToday),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Yesterday',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${data.opensToday} opens',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurfaceVariant,
+                        const SizedBox(height: 6),
+                        Text(
+                          _duration(data.usageYesterday),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          '${data.opensYesterday} opens',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Today',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _duration(data.usageToday),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${data.opensToday} opens',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

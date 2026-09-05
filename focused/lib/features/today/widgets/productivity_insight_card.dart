@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/ad_service.dart';
@@ -59,29 +60,23 @@ class _ProductivityInsightCardState extends State<ProductivityInsightCard> {
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
+                padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF9600), Color(0xFFFF5722)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  color: isDark
+                      ? const Color(0xFF1CB0F6).withValues(alpha: 0.18)
+                      : const Color(0xFFE8F4FD),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: const Color(
+                      0xFF1CB0F6,
+                    ).withValues(alpha: isDark ? 0.35 : 0.25),
                   ),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFF9600).withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.auto_awesome_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
+                child: SvgPicture.asset(
+                  'assets/icon/productivity_insight_icon.svg',
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(width: 10),
@@ -156,7 +151,7 @@ class _ProductivityInsightCardState extends State<ProductivityInsightCard> {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(15),
                   onTap: () {
-                    AdService.instance.showRewardedAd(
+                    AdService.instance.showRewardedInterstitialAd(
                       onUserEarnedReward: (reward) {
                         if (mounted) {
                           setState(() => _unlocked = true);

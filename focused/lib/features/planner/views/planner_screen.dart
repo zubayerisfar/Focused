@@ -60,11 +60,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final selectedBackground = isDark
         ? accent.withValues(alpha: 0.30)
         : accent.withValues(alpha: 0.14);
-    final pageTint = _area == PlannerArea.tasks
-        ? (isDark ? const Color(0xFF121620) : const Color(0xFFF8FAFD))
-        : (isDark
-              ? accent.withValues(alpha: 0.035)
-              : accent.withValues(alpha: 0.045));
+    final bg = baseTheme.scaffoldBackgroundColor;
+
     final plannerTheme = baseTheme.copyWith(
       colorScheme: baseTheme.colorScheme.copyWith(
         primary: accent,
@@ -92,11 +89,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   Material(
                     elevation: 0,
                     shadowColor: Colors.transparent,
-                    color: _area == PlannerArea.hub
-                        ? (isDark
-                              ? const Color(0xFF171A23)
-                              : baseTheme.colorScheme.surface)
-                        : pageTint,
+                    color: bg,
                     child: PlannerHeader(
                       selectedDate: _selectedDate,
                       area: _area,
@@ -121,12 +114,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       },
                     ),
                   ),
-                  Expanded(
-                    child: ColoredBox(
-                      color: pageTint,
-                      child: SizedBox.expand(child: _buildAreaBody()),
-                    ),
-                  ),
+                  Expanded(child: SizedBox.expand(child: _buildAreaBody())),
                   if (_area != PlannerArea.tasks) const AppBannerAdWidget(),
                 ],
               ),

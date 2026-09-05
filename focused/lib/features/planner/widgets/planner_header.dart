@@ -52,7 +52,8 @@ class PlannerHeader extends StatelessWidget {
   final ValueChanged<PlannerMenuAction> onMenuAction;
   final VoidCallback? onBackToHub;
 
-  const PlannerHeader({super.key, 
+  const PlannerHeader({
+    super.key,
     required this.selectedDate,
     required this.area,
     required this.calendarMode,
@@ -170,30 +171,6 @@ class PlannerHeader extends StatelessWidget {
                 child: Icon(calendarMode.icon, size: 20),
               ),
             ),
-          PopupMenuButton<PlannerMenuAction>(
-            tooltip: 'More',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-            onSelected: onMenuAction,
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: PlannerMenuAction.backlog,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.inventory_2_outlined),
-                  title: Text('Backlog'),
-                ),
-              ),
-              PopupMenuItem(
-                value: PlannerMenuAction.completed,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.done_all_rounded),
-                  title: Text('Completed'),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -223,4 +200,3 @@ class _PlannerHeaderIconButton extends StatelessWidget {
     );
   }
 }
-

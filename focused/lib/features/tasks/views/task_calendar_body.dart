@@ -90,20 +90,23 @@ class _ScheduleView extends StatelessWidget {
           title: 'Create your plan',
           selectedDate: selectedDate,
           onPickDate: onPickDate,
-          action: FilledButton.icon(
+          action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
             onPressed: () => context.push('/task/new'),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text(
+            child: const Text(
               'New task',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                fontWeight: FontWeight.w700,
+                fontSize: 15.0,
+              ),
             ),
           ),
         ),
@@ -160,20 +163,23 @@ class _DayView extends StatelessWidget {
               : DateFormat('EEEE').format(selectedDate),
           subtitle: DateFormat('MMMM d, yyyy').format(selectedDate),
           selectedDate: selectedDate,
-          action: FilledButton.icon(
+          action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
             onPressed: () => context.push('/task/new'),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text(
+            child: const Text(
               'New task',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                fontWeight: FontWeight.w700,
+                fontSize: 15.0,
+              ),
             ),
           ),
         ),
@@ -227,20 +233,23 @@ class _MultiDayFlow extends StatelessWidget {
               ? '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}'
               : '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}',
           selectedDate: selectedDate,
-          action: FilledButton.icon(
+          action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
             onPressed: () => context.push('/task/new'),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text(
+            child: const Text(
               'New task',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                fontWeight: FontWeight.w700,
+                fontSize: 15.0,
+              ),
             ),
           ),
         ),
@@ -291,20 +300,23 @@ class _MonthView extends StatelessWidget {
           title: DateFormat('MMMM').format(selectedDate),
           subtitle: 'Tap any date to open its plan.',
           selectedDate: selectedDate,
-          action: FilledButton.icon(
+          action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
             onPressed: () => context.push('/task/new'),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text(
+            child: const Text(
               'New task',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                fontWeight: FontWeight.w700,
+                fontSize: 15.0,
+              ),
             ),
           ),
         ),

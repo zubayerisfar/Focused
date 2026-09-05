@@ -162,7 +162,16 @@ GoRouter createAppRouter({
         path: '/friends',
         builder: (context, state) {
           final tab = state.uri.queryParameters['tab'];
-          return FriendsScreen(initialTabIndex: tab == 'followers' ? 1 : 0);
+          final initialIndex = tab == 'followers'
+              ? 2
+              : tab == 'following'
+              ? 1
+              : 0;
+          return FriendsScreen(initialTabIndex: initialIndex);
+          return FriendsScreen(
+            key: ValueKey('friends_tab_$initialIndex'),
+            initialTabIndex: initialIndex,
+          );
         },
       ),
       GoRoute(

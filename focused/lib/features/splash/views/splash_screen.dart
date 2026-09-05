@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -37,15 +37,16 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // Gently settles from a slight vertical offset into its final resting spot
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, -0.06),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.1, 0.75, curve: Curves.easeOutCubic),
-      ),
-    );
+    _slideAnimation =
+        Tween<Offset>(
+          begin: const Offset(0.0, -0.06),
+          end: Offset.zero,
+        ).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.1, 0.75, curve: Curves.easeOutCubic),
+          ),
+        );
 
     // Text emerges smoothly once the icon begins settling
     _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -94,7 +95,7 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF4E25AA), Color(0xFF4F8AD5)],
+            colors: [Color(0xFF351778), Color(0xFF325E9E)],
           ),
         ),
         child: SafeArea(

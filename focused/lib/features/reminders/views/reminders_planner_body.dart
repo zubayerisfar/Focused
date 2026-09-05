@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -14,7 +15,8 @@ class RemindersPlannerBody extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
 
-  const RemindersPlannerBody({super.key, 
+  const RemindersPlannerBody({
+    super.key,
     required this.selectedDate,
     required this.onDateSelected,
   });
@@ -34,7 +36,9 @@ class RemindersPlannerBody extends StatelessWidget {
       return false;
     }).toList();
 
-    final displayedReminders = dateReminders;
+    final completedCount = dateReminders
+        .where((r) => taskProvider.isTaskCompletedForDate(r, selectedDate))
+        .length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 110),
@@ -43,21 +47,35 @@ class RemindersPlannerBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-              child: Text(
-                'Reminders',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reminders',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dateReminders.isEmpty
+                        ? 'No reminders are scheduled for this date.'
+                        : '$completedCount of ${dateReminders.length} complete',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: 12),
-            FilledButton.icon(
+            FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
+                  horizontal: 16,
                   vertical: 10,
                 ),
                 shape: RoundedRectangleBorder(
@@ -65,60 +83,58 @@ class RemindersPlannerBody extends StatelessWidget {
                 ),
               ),
               onPressed: () => context.push('/reminder/new'),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(
+              child: const Text(
                 'New reminder',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15.0,
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 18),
-        if (displayedReminders.isEmpty)
+        if (dateReminders.isEmpty)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 34),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Theme.of(context).dividerColor),
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withOpacity(0.4),
+              ),
             ),
             child: Column(
               children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF9600).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active_rounded,
-                    color: Color(0xFFFF9600),
-                    size: 30,
+                SvgPicture.asset(
+                  'assets/planner_page_icons/planner_reminder_icon.svg',
+                  width: 54,
+                  height: 54,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'No reminders for this date',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 6),
                 Text(
-                  'Add your first reminder',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Set scheduled notifications, alerts, and time alarms to keep yourself prompt and focused throughout the day.',
+                  'Add reminders to get alerted for time-sensitive things.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.45,
                   ),
                 ),
               ],
             ),
           )
         else
-          ...displayedReminders.map(
+          ...dateReminders.map(
             (task) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: ReminderItemCard(task: task, date: selectedDate),
@@ -128,4 +144,3 @@ class RemindersPlannerBody extends StatelessWidget {
     );
   }
 }
-

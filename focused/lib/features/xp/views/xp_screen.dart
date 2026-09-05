@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
   late Animation<double> _pulseAnimation;
   bool _watchingAd = false;
   bool _restoringStreak = false;
+  Timer? _cooldownTimer;
 
   @override
   void initState() {
@@ -28,10 +30,19 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Periodic timer to keep cooldown countdown updated live every second
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final stats = context.read<UserStatsProvider>();
+      if (stats.isXpAdInCooldown && mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -39,12 +50,15 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final stats = context.watch<UserStatsProvider>();
-    final scheme = Theme.of(context).colorScheme;
     final xp = stats.xpPoints;
     final adsWatched = stats.xpAdsWatchedToday;
     final canWatch = stats.canWatchXpAdToday;
     final canRestore = xp >= UserStatsProvider.xpStreakRestoreCost;
-    final adsLeft = UserStatsProvider.xpAdsPerDay - adsWatched;
+    final isCooldown = stats.isXpAdInCooldown;
+    final remainingCooldown = stats.xpAdRemainingCooldown;
+    final adsLeft = isCooldown
+        ? 0
+        : (UserStatsProvider.xpAdsPerDay - adsWatched);
 
     return Scaffold(
       appBar: AppBar(
@@ -67,25 +81,25 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
             _SectionLabel('What is XP?'),
             const SizedBox(height: 10),
             _InfoCard(
-              children: [
+              children: const [
                 _InfoRow(
                   icon: FontAwesomeIcons.bolt,
-                  iconColor: const Color(0xFFFFB300),
+                  iconColor: Color(0xFFFFB300),
                   text:
-                      'XP (Experience Points) are earned by watching short reward videos.',
+                      'XP (Experience Points) are earned by watching 30-second reward video ads.',
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 12),
                 _InfoRow(
                   icon: FontAwesomeIcons.fire,
                   iconColor: Colors.deepOrange,
                   text: 'Use 2,000 XP to restore a broken productivity streak.',
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 12),
                 _InfoRow(
                   icon: FontAwesomeIcons.circleCheck,
                   iconColor: Colors.green,
                   text:
-                      'Earn 500 XP per ad here · Max ${UserStatsProvider.xpAdsPerDay} ads per day.',
+                      'Earn 500 XP per ad · Watch 2 ads, then unlock again after a 6-hour break.',
                 ),
               ],
             ),
@@ -99,11 +113,13 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
               adsLeft: adsLeft,
               canWatch: canWatch && !_watchingAd,
               isLoading: _watchingAd,
+              isCooldown: isCooldown,
+              remainingCooldown: remainingCooldown,
               onWatchAd: _onWatchAd,
             ),
             const SizedBox(height: 28),
 
-            // ── Streak Restore Section ────────────────────────────
+            // ── Streak Restore Section ────────────────────
             _SectionLabel('Streak Restore'),
             const SizedBox(height: 10),
             _StreakRestoreCard(
@@ -288,6 +304,8 @@ class _EarnXpCard extends StatelessWidget {
   final int adsLeft;
   final bool canWatch;
   final bool isLoading;
+  final bool isCooldown;
+  final Duration remainingCooldown;
   final VoidCallback onWatchAd;
 
   const _EarnXpCard({
@@ -295,13 +313,27 @@ class _EarnXpCard extends StatelessWidget {
     required this.adsLeft,
     required this.canWatch,
     required this.isLoading,
+    required this.isCooldown,
+    required this.remainingCooldown,
     required this.onWatchAd,
   });
+
+  String _formatRemainingCooldown(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '${hours}h ${minutes}m ${seconds}s';
+    }
+    return '${minutes}m ${seconds}s';
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final progress = adsWatched / UserStatsProvider.xpAdsPerDay;
+    final progress = isCooldown
+        ? 1.0
+        : (adsWatched / UserStatsProvider.xpAdsPerDay).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -318,12 +350,16 @@ class _EarnXpCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A73E8).withOpacity(0.12),
+                  color: isCooldown
+                      ? Colors.orange.withOpacity(0.12)
+                      : const Color(0xFF1A73E8).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const FaIcon(
-                  FontAwesomeIcons.play,
-                  color: Color(0xFF1A73E8),
+                child: FaIcon(
+                  isCooldown ? FontAwesomeIcons.clock : FontAwesomeIcons.play,
+                  color: isCooldown
+                      ? Colors.orange.shade800
+                      : const Color(0xFF1A73E8),
                   size: 18,
                 ),
               ),
@@ -332,20 +368,28 @@ class _EarnXpCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Watch a Short Ad',
-                      style: TextStyle(
+                    Text(
+                      isCooldown ? 'Cooldown Active' : 'Watch a 30s Video Ad',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      canWatch
-                          ? 'Earn ${UserStatsProvider.xpPerXpPageAd} XP per video'
-                          : 'Daily limit reached — come back tomorrow',
+                      isCooldown
+                          ? 'Unlocks in ${_formatRemainingCooldown(remainingCooldown)}'
+                          : canWatch
+                          ? 'Earn ${UserStatsProvider.xpPerXpPageAd} XP per ad'
+                          : 'Watched 2 ads · Break active',
                       style: TextStyle(
                         fontSize: 13,
-                        color: scheme.onSurfaceVariant,
+                        fontWeight: isCooldown
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: isCooldown
+                            ? Colors.orange.shade800
+                            : scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -359,7 +403,9 @@ class _EarnXpCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                '$adsWatched / ${UserStatsProvider.xpAdsPerDay} ads today',
+                isCooldown
+                    ? '2 / 2 ads watched'
+                    : '$adsWatched / ${UserStatsProvider.xpAdsPerDay} ads watched',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -367,13 +413,22 @@ class _EarnXpCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (adsLeft > 0)
+              if (!isCooldown && adsLeft > 0)
                 Text(
                   '$adsLeft left',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A73E8),
+                  ),
+                )
+              else if (isCooldown)
+                Text(
+                  '6h Break',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.orange.shade800,
                   ),
                 ),
             ],
@@ -385,7 +440,9 @@ class _EarnXpCard extends StatelessWidget {
               value: progress,
               minHeight: 7,
               backgroundColor: scheme.outlineVariant,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF1A73E8)),
+              valueColor: AlwaysStoppedAnimation(
+                isCooldown ? Colors.orange.shade600 : const Color(0xFF1A73E8),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -402,13 +459,20 @@ class _EarnXpCard extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const FaIcon(FontAwesomeIcons.bolt, size: 14),
+                  : FaIcon(
+                      isCooldown
+                          ? FontAwesomeIcons.lock
+                          : FontAwesomeIcons.bolt,
+                      size: 14,
+                    ),
               label: Text(
                 isLoading
                     ? 'Loading ad…'
+                    : isCooldown
+                    ? 'Opens in ${_formatRemainingCooldown(remainingCooldown)}'
                     : canWatch
-                    ? 'Watch Ad (+${UserStatsProvider.xpPerXpPageAd} XP)'
-                    : 'Limit Reached for Today',
+                    ? 'Watch 30s Ad (+${UserStatsProvider.xpPerXpPageAd} XP)'
+                    : 'Break in Progress',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
@@ -600,11 +664,21 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outlineVariant),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: scheme.outlineVariant.withOpacity(0.55),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,21 +701,29 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: FaIcon(icon, size: 14, color: iconColor),
+        Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.12),
+            shape: BoxShape.circle,
+          ),
+          child: FaIcon(icon, size: 13, color: iconColor),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
-              fontSize: 13.5,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              height: 1.4,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: onSurface.withOpacity(0.88),
+              height: 1.45,
             ),
           ),
         ),

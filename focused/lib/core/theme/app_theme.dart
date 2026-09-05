@@ -58,7 +58,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
+          statusBarColor: scaffold,
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
         ),
@@ -155,7 +155,7 @@ class AppTheme {
         side: BorderSide.none,
         backgroundColor: scheme.surfaceContainerHigh,
         selectedColor: scheme.primaryContainer,
-        disabledColor: scheme.surfaceContainerHigh.withOpacity(0.55),
+        disabledColor: scheme.surfaceContainerHigh.withValues(alpha: 0.55),
         checkmarkColor: text,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         labelStyle: const TextStyle(color: text, fontWeight: FontWeight.w700),
@@ -202,8 +202,8 @@ class AppTheme {
   }
 
   static ThemeData darkTheme() {
-    const scaffold = Color(0xFF14171E);
-    const surface = Color(0xFF1D212C);
+    const scaffold = Color(0xFF0C0E14);
+    const surface = Color(0xFF141720);
     const text = Color(0xFFF1F4F9);
     const muted = Color(0xFF8E99AC);
 
@@ -220,15 +220,15 @@ class AppTheme {
           secondaryContainer: const Color(0xFF22353E),
           tertiary: const Color(0xFFC9A978),
           surface: surface,
-          surfaceContainerLowest: const Color(0xFF101217),
-          surfaceContainerLow: const Color(0xFF181B24),
-          surfaceContainer: const Color(0xFF1D212C),
-          surfaceContainerHigh: const Color(0xFF232835),
-          surfaceContainerHighest: const Color(0xFF2A3040),
+          surfaceContainerLowest: const Color(0xFF08090D),
+          surfaceContainerLow: const Color(0xFF0F1118),
+          surfaceContainer: const Color(0xFF141720),
+          surfaceContainerHigh: const Color(0xFF191D28),
+          surfaceContainerHighest: const Color(0xFF202532),
           onSurface: text,
           onSurfaceVariant: muted,
-          outline: const Color(0xFF434E64),
-          outlineVariant: const Color(0xFF2A3140),
+          outline: const Color(0xFF363E52),
+          outlineVariant: const Color(0xFF1D222F),
           error: const Color(0xFFFF9DAF),
           errorContainer: const Color(0xFF3B1720),
         );
@@ -240,7 +240,7 @@ class AppTheme {
       scaffoldBackgroundColor: scaffold,
       canvasColor: scaffold,
       cardColor: surface,
-      dividerColor: const Color(0xFF262D3B),
+      dividerColor: const Color(0xFF1B202C),
       appBarTheme: const AppBarTheme(
         backgroundColor: scaffold,
         foregroundColor: text,
@@ -249,14 +249,14 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
+          statusBarColor: scaffold,
           statusBarIconBrightness: Brightness.light,
           statusBarBrightness: Brightness.dark,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 68,
-        backgroundColor: const Color(0xFF171A23),
+        backgroundColor: const Color(0xFF0F1118),
         indicatorColor: const Color(0xFF26334D),
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -284,16 +284,16 @@ class AppTheme {
         }),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Color(0xFF1D212C),
+        backgroundColor: Color(0xFF141720),
         surfaceTintColor: Colors.transparent,
       ),
       dialogTheme: const DialogThemeData(
-        backgroundColor: Color(0xFF212532),
+        backgroundColor: Color(0xFF161922),
         surfaceTintColor: Colors.transparent,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF1D212C),
+        fillColor: const Color(0xFF141720),
         labelStyle: const TextStyle(color: Color(0xFF8EA1BD)),
         hintStyle: const TextStyle(color: Color(0xFF5E708A)),
         prefixIconColor: const Color(0xFF7187A7),
@@ -308,7 +308,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF2C3445)),
+          borderSide: const BorderSide(color: Color(0xFF1F2533)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),

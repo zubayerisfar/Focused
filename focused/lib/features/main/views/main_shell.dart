@@ -81,14 +81,18 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final scaffoldColor = theme.scaffoldBackgroundColor;
+    final navBarBg = isDark
+        ? const Color(0xFF0F1118)
+        : theme.colorScheme.surface;
+
     final overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
+      statusBarColor: scaffoldColor,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor: isDark
-          ? const Color(0xFF171A23)
-          : Theme.of(context).colorScheme.surface,
+      systemNavigationBarColor: navBarBg,
       systemNavigationBarIconBrightness: isDark
           ? Brightness.light
           : Brightness.dark,
@@ -109,9 +113,7 @@ class _MainShellState extends State<MainShell> {
           body: IndexedStack(index: _currentIndex, children: _screens),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF171A23)
-                  : Theme.of(context).colorScheme.surface,
+              color: navBarBg,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),

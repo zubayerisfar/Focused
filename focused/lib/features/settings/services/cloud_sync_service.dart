@@ -355,6 +355,7 @@ class CloudSyncService {
               xpPoints: math.max(localStats.xpPoints, remoteStats.xpPoints),
               xpAdsWatchedToday: localStats.xpAdsWatchedToday,
               xpAdsWatchedDate: localStats.xpAdsWatchedDate,
+              xpAdsCooldownUntil: localStats.xpAdsCooldownUntil,
             );
             await statsStore.saveStats(merged);
           },
@@ -505,6 +506,7 @@ class CloudSyncService {
       xpPoints: existingStats.xpPoints,
       xpAdsWatchedToday: existingStats.xpAdsWatchedToday,
       xpAdsWatchedDate: existingStats.xpAdsWatchedDate,
+      xpAdsCooldownUntil: existingStats.xpAdsCooldownUntil,
     );
   }
 

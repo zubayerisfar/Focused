@@ -24,25 +24,55 @@ class UserStatsProvider extends ChangeNotifier {
   static const int xpPerXpPageAd = 500;
   static const int xpAdsPerDay = 2;
   static const int xpStreakRestoreCost = 2000;
+  static const Duration xpAdsCooldownDuration = Duration(hours: 6);
 
   int get xpPoints => _stats.xpPoints;
 
-  /// Today's date as yyyy-MM-dd string
-  String get _todayKey {
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  DateTime? get xpAdsCooldownUntil => _stats.xpAdsCooldownUntil;
+
+  /// Whether user is currently in the 6-hour cooldown block
+  bool get isXpAdInCooldown {
+    final until = _stats.xpAdsCooldownUntil;
+    if (until == null) return false;
+    return DateTime.now().isBefore(until);
   }
 
-  /// How many XP-page ads have been watched today (resets at midnight)
+  /// Remaining duration in cooldown
+  Duration get xpAdRemainingCooldown {
+    final until = _stats.xpAdsCooldownUntil;
+    if (until == null) return Duration.zero;
+    final diff = until.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  /// How many XP-page ads have been watched in the current batch (resets after cooldown or if expired)
   int get xpAdsWatchedToday {
-    if (_stats.xpAdsWatchedDate != _todayKey) return 0;
+    // If cooldown was active and has now passed, the batch has expired
+    final until = _stats.xpAdsCooldownUntil;
+    if (until != null && DateTime.now().isAfter(until)) {
+      return 0;
+    }
     return _stats.xpAdsWatchedToday;
   }
 
-  bool get canWatchXpAdToday => xpAdsWatchedToday < xpAdsPerDay;
+  /// User can watch an ad if not currently in cooldown and hasn't watched 2 ads in current batch
+  bool get canWatchXpAdToday {
+    if (isXpAdInCooldown) return false;
+    return xpAdsWatchedToday < xpAdsPerDay;
+  }
 
   Future<void> load() async {
     _stats = _storageService.loadStats();
+    // Auto-clean expired cooldown if any
+    final until = _stats.xpAdsCooldownUntil;
+    if (until != null && DateTime.now().isAfter(until)) {
+      final updated = _stats.copyWith(
+        xpAdsWatchedToday: 0,
+        clearCooldown: true,
+      );
+      await updateStats(updated);
+      return;
+    }
     notifyListeners();
   }
 
@@ -66,17 +96,26 @@ class UserStatsProvider extends ChangeNotifier {
     return true;
   }
 
-  /// Record a watched XP-page ad — increments counter for today
+  /// Record a watched XP-page ad — increments count, and triggers 6-hour block if 2 ads reached
   Future<void> recordXpAdWatched() async {
-    final today = _todayKey;
-    final currentCount = ((_stats.xpAdsWatchedDate == today)
-        ? _stats.xpAdsWatchedToday
-        : 0);
+    // Check if previous cooldown expired
+    final until = _stats.xpAdsCooldownUntil;
+    int currentCount = _stats.xpAdsWatchedToday;
+    if (until != null && DateTime.now().isAfter(until)) {
+      currentCount = 0;
+    }
+
+    final newCount = currentCount + 1;
+    final triggersCooldown = newCount >= xpAdsPerDay;
+    final cooldownUntil = triggersCooldown
+        ? DateTime.now().add(xpAdsCooldownDuration)
+        : null;
 
     final updated = _stats.copyWith(
-      xpAdsWatchedToday: currentCount + 1,
-      xpAdsWatchedDate: today,
-      // Also grant XP
+      xpAdsWatchedToday: triggersCooldown ? 0 : newCount,
+      xpAdsCooldownUntil: cooldownUntil,
+      clearCooldown: !triggersCooldown,
+      // Grant XP
       xpPoints: _stats.xpPoints + xpPerXpPageAd,
     );
     await updateStats(updated);

@@ -47,8 +47,23 @@ class _FriendsScreenState extends State<FriendsScreen>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          _tabController.index != widget.initialTabIndex.clamp(0, 2)) {
+        _tabController.animateTo(widget.initialTabIndex.clamp(0, 2));
+      }
       _checkUnclaimedGiftsPopup();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant FriendsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTabIndex != widget.initialTabIndex) {
+      final target = widget.initialTabIndex.clamp(0, 2);
+      if (_tabController.index != target) {
+        _tabController.animateTo(target);
+      }
+    }
   }
 
   void _checkUnclaimedGiftsPopup() {

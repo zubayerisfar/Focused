@@ -10,6 +10,8 @@ class UserCloudStats {
   final int xpPoints;
   final int xpAdsWatchedToday;
   final String? xpAdsWatchedDate; // ISO8601 date-only string (yyyy-MM-dd)
+  final DateTime?
+  xpAdsCooldownUntil; // Timestamp when watching ads is unblocked
 
   const UserCloudStats({
     this.streakDays = 0,
@@ -21,6 +23,7 @@ class UserCloudStats {
     this.xpPoints = 0,
     this.xpAdsWatchedToday = 0,
     this.xpAdsWatchedDate,
+    this.xpAdsCooldownUntil,
   });
 
   Duration get totalFocusDuration => Duration(minutes: totalFocusMinutes);
@@ -35,6 +38,8 @@ class UserCloudStats {
     int? xpPoints,
     int? xpAdsWatchedToday,
     String? xpAdsWatchedDate,
+    DateTime? xpAdsCooldownUntil,
+    bool clearCooldown = false,
   }) {
     return UserCloudStats(
       streakDays: streakDays ?? this.streakDays,
@@ -47,6 +52,9 @@ class UserCloudStats {
       xpPoints: xpPoints ?? this.xpPoints,
       xpAdsWatchedToday: xpAdsWatchedToday ?? this.xpAdsWatchedToday,
       xpAdsWatchedDate: xpAdsWatchedDate ?? this.xpAdsWatchedDate,
+      xpAdsCooldownUntil: clearCooldown
+          ? null
+          : (xpAdsCooldownUntil ?? this.xpAdsCooldownUntil),
     );
   }
 
@@ -62,6 +70,7 @@ class UserCloudStats {
       'xpPoints': xpPoints,
       'xpAdsWatchedToday': xpAdsWatchedToday,
       'xpAdsWatchedDate': xpAdsWatchedDate,
+      'xpAdsCooldownUntil': xpAdsCooldownUntil?.toIso8601String(),
     };
   }
 
@@ -75,6 +84,7 @@ class UserCloudStats {
     final xp = map['xpPoints'];
     final xpAds = map['xpAdsWatchedToday'];
     final xpDate = map['xpAdsWatchedDate'];
+    final cooldownRaw = map['xpAdsCooldownUntil'];
 
     return UserCloudStats(
       streakDays: (streak is num) ? streak.toInt() : 0,
@@ -88,6 +98,9 @@ class UserCloudStats {
       xpPoints: (xp is num) ? xp.toInt() : 0,
       xpAdsWatchedToday: (xpAds is num) ? xpAds.toInt() : 0,
       xpAdsWatchedDate: (xpDate is String) ? xpDate : null,
+      xpAdsCooldownUntil: (cooldownRaw is String)
+          ? DateTime.tryParse(cooldownRaw)
+          : null,
     );
   }
 }

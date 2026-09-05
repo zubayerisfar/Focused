@@ -93,7 +93,7 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: isFriend
+        leading: (isFriend || Navigator.canPop(context))
             ? IconButton(
                 icon: Icon(
                   Icons.arrow_back_rounded,

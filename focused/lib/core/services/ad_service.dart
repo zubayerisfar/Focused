@@ -11,8 +11,10 @@ class AdService {
   bool _initialized = false;
   InterstitialAd? _interstitialAd;
   RewardedAd? _rewardedAd;
+  RewardedInterstitialAd? _rewardedInterstitialAd;
   bool _isInterstitialLoading = false;
   bool _isRewardedLoading = false;
+  bool _isRewardedInterstitialLoading = false;
 
   // Google AdMob Test Ad Unit IDs (guaranteed to always serve test ads safely during development)
   static const String _testBannerAndroid =
@@ -21,6 +23,8 @@ class AdService {
       'ca-app-pub-3940256099942544/1033173712';
   static const String _testRewardedAndroid =
       'ca-app-pub-3940256099942544/5224354917';
+  static const String _testRewardedInterstitialAndroid =
+      'ca-app-pub-3940256099942544/5354046379';
 
   // Production Ad Unit IDs from AdMob console
   static const String _prodBannerAndroid =
@@ -29,6 +33,8 @@ class AdService {
       'ca-app-pub-7510036527454914/8366056625';
   static const String _prodRewardedAndroid =
       'ca-app-pub-7510036527454914/4550829496';
+  static const String _prodRewardedInterstitialAndroid =
+      'ca-app-pub-7510036527454914/7780938545';
 
   String get bannerAdUnitId {
     if (kDebugMode) return _testBannerAndroid;
@@ -45,6 +51,11 @@ class AdService {
     return _prodRewardedAndroid;
   }
 
+  String get rewardedInterstitialAdUnitId {
+    if (kDebugMode) return _testRewardedInterstitialAndroid;
+    return _prodRewardedInterstitialAndroid;
+  }
+
   /// Initialize MobileAds SDK and pre-cache ads
   Future<void> initialize() async {
     if (_initialized) return;
@@ -55,6 +66,7 @@ class AdService {
         debugPrint('Google Mobile Ads initialized successfully.');
         loadInterstitialAd();
         loadRewardedAd();
+        loadRewardedInterstitialAd();
       } catch (e) {
         debugPrint('Google Mobile Ads initialization failed: $e');
       }
@@ -170,6 +182,72 @@ class AdService {
     );
 
     _rewardedAd!.show(
+      onUserEarnedReward: (adWithoutView, reward) {
+        onUserEarnedReward(reward);
+      },
+    );
+  }
+
+  // ===========================================================================
+  // REWARDED INTERSTITIAL ADS (Short 5-Second / Skip-Allowed Ad Placements)
+  // ===========================================================================
+
+  void loadRewardedInterstitialAd() {
+    if (_isRewardedInterstitialLoading || _rewardedInterstitialAd != null) {
+      return;
+    }
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
+
+    _isRewardedInterstitialLoading = true;
+    RewardedInterstitialAd.load(
+      adUnitId: rewardedInterstitialAdUnitId,
+      request: const AdRequest(),
+      rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedInterstitialAd = ad;
+          _isRewardedInterstitialLoading = false;
+          debugPrint('Rewarded Interstitial Ad preloaded successfully.');
+        },
+        onAdFailedToLoad: (error) {
+          _rewardedInterstitialAd = null;
+          _isRewardedInterstitialLoading = false;
+          debugPrint('Rewarded Interstitial Ad failed to load: $error');
+        },
+      ),
+    );
+  }
+
+  /// Shows the preloaded rewarded interstitial ad (typically 5-second countdown)
+  void showRewardedInterstitialAd({
+    required Function(RewardItem reward) onUserEarnedReward,
+    VoidCallback? onAdDismissed,
+  }) {
+    if (_rewardedInterstitialAd == null) {
+      debugPrint(
+        'Rewarded Interstitial ad not ready yet, loading for next time.',
+      );
+      loadRewardedInterstitialAd();
+      onAdDismissed?.call();
+      return;
+    }
+
+    _rewardedInterstitialAd!.fullScreenContentCallback =
+        FullScreenContentCallback(
+          onAdDismissedFullScreenContent: (ad) {
+            ad.dispose();
+            _rewardedInterstitialAd = null;
+            loadRewardedInterstitialAd(); // Preload next one
+            onAdDismissed?.call();
+          },
+          onAdFailedToShowFullScreenContent: (ad, error) {
+            ad.dispose();
+            _rewardedInterstitialAd = null;
+            loadRewardedInterstitialAd();
+            onAdDismissed?.call();
+          },
+        );
+
+    _rewardedInterstitialAd!.show(
       onUserEarnedReward: (adWithoutView, reward) {
         onUserEarnedReward(reward);
       },
