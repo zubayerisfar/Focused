@@ -1515,8 +1515,10 @@ class _TodayRemindersSection extends StatelessWidget {
       return false;
     }).toList();
 
-    final activeReminders =
-        dateReminders.where((t) => !t.isCompleted).take(3).toList();
+    final activeReminders = dateReminders
+        .where((t) => !t.isCompleted)
+        .take(3)
+        .toList();
 
     const accent = Color(0xFFFF9600);
     final scheme = Theme.of(context).colorScheme;
