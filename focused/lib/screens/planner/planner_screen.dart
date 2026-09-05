@@ -197,7 +197,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Uploaded to cloud ·  changes synced'),
+          content: Text('Uploaded to cloud · ${result.pushed} changes synced'),
         ),
       );
     } catch (_) {
