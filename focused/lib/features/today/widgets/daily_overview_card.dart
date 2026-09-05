@@ -25,7 +25,8 @@ class DailyOverviewCard extends StatelessWidget {
   final List<AppUsageAppEntry> topApps;
   final bool usageConnected;
 
-  const DailyOverviewCard({super.key, 
+  const DailyOverviewCard({
+    super.key,
     required this.focusedToday,
     required this.focusComparisonPercent,
     required this.usageToday,
@@ -732,4 +733,3 @@ class _TopAppsCompactList extends StatelessWidget {
     );
   }
 }
-

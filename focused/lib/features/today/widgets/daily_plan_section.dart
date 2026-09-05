@@ -30,7 +30,8 @@ class DailyPlanSection extends StatelessWidget {
   final int completedTasksCount;
   final int totalTasksCount;
 
-  const DailyPlanSection({super.key, 
+  const DailyPlanSection({
+    super.key,
     required this.next,
     required this.date,
     required this.completedTasksCount,
@@ -266,4 +267,3 @@ class _EmptyPlanCard extends StatelessWidget {
     );
   }
 }
-
