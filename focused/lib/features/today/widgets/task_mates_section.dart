@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../friends/providers/task_mate_provider.dart';
 import '../../friends/widgets/squad_task_actions.dart';
 import '../../main/views/main_shell.dart';
@@ -216,7 +215,6 @@ class _SquadTaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final taskProvider = context.watch<TaskProvider>();
     final taskMateProvider = context.watch<TaskMateProvider>();
 
     // Dynamic group coloring: each group has its own distinct color
@@ -232,8 +230,6 @@ class _SquadTaskTile extends StatelessWidget {
         groupName = matching.first.name.toUpperCase();
       }
     }
-
-    final isCompleted = taskProvider.isTaskCompletedForDate(task, date);
 
     // Task description or time
     String taskDescription = '';
@@ -290,7 +286,7 @@ class _SquadTaskTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Sharp, clearly visible group icon container (no muddy silhouettes)
+                  // Sharp, clearly visible group icon container
                   Container(
                     width: 44,
                     height: 44,
@@ -330,25 +326,14 @@ class _SquadTaskTile extends StatelessWidget {
                               ),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  groupName,
-                                  style: TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
-                                    color: groupColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 3),
-                                Icon(
-                                  Icons.open_in_new_rounded,
-                                  size: 10.5,
-                                  color: groupColor,
-                                ),
-                              ],
+                            child: Text(
+                              groupName,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                                color: groupColor,
+                              ),
                             ),
                           ),
                         ),
@@ -361,12 +346,7 @@ class _SquadTaskTile extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            decoration: isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: isCompleted
-                                ? scheme.onSurfaceVariant
-                                : scheme.onSurface,
+                            color: scheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -384,49 +364,21 @@ class _SquadTaskTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Trailing quick actions: mark complete & start focus
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Quick Complete Button
-                      IconButton(
-                        tooltip: isCompleted ? 'Completed' : 'Mark complete',
-                        visualDensity: VisualDensity.compact,
-                        icon: Icon(
-                          isCompleted
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          color: isCompleted
-                              ? AppTheme.success
-                              : scheme.onSurfaceVariant.withValues(alpha: 0.7),
-                          size: 24,
-                        ),
-                        onPressed: () async {
-                          await taskProvider.setCompletedForDate(
-                            task.id,
-                            date,
-                            !isCompleted,
-                          );
-                        },
+                  // Only the button to start the session
+                  IconButton.filledTonal(
+                    tooltip: 'Start Focus',
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      backgroundColor: groupColor.withValues(
+                        alpha: isDark ? 0.28 : 0.14,
                       ),
-                      const SizedBox(width: 2),
-                      // Start Focus Button (navigates to focus setup / start page)
-                      IconButton.filledTonal(
-                        tooltip: 'Start Focus',
-                        visualDensity: VisualDensity.compact,
-                        style: IconButton.styleFrom(
-                          backgroundColor: groupColor.withValues(
-                            alpha: isDark ? 0.28 : 0.14,
-                          ),
-                          foregroundColor: groupColor,
-                        ),
-                        icon: const Icon(
-                          Icons.play_arrow_rounded,
-                          size: 22,
-                        ),
-                        onPressed: () => context.push(focusSetupUri),
-                      ),
-                    ],
+                      foregroundColor: groupColor,
+                    ),
+                    icon: const Icon(
+                      Icons.play_arrow_rounded,
+                      size: 24,
+                    ),
+                    onPressed: () => context.push(focusSetupUri),
                   ),
                 ],
               ),
@@ -476,7 +428,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
           '/focus/setup?taskId=${Uri.encodeQueryComponent(matching.first.id)}&occurrenceDate=${_dateQuery(date)}',
         );
       } else {
-        // Offer to jump into Focus Mode or complete
+        // Jump into Focus Mode or complete
         SquadTaskActions.startTask(context, group);
       }
     }
@@ -557,25 +509,14 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                               ),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  groupNameUpper,
-                                  style: TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
-                                    color: groupColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 3),
-                                Icon(
-                                  Icons.open_in_new_rounded,
-                                  size: 10.5,
-                                  color: groupColor,
-                                ),
-                              ],
+                            child: Text(
+                              groupNameUpper,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                                color: groupColor,
+                              ),
                             ),
                           ),
                         ),
@@ -601,7 +542,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Start Focus Button
+                  // Only the button to start the session
                   IconButton.filledTonal(
                     tooltip: 'Start Focus',
                     visualDensity: VisualDensity.compact,
@@ -613,7 +554,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                     ),
                     icon: const Icon(
                       Icons.play_arrow_rounded,
-                      size: 22,
+                      size: 24,
                     ),
                     onPressed: onTilePressed,
                   ),
