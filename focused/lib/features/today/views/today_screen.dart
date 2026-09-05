@@ -17,6 +17,7 @@ import '../widgets/habit_tracker_section.dart';
 import '../widgets/home_header.dart';
 import '../widgets/next_today_task.dart';
 import '../widgets/productivity_insight_card.dart';
+import '../widgets/task_mates_section.dart';
 import '../widgets/today_reminders_section.dart';
 
 class TodayScreen extends StatelessWidget {
@@ -152,6 +153,8 @@ class TodayScreen extends StatelessWidget {
                     completedTasksCount: completedTasks,
                     totalTasksCount: totalTodayTasks,
                   ),
+                  const SizedBox(height: 24),
+                  TaskMatesSection(date: now),
                   const SizedBox(height: 24),
                   TodayRemindersSection(date: now),
                   const SizedBox(height: 32),

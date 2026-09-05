@@ -44,7 +44,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
         ? accent.withValues(alpha: 0.30)
         : accent.withValues(alpha: 0.14);
     final pageTint = _area == PlannerArea.tasks
-        ? (isDark ? const Color(0xFF0F1A28) : const Color(0xFFF2F7FD))
+        ? (isDark ? const Color(0xFF121620) : const Color(0xFFF8FAFD))
         : (isDark
               ? accent.withValues(alpha: 0.035)
               : accent.withValues(alpha: 0.045));

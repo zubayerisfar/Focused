@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../tasks/models/task.dart';
 import '../../../core/theme/app_theme.dart';
 import 'next_today_task.dart';
-import 'task_mates_summary_card.dart';
 
 Color _priorityColor(TaskPriority priority) {
   switch (priority) {
@@ -110,8 +109,6 @@ class DailyPlanSection extends StatelessWidget {
           _EmptyPlanCard(date: date)
         else
           _NextTaskCard(next: next!),
-        const SizedBox(height: 10),
-        const TaskMatesSummaryCard(),
       ],
     );
   }

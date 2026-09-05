@@ -311,7 +311,24 @@ class _MonthView extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Theme.of(context).dividerColor),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? 0.35
+                    : 0.6,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? 0.30
+                      : 0.05,
+                ),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             children: [
@@ -625,6 +642,7 @@ class _PlannerTimelineTask extends StatelessWidget {
     );
 
     final effectiveColor = task.isSquadTask ? const Color(0xFF9B51E0) : color;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return IntrinsicHeight(
       child: Row(
@@ -671,30 +689,45 @@ class _PlannerTimelineTask extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: Material(
-                color: task.isSquadTask
-                    ? const Color(0xFF9B51E0).withValues(alpha: 0.08)
-                    : Theme.of(context).colorScheme.surface,
-                borderRadius: task.isSquadTask
-                    ? null
-                    : BorderRadius.circular(18),
-                shape: task.isSquadTask
-                    ? RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        side: const BorderSide(
-                          color: Color(0xFF9B51E0),
-                          width: 1.5,
-                        ),
-                      )
-                    : null,
-                child: InkWell(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: task.isSquadTask
+                      ? const Color(0xFF9B51E0).withValues(
+                          alpha: isDark ? 0.16 : 0.08,
+                        )
+                      : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(18),
-                  onTap: () => context.push(
-                    '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(occurrence.start)}',
-                  ),
-                  onLongPress: () => context.push(
-                    '/task/edit/${Uri.encodeComponent(task.id)}',
-                  ),
+                  border: task.isSquadTask
+                      ? Border.all(
+                          color: const Color(0xFF9B51E0),
+                          width: 1.5,
+                        )
+                      : Border.all(
+                          color: Theme.of(context).dividerColor.withValues(
+                            alpha: isDark ? 0.35 : 0.6,
+                          ),
+                        ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.28 : 0.05,
+                      ),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () => context.push(
+                      '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(occurrence.start)}',
+                    ),
+                    onLongPress: () => context.push(
+                      '/task/edit/${Uri.encodeComponent(task.id)}',
+                    ),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
                     child: Row(
@@ -905,7 +938,8 @@ class _PlannerTimelineTask extends StatelessWidget {
               ),
             ),
           ),
-        ],
+        ),
+      ],
       ),
     );
   }
@@ -921,51 +955,81 @@ class _AnytimePlannerTask extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<TaskProvider>();
     final complete = provider.isTaskCompletedForDate(task, date);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
+    return Container(
+      decoration: BoxDecoration(
+        color: task.isSquadTask
+            ? const Color(0xFF9B51E0).withValues(
+                alpha: isDark ? 0.16 : 0.08,
+              )
+            : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
-        onTap: () => context.push(
-          '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(date)}',
-        ),
-        onLongPress: () =>
-            context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-          child: Row(
-            children: [
-              task.isSquadTask
-                  ? SvgPicture.asset(
-                      'assets/icon/group_task.svg',
-                      width: 18,
-                      height: 18,
-                    )
-                  : const Icon(Icons.all_inclusive_rounded, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  task.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    decoration: complete ? TextDecoration.lineThrough : null,
+        border: task.isSquadTask
+            ? Border.all(
+                color: const Color(0xFF9B51E0),
+                width: 1.5,
+              )
+            : Border.all(
+                color: Theme.of(context).dividerColor.withValues(
+                  alpha: isDark ? 0.35 : 0.6,
+                ),
+              ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: isDark ? 0.28 : 0.05,
+            ),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => context.push(
+            '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(date)}',
+          ),
+          onLongPress: () =>
+              context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+            child: Row(
+              children: [
+                task.isSquadTask
+                    ? SvgPicture.asset(
+                        'assets/icon/group_task.svg',
+                        width: 18,
+                        height: 18,
+                      )
+                    : const Icon(Icons.all_inclusive_rounded, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    task.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      decoration: complete ? TextDecoration.lineThrough : null,
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                tooltip: complete ? 'Undo' : 'Complete',
-                onPressed: () => context
-                    .read<TaskProvider>()
-                    .setCompletedForDate(task.id, date, !complete),
-                icon: Icon(
-                  complete ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: complete ? AppTheme.success : null,
+                IconButton(
+                  tooltip: complete ? 'Undo' : 'Complete',
+                  onPressed: () => context
+                      .read<TaskProvider>()
+                      .setCompletedForDate(task.id, date, !complete),
+                  icon: Icon(
+                    complete ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    color: complete ? AppTheme.success : null,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
