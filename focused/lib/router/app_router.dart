@@ -5,6 +5,7 @@ import '../features/friends/models/friend_user.dart';
 import '../features/auth/providers/account_provider.dart';
 import '../features/onboarding/providers/onboarding_provider.dart';
 import '../features/auth/views/login_screen.dart';
+import '../features/auth/views/verify_email_screen.dart';
 import '../features/devices/views/devices_screen.dart';
 import '../features/focus/views/focus_complete_screen.dart';
 import '../features/focus/views/focus_session_details_screen.dart';
@@ -62,6 +63,15 @@ GoRouter createAppRouter({
         return path == '/login' ? null : '/login';
       }
 
+      // If signed in but email is not verified, require verification
+      if (!accountProvider.emailVerified) {
+        return path == '/verify-email' ? null : '/verify-email';
+      }
+
+      if (path == '/verify-email') {
+        return '/';
+      }
+
       // Show ad notice exactly once after signing in for the first time
       if (!onboardingProvider.adNoticeSeen) {
         return path == '/ad-notice' ? null : '/ad-notice';
@@ -111,6 +121,10 @@ GoRouter createAppRouter({
         ),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) => const VerifyEmailScreen(),
+      ),
       GoRoute(
         path: '/ad-notice',
         builder: (context, state) => const AdNoticeScreen(),

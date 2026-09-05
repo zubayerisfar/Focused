@@ -257,7 +257,11 @@ class AccountProvider extends ChangeNotifier {
 
   Future<void> refreshUser() async {
     await _authService.reloadCurrentUser();
-    _user = _authService.currentUser;
+    final updated = _authService.currentUser;
+    _user = updated;
+    if (updated != null && updated.emailVerified) {
+      unawaited(_initializeUserInDatabase(updated));
+    }
     notifyListeners();
   }
 
