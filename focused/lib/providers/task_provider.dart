@@ -37,16 +37,32 @@ class TaskProvider extends ChangeNotifier {
        _notificationService = notificationService,
        _occurrenceCompletionStorage = occurrenceCompletionStorage;
 
-  List<Task> get tasks => List.unmodifiable(_tasks);
+  List<Task> get tasks =>
+      List.unmodifiable(_tasks.where((task) => !task.isReminder));
+
+  List<Task> get allItems => List.unmodifiable(_tasks);
+
+  List<Task> get reminders =>
+      List.unmodifiable(_tasks.where((task) => task.isReminder));
 
   List<TaskOccurrenceCompletion> get occurrenceCompletions =>
       List.unmodifiable(_occurrenceCompletions);
 
-  List<Task> get incompleteTasks =>
-      List.unmodifiable(_tasks.where((task) => !task.isCompleted));
+  List<Task> get incompleteTasks => List.unmodifiable(
+    _tasks.where((task) => !task.isReminder && !task.isCompleted),
+  );
 
-  List<Task> get completedTasks =>
-      List.unmodifiable(_tasks.where((task) => task.isCompleted));
+  List<Task> get completedTasks => List.unmodifiable(
+    _tasks.where((task) => !task.isReminder && task.isCompleted),
+  );
+
+  List<Task> get incompleteReminders => List.unmodifiable(
+    _tasks.where((task) => task.isReminder && !task.isCompleted),
+  );
+
+  List<Task> get completedReminders => List.unmodifiable(
+    _tasks.where((task) => task.isReminder && task.isCompleted),
+  );
 
   TaskReminderScheduleResult? get lastReminderResult => _lastReminderResult;
 
@@ -76,6 +92,7 @@ class TaskProvider extends ChangeNotifier {
     DateTime? createdAt,
     bool isSquadTask = false,
     String? squadGroupId,
+    bool isReminder = false,
   }) async {
     final creationTime = createdAt ?? DateTime.now();
 
@@ -96,6 +113,7 @@ class TaskProvider extends ChangeNotifier {
       createdAt: creationTime,
       isSquadTask: isSquadTask,
       squadGroupId: squadGroupId,
+      isReminder: isReminder,
     );
 
     await addTask(task);
@@ -639,7 +657,7 @@ class TaskProvider extends ChangeNotifier {
   }) {
     final result = <TaskOccurrence>[];
 
-    for (final task in _tasks) {
+    for (final task in _tasks.where((t) => !t.isReminder)) {
       final occurrence = _scheduleService.occurrenceForDate(task, date);
 
       if (occurrence != null) {
@@ -684,7 +702,42 @@ class TaskProvider extends ChangeNotifier {
 
   List<Task> tasksForDate(DateTime date, {bool includeCompleted = true}) {
     final result = _tasks.where((task) {
+      if (task.isReminder) {
+        return false;
+      }
+
       if (!includeCompleted && isTaskCompletedForDate(task, date)) {
+        return false;
+      }
+
+      if (task.recurrence != TaskRecurrence.none &&
+          _scheduleService.occursOnDate(task, date)) {
+        return true;
+      }
+
+      if (task.scheduledStart != null &&
+          _sameDate(task.scheduledStart!, date)) {
+        return true;
+      }
+
+      if (task.plannedDate != null && _sameDate(task.plannedDate!, date)) {
+        return true;
+      }
+
+      return false;
+    }).toList();
+
+    result.sort(_compareTasks);
+    return List.unmodifiable(result);
+  }
+
+  List<Task> remindersForDate(DateTime date, {bool includeCompleted = true}) {
+    final result = _tasks.where((task) {
+      if (!task.isReminder) {
+        return false;
+      }
+
+      if (!includeCompleted && task.isCompleted) {
         return false;
       }
 
@@ -725,7 +778,9 @@ class TaskProvider extends ChangeNotifier {
 
   Task? nextTask({DateTime? now}) {
     final currentTime = now ?? DateTime.now();
-    final incomplete = _tasks.where((task) => !task.isCompleted).toList();
+    final incomplete = _tasks
+        .where((task) => !task.isReminder && !task.isCompleted)
+        .toList();
 
     if (incomplete.isEmpty) {
       return null;

@@ -1503,9 +1503,7 @@ class _TodayRemindersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
-    final allReminders = taskProvider.tasks
-        .where((t) => t.reminderMinutesBefore != null)
-        .toList();
+    final allReminders = taskProvider.reminders;
 
     final dateReminders = allReminders.where((t) {
       if (t.scheduledStart != null) {
@@ -1518,10 +1516,7 @@ class _TodayRemindersSection extends StatelessWidget {
     }).toList();
 
     final activeReminders =
-        (dateReminders.isNotEmpty ? dateReminders : allReminders)
-            .where((t) => !t.isCompleted)
-            .take(3)
-            .toList();
+        dateReminders.where((t) => !t.isCompleted).take(3).toList();
 
     const accent = Color(0xFFFF9600);
     final scheme = Theme.of(context).colorScheme;

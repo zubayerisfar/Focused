@@ -28,6 +28,8 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     DateTime.wednesday,
     DateTime.thursday,
     DateTime.friday,
+    DateTime.saturday,
+    DateTime.sunday,
   };
   int _iconCodePoint = Icons.check_rounded.codePoint;
   int _colorValue = const Color(0xFF4D7CFE).value;
@@ -418,11 +420,12 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
         ).showSnackBar(SnackBar(content: Text(reminderResult.message)));
       }
       Navigator.pop(context);
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('Error saving habit: $e\n$stack');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Could not save habit.')));
+      ).showSnackBar(SnackBar(content: Text('Could not save habit: $e')));
       setState(() => _saving = false);
     }
   }

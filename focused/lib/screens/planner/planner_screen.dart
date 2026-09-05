@@ -2813,9 +2813,7 @@ class _RemindersPlannerBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
-    final allReminders = taskProvider.tasks
-        .where((t) => t.reminderMinutesBefore != null)
-        .toList();
+    final allReminders = taskProvider.reminders;
 
     final dateReminders = allReminders.where((t) {
       if (t.scheduledStart != null) {
@@ -2827,10 +2825,7 @@ class _RemindersPlannerBody extends StatelessWidget {
       return false;
     }).toList();
 
-    // If no reminders match this exact date, also show active reminders so user can see them
-    final displayedReminders = dateReminders.isNotEmpty
-        ? dateReminders
-        : allReminders.where((t) => !t.isCompleted).toList();
+    final displayedReminders = dateReminders;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 110),

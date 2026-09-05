@@ -41,6 +41,7 @@ class TaskConflictService {
 
     for (final existing in existingTasks) {
       if (existing.id == ignoreTaskId ||
+          existing.isReminder ||
           existing.isCompleted ||
           existing.scheduledStart == null ||
           existing.scheduledEnd == null) {
@@ -54,17 +55,13 @@ class TaskConflictService {
     }
 
     conflicts.sort(
-      (first, second) =>
-          first.candidateStart.compareTo(second.candidateStart),
+      (first, second) => first.candidateStart.compareTo(second.candidateStart),
     );
 
     return List.unmodifiable(conflicts);
   }
 
-  TaskScheduleConflict? _firstConflict(
-    Task candidate,
-    Task existing,
-  ) {
+  TaskScheduleConflict? _firstConflict(Task candidate, Task existing) {
     final candidateRecurring = candidate.recurrence != TaskRecurrence.none;
     final existingRecurring = existing.recurrence != TaskRecurrence.none;
 
@@ -111,8 +108,10 @@ class TaskConflictService {
         searchStart.day + offset,
       );
 
-      final candidateOccurrence =
-          _scheduleService.occurrenceForDate(candidate, day);
+      final candidateOccurrence = _scheduleService.occurrenceForDate(
+        candidate,
+        day,
+      );
 
       if (candidateOccurrence == null) {
         continue;
@@ -130,8 +129,10 @@ class TaskConflictService {
           day.day + existingDayOffset,
         );
 
-        final existingOccurrence =
-            _scheduleService.occurrenceForDate(existing, existingDay);
+        final existingOccurrence = _scheduleService.occurrenceForDate(
+          existing,
+          existingDay,
+        );
 
         if (existingOccurrence == null) {
           continue;
@@ -168,14 +169,12 @@ class TaskConflictService {
       oneTimeEnd.difference(oneTimeStart),
       recurring.scheduledEnd!.difference(recurring.scheduledStart!),
     )) {
-      final recurringDay = DateTime(
-        day.year,
-        day.month,
-        day.day + offset,
-      );
+      final recurringDay = DateTime(day.year, day.month, day.day + offset);
 
-      final recurringOccurrence =
-          _scheduleService.occurrenceForDate(recurring, recurringDay);
+      final recurringOccurrence = _scheduleService.occurrenceForDate(
+        recurring,
+        recurringDay,
+      );
 
       if (recurringOccurrence == null) {
         continue;
@@ -221,7 +220,8 @@ class TaskConflictService {
     DateTime existingStart,
     DateTime existingEnd,
   ) {
-    final overlaps = candidateStart.isBefore(existingEnd) &&
+    final overlaps =
+        candidateStart.isBefore(existingEnd) &&
         candidateEnd.isAfter(existingStart);
 
     if (!overlaps) {
@@ -244,9 +244,11 @@ class TaskConflictService {
     final existingLookback = _coveredDayCount(existingDuration);
     final candidateLookahead = _coveredDayCount(candidateDuration);
 
-    for (var offset = -existingLookback;
-        offset <= candidateLookahead;
-        offset++) {
+    for (
+      var offset = -existingLookback;
+      offset <= candidateLookahead;
+      offset++
+    ) {
       yield offset;
     }
   }

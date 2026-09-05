@@ -377,6 +377,7 @@ class _ReminderEditScreenState extends State<ReminderEditScreen> {
       createdAt: original?.createdAt ?? DateTime.now(),
       isCompleted: original?.isCompleted ?? false,
       completedAt: original?.completedAt,
+      isReminder: true,
     );
 
     setState(() => _isSaving = true);
