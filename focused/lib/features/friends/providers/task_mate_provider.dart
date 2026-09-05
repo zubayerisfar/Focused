@@ -131,7 +131,9 @@ class TaskMateProvider extends ChangeNotifier {
     ];
 
     try {
-      final upperName = name.trim().isEmpty ? 'TASK SQUAD' : name.trim().toUpperCase();
+      final upperName = name.trim().isEmpty
+          ? 'TASK SQUAD'
+          : name.trim().toUpperCase();
       final newGroupId = await _service.createGroup(
         name: upperName,
         creatorUid: _currentUid,

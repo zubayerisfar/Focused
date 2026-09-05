@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../friends/providers/task_mate_provider.dart';
+import '../../friends/widgets/squad_task_actions.dart';
+import '../../main/views/main_shell.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/models/task_group.dart';
 import '../../tasks/providers/task_provider.dart';
+
+String _dateQuery(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+void _openSquads(BuildContext context) {
+  final switched = MainShell.switchToTab(context, 3);
+  if (!switched) {
+    context.push('/friends');
+  }
+}
 
 class TaskMatesSection extends StatelessWidget {
   final DateTime date;
@@ -46,53 +58,68 @@ class TaskMatesSection extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
-              padding: const EdgeInsets.all(6),
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: sectionAccent.withValues(alpha: isDark ? 0.25 : 0.12),
-                borderRadius: BorderRadius.circular(10),
+                color: sectionAccent.withValues(alpha: isDark ? 0.28 : 0.12),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: SvgPicture.asset(
-                'assets/icon/group_task.svg',
-                colorFilter: const ColorFilter.mode(
-                  sectionAccent,
-                  BlendMode.srcIn,
+              child: const Center(
+                child: Icon(
+                  Icons.diversity_3_rounded,
+                  color: sectionAccent,
+                  size: 20,
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                'Task Mates',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            if (totalActiveCount > 0) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: sectionAccent.withValues(alpha: isDark ? 0.25 : 0.10),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$totalActiveCount active',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color: sectionAccent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => _openSquads(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Task Mates',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (totalActiveCount > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: sectionAccent.withValues(
+                              alpha: isDark ? 0.25 : 0.10,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$totalActiveCount active',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: sectionAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-            ],
+            ),
             IconButton(
               tooltip: 'Open Squads',
               visualDensity: VisualDensity.compact,
-              onPressed: () => context.go('/?tab=friends'),
+              onPressed: () => _openSquads(context),
               icon: const Icon(Icons.arrow_forward_rounded, size: 20),
             ),
           ],
@@ -151,7 +178,7 @@ class TaskMatesSection extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => context.go('/?tab=friends'),
+                  onPressed: () => _openSquads(context),
                   child: const Text('Squads'),
                 ),
               ],
@@ -168,6 +195,7 @@ class TaskMatesSection extends StatelessWidget {
           ...activeGroups.map(
             (group) => _GroupActiveSummaryTile(
               group: group,
+              date: date,
             ),
           ),
       ],
@@ -188,6 +216,7 @@ class _SquadTaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final taskProvider = context.watch<TaskProvider>();
     final taskMateProvider = context.watch<TaskMateProvider>();
 
     // Dynamic group coloring: each group has its own distinct color
@@ -204,6 +233,8 @@ class _SquadTaskTile extends StatelessWidget {
       }
     }
 
+    final isCompleted = taskProvider.isTaskCompletedForDate(task, date);
+
     // Task description or time
     String taskDescription = '';
     if (task.description.trim().isNotEmpty &&
@@ -215,6 +246,9 @@ class _SquadTaskTile extends StatelessWidget {
     } else {
       taskDescription = 'Anytime today';
     }
+
+    final focusSetupUri =
+        '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(date)}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -240,8 +274,8 @@ class _SquadTaskTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            // Simply clicking on them takes to that group and opens that group
-            onTap: () => context.go('/?tab=friends'),
+            // Clicking takes directly to the Focus start / setup page for this task
+            onTap: () => context.push(focusSetupUri),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
@@ -255,53 +289,68 @@ class _SquadTaskTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
+                  // Sharp, clearly visible group icon container (no muddy silhouettes)
                   Container(
                     width: 44,
                     height: 44,
-                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: groupColor.withValues(alpha: isDark ? 0.25 : 0.12),
-                      borderRadius: BorderRadius.circular(14),
+                      color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(
+                        color: groupColor.withValues(alpha: isDark ? 0.50 : 0.30),
+                        width: 1.5,
+                      ),
                     ),
-                    child: SvgPicture.asset(
-                      'assets/icon/group_task.svg',
-                      colorFilter: ColorFilter.mode(
-                        groupColor,
-                        BlendMode.srcIn,
+                    child: Center(
+                      child: Icon(
+                        Icons.groups_rounded,
+                        color: groupColor,
+                        size: 24,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Group badge with group name in CAPITAL LETTERS & group coloring
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 2,
+                        // Tapping badge opens squad tab directly
+                        GestureDetector(
+                          onTap: () => _openSquads(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: groupColor.withValues(
+                                alpha: isDark ? 0.25 : 0.12,
                               ),
-                              decoration: BoxDecoration(
-                                color: groupColor.withValues(
-                                  alpha: isDark ? 0.25 : 0.12,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  groupName,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: groupColor,
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                groupName,
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
+                                const SizedBox(width: 3),
+                                Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 10.5,
                                   color: groupColor,
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 4),
                         // Task title
@@ -309,9 +358,15 @@ class _SquadTaskTile extends StatelessWidget {
                           task.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: isCompleted
+                                ? scheme.onSurfaceVariant
+                                : scheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -329,10 +384,49 @@ class _SquadTaskTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 15,
-                    color: groupColor,
+                  // Trailing quick actions: mark complete & start focus
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Quick Complete Button
+                      IconButton(
+                        tooltip: isCompleted ? 'Completed' : 'Mark complete',
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          isCompleted
+                              ? Icons.check_circle_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          color: isCompleted
+                              ? AppTheme.success
+                              : scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          size: 24,
+                        ),
+                        onPressed: () async {
+                          await taskProvider.setCompletedForDate(
+                            task.id,
+                            date,
+                            !isCompleted,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 2),
+                      // Start Focus Button (navigates to focus setup / start page)
+                      IconButton.filledTonal(
+                        tooltip: 'Start Focus',
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          backgroundColor: groupColor.withValues(
+                            alpha: isDark ? 0.28 : 0.14,
+                          ),
+                          foregroundColor: groupColor,
+                        ),
+                        icon: const Icon(
+                          Icons.play_arrow_rounded,
+                          size: 22,
+                        ),
+                        onPressed: () => context.push(focusSetupUri),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -346,15 +440,18 @@ class _SquadTaskTile extends StatelessWidget {
 
 class _GroupActiveSummaryTile extends StatelessWidget {
   final TaskGroup group;
+  final DateTime date;
 
   const _GroupActiveSummaryTile({
     required this.group,
+    required this.date,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final taskProvider = context.watch<TaskProvider>();
     final taskMateProvider = context.watch<TaskMateProvider>();
 
     // Each group gets its own coloring
@@ -368,6 +465,21 @@ class _GroupActiveSummaryTile extends StatelessWidget {
             group.activeTasks.first.category != null
         ? group.activeTasks.first.category!
         : 'Squad Quest';
+
+    void onTilePressed() {
+      // Find matching task in taskProvider if synced
+      final matching = taskProvider.tasks.where(
+        (t) => (t.isSquadTask && t.squadGroupId == group.id),
+      );
+      if (matching.isNotEmpty) {
+        context.push(
+          '/focus/setup?taskId=${Uri.encodeQueryComponent(matching.first.id)}&occurrenceDate=${_dateQuery(date)}',
+        );
+      } else {
+        // Offer to jump into Focus Mode or complete
+        SquadTaskActions.startTask(context, group);
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -393,7 +505,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: () => context.go('/?tab=friends'),
+            onTap: onTilePressed,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
@@ -406,46 +518,64 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
+                  // Crisp, clearly visible icon container
                   Container(
                     width: 44,
                     height: 44,
-                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: groupColor.withValues(alpha: isDark ? 0.25 : 0.12),
-                      borderRadius: BorderRadius.circular(14),
+                      color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(
+                        color: groupColor.withValues(alpha: isDark ? 0.50 : 0.30),
+                        width: 1.5,
+                      ),
                     ),
-                    child: SvgPicture.asset(
-                      'assets/icon/group_task.svg',
-                      colorFilter: ColorFilter.mode(
-                        groupColor,
-                        BlendMode.srcIn,
+                    child: Center(
+                      child: Icon(
+                        Icons.groups_rounded,
+                        color: groupColor,
+                        size: 24,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: groupColor.withValues(
-                              alpha: isDark ? 0.25 : 0.12,
+                        GestureDetector(
+                          onTap: () => _openSquads(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2.5,
                             ),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            groupNameUpper,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                              color: groupColor,
+                            decoration: BoxDecoration(
+                              color: groupColor.withValues(
+                                alpha: isDark ? 0.25 : 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  groupNameUpper,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: groupColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 10.5,
+                                  color: groupColor,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -471,10 +601,21 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 15,
-                    color: groupColor,
+                  // Start Focus Button
+                  IconButton.filledTonal(
+                    tooltip: 'Start Focus',
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      backgroundColor: groupColor.withValues(
+                        alpha: isDark ? 0.28 : 0.14,
+                      ),
+                      foregroundColor: groupColor,
+                    ),
+                    icon: const Icon(
+                      Icons.play_arrow_rounded,
+                      size: 22,
+                    ),
+                    onPressed: onTilePressed,
                   ),
                 ],
               ),

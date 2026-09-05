@@ -699,9 +699,7 @@ class _PlannerTimelineTask extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   color: task.isSquadTask
-                      ? groupColor.withValues(
-                          alpha: isDark ? 0.16 : 0.08,
-                        )
+                      ? groupColor.withValues(alpha: isDark ? 0.16 : 0.08)
                       : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(18),
                   border: task.isSquadTask
@@ -806,7 +804,9 @@ class _PlannerTimelineTask extends StatelessWidget {
                                           vertical: 1.5,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: groupColor.withValues(alpha: 0.18),
+                                          color: groupColor.withValues(
+                                            alpha: 0.18,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             6,
                                           ),

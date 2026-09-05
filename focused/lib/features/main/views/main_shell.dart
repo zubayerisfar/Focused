@@ -16,9 +16,13 @@ class MainShell extends StatefulWidget {
 
   const MainShell({super.key, this.initialIndex = 0});
 
-  static void switchToTab(BuildContext context, int index) {
+  static bool switchToTab(BuildContext context, int index) {
     final state = context.findAncestorStateOfType<_MainShellState>();
-    state?.setIndex(index);
+    if (state != null) {
+      state.setIndex(index);
+      return true;
+    }
+    return false;
   }
 
   @override
