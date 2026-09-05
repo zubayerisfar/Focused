@@ -379,7 +379,13 @@ class _FriendsScreenState extends State<FriendsScreen>
                           ? const Color(0xFF77878F)
                           : scheme.onSurfaceVariant,
                       labelStyle: const TextStyle(
+                        fontFamily: 'Quicksand',
                         fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w700,
                         fontSize: 14.5,
                       ),
                       tabs: const [

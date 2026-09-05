@@ -30,7 +30,11 @@ class TaskDetailsScreen extends StatelessWidget {
 
     if (task == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          leading: BackButton(
+            onPressed: () => context.go('/?tab=planner&planner_area=tasks'),
+          ),
+        ),
         body: const Center(child: Text('Task not found.')),
       );
     }
@@ -58,140 +62,151 @@ class TaskDetailsScreen extends StatelessWidget {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Task'),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
-            child: const Text('Edit'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/?tab=planner&planner_area=tasks');
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(
+            onPressed: () => context.go('/?tab=planner&planner_area=tasks'),
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
-        children: [
-          _TaskHeader(task: task, completed: completed),
-          if (task.description.trim().isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Text(
-              task.description.trim(),
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                height: 1.5,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+          title: const Text('Task'),
+          elevation: 2,
+          shadowColor: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
+              child: const Text('Edit'),
             ),
+            const SizedBox(width: 8),
           ],
-          const SizedBox(height: 24),
-          _DetailsCard(
-            task: task,
-            day: day,
-            occurrenceStart: occurrence?.start,
-            occurrenceEnd: occurrence?.end,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCard(
-                  value: _formatDuration(focused),
-                  label: 'Focused',
-                  customIcon: SvgPicture.asset(
-                    'assets/icon/focus_icon.svg',
-                    width: 24,
-                    height: 24,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  value: '${linkedSessions.length}',
-                  label: linkedSessions.length == 1 ? 'Session' : 'Sessions',
-                  icon: Icons.history_rounded,
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
+          children: [
+            _TaskHeader(task: task, completed: completed),
+            if (task.description.trim().isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text(
+                task.description.trim(),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  height: 1.5,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 24),
-          if (!completed)
-            FilledButton.icon(
-              onPressed: () => context.push(
-                '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(day)}',
-              ),
-              icon: SvgPicture.asset(
-                'assets/icon/focus_icon.svg',
-                width: 20,
-                height: 20,
-              ),
-              label: const Text('Start focus'),
+            const SizedBox(height: 24),
+            _DetailsCard(
+              task: task,
+              day: day,
+              occurrenceStart: occurrence?.start,
+              occurrenceEnd: occurrence?.end,
             ),
-          if (!completed) const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final newCompleted = !completed;
-              await tasks.setCompletedForDate(
-                task.id,
-                day,
-                newCompleted,
-                completedAt: newCompleted ? DateTime.now() : null,
-              );
-
-              if (newCompleted && context.mounted) {
-                final stats = context.read<UserStatsProvider>();
-                await stats.addXp(50); // Standard task reward
-
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: const Color(0xFF58CC02),
-                      duration: const Duration(seconds: 4),
-                      content: const Row(
-                        children: [Text('🎉 +50 EXP earned!')],
-                      ),
-                      action: SnackBarAction(
-                        textColor: const Color(0xFFFFD700),
-                        label: '📺 DOUBLE EXP (+100)',
-                        onPressed: () {
-                          AdService.instance.showRewardedAd(
-                            onUserEarnedReward: (reward) async {
-                              await stats.addXp(50); // Bonus +50 EXP
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    backgroundColor: Color(0xFF10B981),
-                                    content: Text(
-                                      '⚡ Reward Doubled: +100 EXP total!',
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                          );
-                        },
-                      ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _MetricCard(
+                    value: _formatDuration(focused),
+                    label: 'Focused',
+                    customIcon: SvgPicture.asset(
+                      'assets/icon/focus_icon.svg',
+                      width: 24,
+                      height: 24,
                     ),
-                  );
-                }
-              }
-            },
-            icon: Icon(completed ? Icons.undo_rounded : Icons.check_rounded),
-            label: Text(completed ? 'Mark incomplete' : 'Mark complete'),
-          ),
-          const SizedBox(height: 10),
-          TextButton.icon(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _MetricCard(
+                    value: '${linkedSessions.length}',
+                    label: linkedSessions.length == 1 ? 'Session' : 'Sessions',
+                    icon: Icons.history_rounded,
+                  ),
+                ),
+              ],
             ),
-            onPressed: () => _confirmDelete(context, task),
-            icon: const Icon(Icons.delete_outline_rounded),
-            label: const Text('Delete task'),
-          ),
-        ],
+            const SizedBox(height: 24),
+            if (!completed)
+              FilledButton.icon(
+                onPressed: () => context.push(
+                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(day)}',
+                ),
+                icon: SvgPicture.asset(
+                  'assets/icon/focus_icon.svg',
+                  width: 20,
+                  height: 20,
+                ),
+                label: const Text('Start focus'),
+              ),
+            if (!completed) const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final newCompleted = !completed;
+                await tasks.setCompletedForDate(
+                  task.id,
+                  day,
+                  newCompleted,
+                  completedAt: newCompleted ? DateTime.now() : null,
+                );
+
+                if (newCompleted && context.mounted) {
+                  final stats = context.read<UserStatsProvider>();
+                  await stats.addXp(50); // Standard task reward
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(0xFF58CC02),
+                        duration: const Duration(seconds: 4),
+                        content: const Row(
+                          children: [Text('🎉 +50 EXP earned!')],
+                        ),
+                        action: SnackBarAction(
+                          textColor: const Color(0xFFFFD700),
+                          label: '📺 DOUBLE EXP (+100)',
+                          onPressed: () {
+                            AdService.instance.showRewardedAd(
+                              onUserEarnedReward: (reward) async {
+                                await stats.addXp(50); // Bonus +50 EXP
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      backgroundColor: Color(0xFF10B981),
+                                      content: Text(
+                                        '⚡ Reward Doubled: +100 EXP total!',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: Icon(completed ? Icons.undo_rounded : Icons.check_rounded),
+              label: Text(completed ? 'Mark incomplete' : 'Mark complete'),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () => _confirmDelete(context, task),
+              icon: const Icon(Icons.delete_outline_rounded),
+              label: const Text('Delete task'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -226,7 +241,7 @@ class TaskDetailsScreen extends StatelessWidget {
     if (confirmed == true && context.mounted) {
       await context.read<TaskProvider>().deleteTask(task.id);
       if (context.mounted) {
-        context.pop();
+        context.go('/?tab=planner&planner_area=tasks');
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Deleted "${task.title}"')));

@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../habits/models/habit.dart';
 import '../../habits/providers/habit_provider.dart';
-import '../../../core/theme/app_theme.dart';
 
 class HabitTrackerSection extends StatelessWidget {
   final List<Habit> habits;
   final DateTime date;
 
-  const HabitTrackerSection({super.key, required this.habits, required this.date});
+  const HabitTrackerSection({
+    super.key,
+    required this.habits,
+    required this.date,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +28,12 @@ class HabitTrackerSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.fact_check_outlined, size: 22, color: AppTheme.lavender),
-            const SizedBox(width: 8),
+            SvgPicture.asset(
+              'assets/planner_page_icons/planner_habit_icon.svg',
+              width: 24,
+              height: 24,
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 "Today's habit tracker",
@@ -151,4 +159,3 @@ class _HabitTrackerCard extends StatelessWidget {
     );
   }
 }
-

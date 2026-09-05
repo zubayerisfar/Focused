@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/habit.dart';
@@ -74,234 +75,254 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     super.dispose();
   }
 
+  void _navigateToPlanner() {
+    if (context.mounted) {
+      context.go('/?tab=planner&planner_area=habits');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEditing ? 'Edit habit' : 'New habit'),
-        actions: [
-          if (widget.isEditing)
-            IconButton(
-              tooltip: 'Delete habit',
-              icon: Icon(
-                Icons.delete_outline_rounded,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              onPressed: _saving ? null : _delete,
-            ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          children: [
-            TextFormField(
-              controller: _titleController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Habit name',
-                hintText: 'Read, exercise, drink water…',
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Enter a habit name.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            const _SectionLabel('Goal'),
-            const SizedBox(height: 8),
-            SegmentedButton<HabitGoalType>(
-              segments: const [
-                ButtonSegment(
-                  value: HabitGoalType.checkIn,
-                  label: Text('Check-in'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _navigateToPlanner();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: _navigateToPlanner),
+          title: Text(widget.isEditing ? 'Edit habit' : 'New habit'),
+          actions: [
+            if (widget.isEditing)
+              IconButton(
+                tooltip: 'Delete habit',
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: Theme.of(context).colorScheme.error,
                 ),
-                ButtonSegment(value: HabitGoalType.count, label: Text('Count')),
-                ButtonSegment(
-                  value: HabitGoalType.duration,
-                  label: Text('Duration'),
+                onPressed: _saving ? null : _delete,
+              ),
+            const SizedBox(width: 4),
+          ],
+        ),
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            children: [
+              TextFormField(
+                controller: _titleController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Habit name',
+                  hintText: 'Read, exercise, drink water…',
                 ),
-              ],
-              selected: {_goalType},
-              onSelectionChanged: (selection) {
-                setState(() {
-                  _goalType = selection.first;
-                  if (_goalType == HabitGoalType.checkIn) {
-                    _targetController.text = '1';
-                    _unitController.text = 'done';
-                  } else if (_goalType == HabitGoalType.duration) {
-                    if (_targetController.text == '1') {
-                      _targetController.text = '30';
-                    }
-                    _unitController.text = 'minutes';
-                  } else {
-                    if (_targetController.text == '1') {
-                      _targetController.text = '8';
-                    }
-                    _unitController.text = 'times';
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter a habit name.';
                   }
-                });
-              },
-            ),
-            if (_goalType != HabitGoalType.checkIn) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _targetController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Target'),
-                      validator: (value) {
-                        final parsed = int.tryParse(value ?? '');
-                        if (parsed == null || parsed < 1) {
-                          return 'Use a number above 0.';
-                        }
-                        return null;
-                      },
-                    ),
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              const _SectionLabel('Goal'),
+              const SizedBox(height: 8),
+              SegmentedButton<HabitGoalType>(
+                segments: const [
+                  ButtonSegment(
+                    value: HabitGoalType.checkIn,
+                    label: Text('Check-in'),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _unitController,
-                      decoration: const InputDecoration(labelText: 'Unit'),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Enter a unit.';
-                        }
-                        return null;
-                      },
-                    ),
+                  ButtonSegment(
+                    value: HabitGoalType.count,
+                    label: Text('Count'),
+                  ),
+                  ButtonSegment(
+                    value: HabitGoalType.duration,
+                    label: Text('Duration'),
                   ),
                 ],
-              ),
-            ],
-            const SizedBox(height: 20),
-            const _SectionLabel('Repeat'),
-            const SizedBox(height: 8),
-            _WeekdaySelector(
-              selected: _weekdays,
-              onToggle: (weekday) {
-                setState(() {
-                  if (_weekdays.contains(weekday)) {
-                    if (_weekdays.length > 1) {
-                      _weekdays.remove(weekday);
+                selected: {_goalType},
+                onSelectionChanged: (selection) {
+                  setState(() {
+                    _goalType = selection.first;
+                    if (_goalType == HabitGoalType.checkIn) {
+                      _targetController.text = '1';
+                      _unitController.text = 'done';
+                    } else if (_goalType == HabitGoalType.duration) {
+                      if (_targetController.text == '1') {
+                        _targetController.text = '30';
+                      }
+                      _unitController.text = 'minutes';
+                    } else {
+                      if (_targetController.text == '1') {
+                        _targetController.text = '8';
+                      }
+                      _unitController.text = 'times';
                     }
-                  } else {
-                    _weekdays.add(weekday);
-                  }
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            const _SectionLabel('Reminder'),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Theme.of(context).dividerColor),
+                  });
+                },
               ),
-              child: Column(
-                children: [
-                  SwitchListTile.adaptive(
-                    value: _reminderEnabled,
-                    onChanged: (value) {
-                      setState(() => _reminderEnabled = value);
-                    },
-                    title: const Text(
-                      'Habit reminder',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      _reminderEnabled
-                          ? 'Only on the repeat days selected above.'
-                          : 'Off',
-                    ),
-                  ),
-                  if (_reminderEnabled) ...[
-                    Divider(height: 1, color: Theme.of(context).dividerColor),
-                    ListTile(
-                      leading: const Icon(Icons.schedule_rounded),
-                      title: const Text('Reminder time'),
-                      subtitle: const Text('Uses your device timezone'),
-                      trailing: Text(
-                        _reminderTime.format(context),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+              if (_goalType != HabitGoalType.checkIn) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _targetController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Target'),
+                        validator: (value) {
+                          final parsed = int.tryParse(value ?? '');
+                          if (parsed == null || parsed < 1) {
+                            return 'Use a number above 0.';
+                          }
+                          return null;
+                        },
                       ),
-                      onTap: _pickReminderTime,
                     ),
-                    Divider(height: 1, color: Theme.of(context).dividerColor),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _unitController,
+                        decoration: const InputDecoration(labelText: 'Unit'),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Enter a unit.';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 20),
+              const _SectionLabel('Repeat'),
+              const SizedBox(height: 8),
+              _WeekdaySelector(
+                selected: _weekdays,
+                onToggle: (weekday) {
+                  setState(() {
+                    if (_weekdays.contains(weekday)) {
+                      if (_weekdays.length > 1) {
+                        _weekdays.remove(weekday);
+                      }
+                    } else {
+                      _weekdays.add(weekday);
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              const _SectionLabel('Reminder'),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                ),
+                child: Column(
+                  children: [
                     SwitchListTile.adaptive(
-                      value: _enableLateReminder,
+                      value: _reminderEnabled,
                       onChanged: (value) {
-                        setState(() => _enableLateReminder = value);
+                        setState(() => _reminderEnabled = value);
                       },
                       title: const Text(
-                        'Follow-up if delayed',
+                        'Habit reminder',
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
-                        _enableLateReminder
-                            ? 'Remind $_lateReminderMinutes min later if not checked in'
-                            : 'No late notification',
+                        _reminderEnabled
+                            ? 'Only on the repeat days selected above.'
+                            : 'Off',
                       ),
                     ),
-                    if (_enableLateReminder) ...[
+                    if (_reminderEnabled) ...[
                       Divider(height: 1, color: Theme.of(context).dividerColor),
                       ListTile(
-                        leading: const Icon(Icons.timer_outlined),
-                        title: const Text('Follow-up delay'),
+                        leading: const Icon(Icons.schedule_rounded),
+                        title: const Text('Reminder time'),
+                        subtitle: const Text('Uses your device timezone'),
                         trailing: Text(
-                          '$_lateReminderMinutes min after',
+                          _reminderTime.format(context),
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        onTap: _pickLateDelay,
+                        onTap: _pickReminderTime,
                       ),
+                      Divider(height: 1, color: Theme.of(context).dividerColor),
+                      SwitchListTile.adaptive(
+                        value: _enableLateReminder,
+                        onChanged: (value) {
+                          setState(() => _enableLateReminder = value);
+                        },
+                        title: const Text(
+                          'Follow-up if delayed',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          _enableLateReminder
+                              ? 'Remind $_lateReminderMinutes min later if not checked in'
+                              : 'No late notification',
+                        ),
+                      ),
+                      if (_enableLateReminder) ...[
+                        Divider(
+                          height: 1,
+                          color: Theme.of(context).dividerColor,
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.timer_outlined),
+                          title: const Text('Follow-up delay'),
+                          trailing: Text(
+                            '$_lateReminderMinutes min after',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          onTap: _pickLateDelay,
+                        ),
+                      ],
                     ],
                   ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            const _SectionLabel('Style'),
-            const SizedBox(height: 8),
-            _StylePicker(
-              iconCodePoint: _iconCodePoint,
-              colorValue: _colorValue,
-              onIconChanged: (value) => setState(() => _iconCodePoint = value),
-              onColorChanged: (value) => setState(() => _colorValue = value),
-            ),
-            const SizedBox(height: 28),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  _saving
-                      ? 'Saving…'
-                      : widget.isEditing
-                      ? 'Save changes'
-                      : 'Create habit',
                 ),
               ),
-            ),
-            if (widget.isEditing) ...[
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: _saving ? null : _delete,
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                ),
-                child: const Text('Delete habit'),
+              const SizedBox(height: 20),
+              const _SectionLabel('Style'),
+              const SizedBox(height: 8),
+              _StylePicker(
+                iconCodePoint: _iconCodePoint,
+                colorValue: _colorValue,
+                onIconChanged: (value) =>
+                    setState(() => _iconCodePoint = value),
+                onColorChanged: (value) => setState(() => _colorValue = value),
               ),
+              const SizedBox(height: 28),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    _saving
+                        ? 'Saving…'
+                        : widget.isEditing
+                        ? 'Save changes'
+                        : 'Create habit',
+                  ),
+                ),
+              ),
+              if (widget.isEditing) ...[
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: _saving ? null : _delete,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  child: const Text('Delete habit'),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -419,7 +440,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(reminderResult.message)));
       }
-      Navigator.pop(context);
+      _navigateToPlanner();
     } catch (e, stack) {
       debugPrint('Error saving habit: $e\n$stack');
       if (!mounted) return;
@@ -457,7 +478,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     try {
       await context.read<HabitProvider>().deleteHabit(id);
       if (!mounted) return;
-      Navigator.pop(context);
+      _navigateToPlanner();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(

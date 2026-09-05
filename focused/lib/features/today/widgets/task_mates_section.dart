@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -56,20 +57,10 @@ class TaskMatesSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: sectionAccent.withValues(alpha: isDark ? 0.28 : 0.12),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.diversity_3_rounded,
-                  color: sectionAccent,
-                  size: 20,
-                ),
-              ),
+            SvgPicture.asset(
+              'assets/icon/group_icon.svg',
+              width: 24,
+              height: 24,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -147,12 +138,6 @@ class TaskMatesSection extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.groups_outlined,
-                  color: scheme.onSurfaceVariant,
-                  size: 24,
-                ),
-                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,8 +145,9 @@ class TaskMatesSection extends StatelessWidget {
                       Text(
                         'No active squad tasks today',
                         style: TextStyle(
+                          fontFamily: 'Quicksand',
                           color: scheme.onSurface,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 14.5,
                         ),
                       ),
@@ -169,8 +155,10 @@ class TaskMatesSection extends StatelessWidget {
                       Text(
                         'Collaborate and stay accountable with mates.',
                         style: TextStyle(
+                          fontFamily: 'Quicksand',
                           color: scheme.onSurfaceVariant,
                           fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -178,24 +166,24 @@ class TaskMatesSection extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () => _openSquads(context),
-                  child: const Text('Squads'),
+                  child: const Text(
+                    'Squads',
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
           )
         else if (activeSquadTasks.isNotEmpty)
           ...activeSquadTasks.map(
-            (task) => _SquadTaskTile(
-              task: task,
-              date: date,
-            ),
+            (task) => _SquadTaskTile(task: task, date: date),
           )
         else
           ...activeGroups.map(
-            (group) => _GroupActiveSummaryTile(
-              group: group,
-              date: date,
-            ),
+            (group) => _GroupActiveSummaryTile(group: group, date: date),
           ),
       ],
     );
@@ -206,10 +194,7 @@ class _SquadTaskTile extends StatelessWidget {
   final Task task;
   final DateTime date;
 
-  const _SquadTaskTile({
-    required this.task,
-    required this.date,
-  });
+  const _SquadTaskTile({required this.task, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +279,9 @@ class _SquadTaskTile extends StatelessWidget {
                       color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
                       borderRadius: BorderRadius.circular(13),
                       border: Border.all(
-                        color: groupColor.withValues(alpha: isDark ? 0.50 : 0.30),
+                        color: groupColor.withValues(
+                          alpha: isDark ? 0.50 : 0.30,
+                        ),
                         width: 1.5,
                       ),
                     ),
@@ -329,6 +316,7 @@ class _SquadTaskTile extends StatelessWidget {
                             child: Text(
                               groupName,
                               style: TextStyle(
+                                fontFamily: 'Quicksand',
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.5,
@@ -344,6 +332,7 @@ class _SquadTaskTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
+                            fontFamily: 'Quicksand',
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: scheme.onSurface,
@@ -355,10 +344,11 @@ class _SquadTaskTile extends StatelessWidget {
                           taskDescription,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w400,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w400,
+                              ),
                         ),
                       ],
                     ),
@@ -374,10 +364,7 @@ class _SquadTaskTile extends StatelessWidget {
                       ),
                       foregroundColor: groupColor,
                     ),
-                    icon: const Icon(
-                      Icons.play_arrow_rounded,
-                      size: 24,
-                    ),
+                    icon: const Icon(Icons.play_arrow_rounded, size: 24),
                     onPressed: () => context.push(focusSetupUri),
                   ),
                 ],
@@ -394,10 +381,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
   final TaskGroup group;
   final DateTime date;
 
-  const _GroupActiveSummaryTile({
-    required this.group,
-    required this.date,
-  });
+  const _GroupActiveSummaryTile({required this.group, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -413,8 +397,8 @@ class _GroupActiveSummaryTile extends StatelessWidget {
     final taskTitle = group.activeTasks.isNotEmpty
         ? group.activeTasks.first.title
         : 'ACTIVE SQUAD';
-    final taskCategory = group.activeTasks.isNotEmpty &&
-            group.activeTasks.first.category != null
+    final taskCategory =
+        group.activeTasks.isNotEmpty && group.activeTasks.first.category != null
         ? group.activeTasks.first.category!
         : 'Squad Quest';
 
@@ -479,7 +463,9 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                       color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
                       borderRadius: BorderRadius.circular(13),
                       border: Border.all(
-                        color: groupColor.withValues(alpha: isDark ? 0.50 : 0.30),
+                        color: groupColor.withValues(
+                          alpha: isDark ? 0.50 : 0.30,
+                        ),
                         width: 1.5,
                       ),
                     ),
@@ -512,6 +498,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                             child: Text(
                               groupNameUpper,
                               style: TextStyle(
+                                fontFamily: 'Quicksand',
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.5,
@@ -526,6 +513,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
+                            fontFamily: 'Quicksand',
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -533,10 +521,11 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           taskCategory,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w400,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w400,
+                              ),
                         ),
                       ],
                     ),
@@ -552,10 +541,7 @@ class _GroupActiveSummaryTile extends StatelessWidget {
                       ),
                       foregroundColor: groupColor,
                     ),
-                    icon: const Icon(
-                      Icons.play_arrow_rounded,
-                      size: 24,
-                    ),
+                    icon: const Icon(Icons.play_arrow_rounded, size: 24),
                     onPressed: onTilePressed,
                   ),
                 ],

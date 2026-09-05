@@ -163,7 +163,9 @@ class TaskMateService {
                   'read': false,
                   'createdAt': FieldValue.serverTimestamp(),
                 });
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('Error sending group notice to $memberUid: $e');
+          }
         }
       }
 

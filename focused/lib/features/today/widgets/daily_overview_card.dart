@@ -122,9 +122,9 @@ class DailyOverviewCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 12),
             _TopAppsCompactList(
-              entries: topApps.take(4).toList(growable: false),
+              entries: topApps.take(3).toList(growable: false),
               onOpenApp: (entry) {
                 final id = Uri.encodeComponent(entry.appId);
                 final name = Uri.encodeQueryComponent(entry.appName);
@@ -132,27 +132,6 @@ class DailyOverviewCard extends StatelessWidget {
               },
             ),
           ],
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: FilledButton.icon(
-              onPressed: () => context.push('/focus/setup'),
-              style: FilledButton.styleFrom(
-                backgroundColor: scheme.primary,
-                foregroundColor: scheme.onPrimary,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon: const Icon(Icons.play_arrow_rounded, size: 24),
-              label: const Text(
-                'Start Focus Session',
-                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -440,7 +419,11 @@ class DailyOverviewCard extends StatelessWidget {
                 icon: const Icon(Icons.play_arrow_rounded, size: 22),
                 label: const Text(
                   'Start Focus Session',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -454,7 +437,6 @@ class DailyOverviewCard extends StatelessWidget {
 class _OverviewMetricCard extends StatelessWidget {
   final String title;
   final String value;
-  final IconData? icon;
   final Widget? customIcon;
   final Color accent;
   final double? trendPercent;
@@ -464,7 +446,6 @@ class _OverviewMetricCard extends StatelessWidget {
   const _OverviewMetricCard({
     required this.title,
     required this.value,
-    this.icon,
     this.customIcon,
     required this.accent,
     this.trendPercent,
@@ -533,7 +514,7 @@ class _OverviewMetricCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (customIcon != null)
                 Container(
@@ -546,11 +527,6 @@ class _OverviewMetricCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: Center(child: customIcon),
-                )
-              else if (icon != null)
-                Container(
-                  margin: const EdgeInsets.only(right: 10),
-                  child: Icon(icon, size: 26, color: accent),
                 ),
               Expanded(
                 child: Column(
@@ -668,7 +644,7 @@ class _TopAppsCompactList extends StatelessWidget {
     return Material(
       color: scheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: Theme.of(context).dividerColor),
       ),
       clipBehavior: Clip.antiAlias,
@@ -681,13 +657,13 @@ class _TopAppsCompactList extends StatelessWidget {
             children: [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 2,
+                  horizontal: 16,
+                  vertical: 5,
                 ),
                 leading: AppIcon(
                   iconBytes: entry.iconBytes,
                   appName: entry.appName,
-                  size: 38,
+                  size: 40,
                 ),
                 title: Text(
                   entry.appName,
@@ -695,7 +671,7 @@ class _TopAppsCompactList extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                    fontSize: 15.5,
                   ),
                 ),
                 trailing: Row(
@@ -709,7 +685,7 @@ class _TopAppsCompactList extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Icon(
                       Icons.chevron_right_rounded,
                       size: 20,
@@ -722,8 +698,8 @@ class _TopAppsCompactList extends StatelessWidget {
               if (!isLast)
                 Divider(
                   height: 1,
-                  indent: 14,
-                  endIndent: 14,
+                  indent: 16,
+                  endIndent: 16,
                   color: Theme.of(context).dividerColor,
                 ),
             ],

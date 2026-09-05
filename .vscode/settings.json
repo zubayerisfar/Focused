@@ -1,9 +1,9 @@
 {
-  "git.enabled": false,
-  "git.autofetch": false,
-  "git.autorefresh": false,
-  "git.autoStash": false,
-  "git.decorations.enabled": false,
+  "git.enabled": true,
+  "git.autofetch": true,
+  "git.autorefresh": true,
+  "git.autoStash": true,
+  "git.decorations.enabled": true,
   "files.watcherExclude": {
     "**/.git/**": true,
     "**/focused/build/**": true,

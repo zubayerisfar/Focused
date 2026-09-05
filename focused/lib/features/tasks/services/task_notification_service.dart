@@ -861,7 +861,7 @@ class TaskNotificationService {
     await _notifications.show(
       DateTime.now().millisecondsSinceEpoch % 100000,
       '⚡ New Squad Task: "$taskTitle"',
-      '$assignerName added a task to "$groupName". Open squad to set your time!',
+      '$assignerName added a task to "$groupName". Open app to set your time to start!',
       notificationDetails,
     );
   }

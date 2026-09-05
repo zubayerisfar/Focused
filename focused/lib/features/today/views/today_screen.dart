@@ -145,8 +145,6 @@ class TodayScreen extends StatelessWidget {
                     usageConnected: usageProvider.hasUsageAccess,
                   ),
                   const SizedBox(height: 24),
-                  const ProductivityInsightCard(),
-                  const SizedBox(height: 24),
                   DailyPlanSection(
                     next: next,
                     date: now,
@@ -159,6 +157,8 @@ class TodayScreen extends StatelessWidget {
                   TodayRemindersSection(date: now),
                   const SizedBox(height: 32),
                   HabitTrackerSection(habits: habits, date: now),
+                  const SizedBox(height: 24),
+                  const ProductivityInsightCard(),
                 ]),
               ),
             ),

@@ -7,6 +7,7 @@ import '../models/partner_quest.dart';
 import '../services/friends_service.dart';
 import '../../tasks/services/task_notification_service.dart';
 import '../../settings/providers/notification_preferences_provider.dart';
+import '../../profile/models/user_profile.dart';
 import '../../profile/providers/user_profile_provider.dart';
 import '../../streak/providers/user_stats_provider.dart';
 
@@ -136,7 +137,11 @@ class FriendsProvider extends ChangeNotifier {
   }
 
   /// Initialize listeners for the authenticated user
-  void initForUser(String uid, {String? displayName, String? photoUrl}) {
+  Future<void> initForUser(
+    String uid, {
+    String? displayName,
+    String? photoUrl,
+  }) async {
     if (_currentUid == uid && uid.isNotEmpty) return;
     _currentUid = uid;
     _currentPhotoUrl = photoUrl;
@@ -153,20 +158,41 @@ class FriendsProvider extends ChangeNotifier {
 
     final profile = _profileProvider.profile;
 
-    // 1. Ensure user document & handle reservation are initialized in Firestore
-    _friendsService.ensureUserDocumentInitialized(
-      uid: uid,
-      displayName: displayName ?? profile.displayName,
-      email: profile.email,
-      preferredUsername: profile.username,
-      photoUrl: photoUrl,
-    );
+    // 1. Ensure user document & unique handle reservation are initialized in Firestore
+    final assignedUsername = await _friendsService
+        .ensureUserDocumentInitialized(
+          uid: uid,
+          displayName: displayName ?? profile.displayName,
+          email: profile.email,
+          preferredUsername:
+              (profile.username.isNotEmpty &&
+                  profile.username.toLowerCase() != 'focuseduser' &&
+                  profile.username.toLowerCase() != 'focused_user')
+              ? profile.username
+              : null,
+          photoUrl: photoUrl,
+        );
+
+    final effectiveUsername = assignedUsername.isNotEmpty
+        ? assignedUsername
+        : (profile.username.isNotEmpty &&
+                  profile.username.toLowerCase() != 'focuseduser'
+              ? profile.username
+              : UserProfile.defaultUsernameFromEmail(profile.email));
+
+    if (effectiveUsername.isNotEmpty && effectiveUsername != profile.username) {
+      await _profileProvider.updateProfile(
+        displayName: displayName ?? profile.displayName,
+        email: profile.email,
+        username: effectiveUsername,
+      );
+    }
 
     // 2. Publish public profile so friends can discover this user
     _friendsService.syncPublicProfile(
       uid: uid,
       displayName: displayName ?? profile.displayName,
-      username: profile.username,
+      username: effectiveUsername,
       photoUrl: photoUrl,
       streakDays: _statsProvider.syncedStreakDays,
       xpPoints: _statsProvider.xpPoints,

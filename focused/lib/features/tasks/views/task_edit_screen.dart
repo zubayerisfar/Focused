@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -106,348 +107,364 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     super.dispose();
   }
 
+  void _navigateToPlanner() {
+    if (context.mounted) {
+      context.go('/?tab=planner&planner_area=tasks');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_taskNotFound) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(leading: BackButton(onPressed: _navigateToPlanner)),
         body: const Center(child: Text('This task no longer exists.')),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isEditing ? 'Edit Task' : 'New Task',
-          style: const TextStyle(fontWeight: FontWeight.w700),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _navigateToPlanner();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: _navigateToPlanner),
+          title: Text(
+            widget.isEditing ? 'Edit Task' : 'New Task',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          actions: [
+            if (widget.isEditing)
+              IconButton(
+                tooltip: 'Delete task',
+                icon: const Icon(Icons.delete_outline_rounded),
+                onPressed: _isSaving ? null : _deleteTask,
+              ),
+            TextButton(
+              onPressed: _isSaving ? null : _saveTask,
+              child: Text(
+                _isSaving ? 'Saving...' : 'Save',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
         ),
-        actions: [
-          if (widget.isEditing)
-            IconButton(
-              tooltip: 'Delete task',
-              icon: const Icon(Icons.delete_outline_rounded),
-              onPressed: _isSaving ? null : _deleteTask,
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
+          children: [
+            Text(
+              widget.isEditing ? 'Update your task' : 'What needs to be done?',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
-          TextButton(
-            onPressed: _isSaving ? null : _saveTask,
-            child: Text(
-              _isSaving ? 'Saving...' : 'Save',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _titleController,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(hintText: 'Task title'),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
             ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
-        children: [
-          Text(
-            widget.isEditing ? 'Update your task' : 'What needs to be done?',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: _titleController,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(hintText: 'Task title'),
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _descriptionController,
-            minLines: 3,
-            maxLines: 5,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              hintText: 'Add a description...',
-              alignLabelWithHint: true,
-            ),
-          ),
-          const SizedBox(height: 28),
-          const _SectionTitle('Priority'),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _PriorityButton(
-                  label: 'Critical',
-                  color: const Color(0xFFFF6B5E),
-                  selected: _priority == TaskPriority.critical,
-                  onTap: () => setState(() {
-                    _priority = TaskPriority.critical;
-                  }),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _PriorityButton(
-                  label: 'Important',
-                  color: AppTheme.primaryBlue,
-                  selected: _priority == TaskPriority.important,
-                  onTap: () => setState(() {
-                    _priority = TaskPriority.important;
-                  }),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _PriorityButton(
-                  label: 'Growth',
-                  color: const Color(0xFF34B27B),
-                  selected: _priority == TaskPriority.growth,
-                  onTap: () => setState(() {
-                    _priority = TaskPriority.growth;
-                  }),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          const _SectionTitle('Planning'),
-          const SizedBox(height: 12),
-          _SettingsCard(
-            children: [
-              _SettingRow(
-                icon: Icons.event_note_outlined,
-                title: 'Plan for',
-                value: _plannedDate == null
-                    ? 'Backlog'
-                    : _dateLabel(_plannedDate!),
-                onTap: _showPlannedDateSheet,
-              ),
-              const Divider(height: 1),
-              _SettingRow(
-                icon: Icons.flag_outlined,
-                title: 'Deadline',
-                value: _deadlineDate == null
-                    ? 'None'
-                    : _dateLabel(_deadlineDate!),
-                onTap: _showDeadlineSheet,
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          const _SectionTitle('Calendar'),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: SwitchListTile(
-              value: _scheduleOnCalendar,
-              onChanged: (value) {
-                setState(() {
-                  _scheduleOnCalendar = value;
-                });
-              },
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ),
-              secondary: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.calendar_month_rounded,
-                  color: AppTheme.primaryBlue,
-                ),
-              ),
-              title: const Text(
-                'Schedule task',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Padding(
-                padding: EdgeInsets.only(top: 3),
-                child: Text(
-                  'Set a time block, recurrence and optional reminder.',
-                ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descriptionController,
+              minLines: 3,
+              maxLines: 5,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                hintText: 'Add a description...',
+                alignLabelWithHint: true,
               ),
             ),
-          ),
-          if (_scheduleOnCalendar) ...[
+            const SizedBox(height: 28),
+            const _SectionTitle('Priority'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _PriorityButton(
+                    label: 'Critical',
+                    color: const Color(0xFFFF6B5E),
+                    selected: _priority == TaskPriority.critical,
+                    onTap: () => setState(() {
+                      _priority = TaskPriority.critical;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PriorityButton(
+                    label: 'Important',
+                    color: AppTheme.primaryBlue,
+                    selected: _priority == TaskPriority.important,
+                    onTap: () => setState(() {
+                      _priority = TaskPriority.important;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PriorityButton(
+                    label: 'Growth',
+                    color: const Color(0xFF34B27B),
+                    selected: _priority == TaskPriority.growth,
+                    onTap: () => setState(() {
+                      _priority = TaskPriority.growth;
+                    }),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            const _SectionTitle('Planning'),
             const SizedBox(height: 12),
             _SettingsCard(
               children: [
                 _SettingRow(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Date',
-                  value: _dateLabel(_scheduledDate),
-                  onTap: _pickScheduledDate,
+                  icon: Icons.event_note_outlined,
+                  title: 'Plan for',
+                  value: _plannedDate == null
+                      ? 'Backlog'
+                      : _dateLabel(_plannedDate!),
+                  onTap: _showPlannedDateSheet,
                 ),
                 const Divider(height: 1),
                 _SettingRow(
-                  icon: Icons.schedule_outlined,
-                  title: 'Start',
-                  value: _startTime.format(context),
-                  onTap: _pickStartTime,
+                  icon: Icons.flag_outlined,
+                  title: 'Deadline',
+                  value: _deadlineDate == null
+                      ? 'None'
+                      : _dateLabel(_deadlineDate!),
+                  onTap: _showDeadlineSheet,
                 ),
-                const Divider(height: 1),
-                _SettingRow(
-                  icon: Icons.timelapse_outlined,
-                  title: 'End',
-                  value: _endsNextDay
-                      ? '${_endTime.format(context)} • next day'
-                      : _endTime.format(context),
-                  onTap: _pickEndTime,
-                ),
-                const Divider(height: 1),
-                _SettingRow(
-                  icon: Icons.repeat_rounded,
-                  title: 'Repeat',
-                  value: _recurrence.label,
-                  onTap: _showRecurrencePicker,
-                ),
-                const Divider(height: 1),
-                _SettingRow(
-                  icon: Icons.notifications_outlined,
-                  title: 'Reminder',
-                  value: _reminderLabel(_reminderMinutesBefore),
-                  onTap: _showReminderPicker,
-                ),
-                const Divider(height: 1),
-                SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.alarm_off_outlined),
-                  title: const Text(
-                    'Late reminder if delayed',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                  ),
-                  subtitle: Text(
-                    _enableLateReminder
-                        ? 'Remind $_lateReminderMinutes min after scheduled time'
-                        : 'No notification if overdue',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  value: _enableLateReminder,
-                  onChanged: (val) {
-                    setState(() => _enableLateReminder = val);
-                  },
-                ),
-                if (_enableLateReminder) ...[
-                  const Divider(height: 1),
-                  _SettingRow(
-                    icon: Icons.timer_outlined,
-                    title: 'Late delay',
-                    value: '$_lateReminderMinutes min after',
-                    onTap: _showLateDelayPicker,
-                  ),
-                ],
               ],
             ),
-            if (_recurrence == TaskRecurrence.customDays) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Repeat on',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (
-                          var weekday = DateTime.monday;
-                          weekday <= DateTime.sunday;
-                          weekday++
-                        )
-                          FilterChip(
-                            label: Text(_weekdayLabel(weekday)),
-                            selected: _customWeekdays.contains(weekday),
-                            onSelected: (selected) {
-                              setState(() {
-                                if (selected) {
-                                  _customWeekdays.add(weekday);
-                                } else {
-                                  _customWeekdays.remove(weekday);
-                                }
-                              });
-                            },
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-          const SizedBox(height: 24),
-          const _SectionTitle('Focus Guard Protection'),
-          const SizedBox(height: 6),
-          Text(
-            'How long to wait after switching to a distracting app before alerting you.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _SettingsCard(
-            children: [
-              _SettingRow(
-                icon: Icons.shield_outlined,
-                title: 'Distraction Warning Delay',
-                value: '$_guardWarningSeconds seconds',
-                onTap: _showGuardDelayPicker,
-              ),
-            ],
-          ),
-          const SizedBox(height: 30),
-          SizedBox(
-            height: 58,
-            child: FilledButton(
-              onPressed: _isSaving ? null : _saveTask,
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    )
-                  : Text(
-                      widget.isEditing ? 'Update Task' : 'Create Task',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-            ),
-          ),
-          if (widget.isEditing) ...[
+            const SizedBox(height: 22),
+            const _SectionTitle('Calendar'),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 52,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: SwitchListTile(
+                value: _scheduleOnCalendar,
+                onChanged: (value) {
+                  setState(() {
+                    _scheduleOnCalendar = value;
+                  });
+                },
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
                 ),
-                onPressed: _isSaving ? null : _deleteTask,
-                icon: const Icon(Icons.delete_outline_rounded),
-                label: const Text(
-                  'Delete Task',
+                secondary: Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+                title: const Text(
+                  'Schedule task',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
+                subtitle: const Padding(
+                  padding: EdgeInsets.only(top: 3),
+                  child: Text(
+                    'Set a time block, recurrence and optional reminder.',
+                  ),
+                ),
               ),
             ),
+            if (_scheduleOnCalendar) ...[
+              const SizedBox(height: 12),
+              _SettingsCard(
+                children: [
+                  _SettingRow(
+                    icon: Icons.calendar_today_outlined,
+                    title: 'Date',
+                    value: _dateLabel(_scheduledDate),
+                    onTap: _pickScheduledDate,
+                  ),
+                  const Divider(height: 1),
+                  _SettingRow(
+                    icon: Icons.schedule_outlined,
+                    title: 'Start',
+                    value: _startTime.format(context),
+                    onTap: _pickStartTime,
+                  ),
+                  const Divider(height: 1),
+                  _SettingRow(
+                    icon: Icons.timelapse_outlined,
+                    title: 'End',
+                    value: _endsNextDay
+                        ? '${_endTime.format(context)} • next day'
+                        : _endTime.format(context),
+                    onTap: _pickEndTime,
+                  ),
+                  const Divider(height: 1),
+                  _SettingRow(
+                    icon: Icons.repeat_rounded,
+                    title: 'Repeat',
+                    value: _recurrence.label,
+                    onTap: _showRecurrencePicker,
+                  ),
+                  const Divider(height: 1),
+                  _SettingRow(
+                    icon: Icons.notifications_outlined,
+                    title: 'Reminder',
+                    value: _reminderLabel(_reminderMinutesBefore),
+                    onTap: _showReminderPicker,
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile.adaptive(
+                    secondary: const Icon(Icons.alarm_off_outlined),
+                    title: const Text(
+                      'Late reminder if delayed',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    subtitle: Text(
+                      _enableLateReminder
+                          ? 'Remind $_lateReminderMinutes min after scheduled time'
+                          : 'No notification if overdue',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    value: _enableLateReminder,
+                    onChanged: (val) {
+                      setState(() => _enableLateReminder = val);
+                    },
+                  ),
+                  if (_enableLateReminder) ...[
+                    const Divider(height: 1),
+                    _SettingRow(
+                      icon: Icons.timer_outlined,
+                      title: 'Late delay',
+                      value: '$_lateReminderMinutes min after',
+                      onTap: _showLateDelayPicker,
+                    ),
+                  ],
+                ],
+              ),
+              if (_recurrence == TaskRecurrence.customDays) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Repeat on',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (
+                            var weekday = DateTime.monday;
+                            weekday <= DateTime.sunday;
+                            weekday++
+                          )
+                            FilterChip(
+                              label: Text(_weekdayLabel(weekday)),
+                              selected: _customWeekdays.contains(weekday),
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _customWeekdays.add(weekday);
+                                  } else {
+                                    _customWeekdays.remove(weekday);
+                                  }
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+            const SizedBox(height: 24),
+            const _SectionTitle('Focus Guard Protection'),
+            const SizedBox(height: 6),
+            Text(
+              'How long to wait after switching to a distracting app before alerting you.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _SettingsCard(
+              children: [
+                _SettingRow(
+                  icon: Icons.shield_outlined,
+                  title: 'Distraction Warning Delay',
+                  value: '$_guardWarningSeconds seconds',
+                  onTap: _showGuardDelayPicker,
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              height: 58,
+              child: FilledButton(
+                onPressed: _isSaving ? null : _saveTask,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : Text(
+                        widget.isEditing ? 'Update Task' : 'Create Task',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+            if (widget.isEditing) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  onPressed: _isSaving ? null : _deleteTask,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text(
+                    'Delete Task',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -487,7 +504,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
       try {
         await context.read<TaskProvider>().deleteTask(original.id);
         if (mounted) {
-          Navigator.of(context).pop();
+          _navigateToPlanner();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Deleted "${original.title}"')),
           );
@@ -641,7 +658,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
       }
 
       if (mounted) {
-        Navigator.of(context).pop();
+        _navigateToPlanner();
       }
     } catch (error) {
       if (!mounted) {

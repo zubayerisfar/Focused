@@ -18,6 +18,7 @@ import '../features/habits/views/habit_edit_screen.dart';
 import '../features/main/views/main_shell.dart';
 import '../features/onboarding/views/intro_sequence_screen.dart';
 import '../features/onboarding/views/ad_notice_screen.dart';
+import '../features/planner/views/planner_hub_body.dart';
 import '../features/profile/views/badges_screen.dart';
 import '../features/profile/views/profile_screen.dart';
 import '../features/reminders/views/reminder_edit_screen.dart';
@@ -118,6 +119,9 @@ GoRouter createAppRouter({
         builder: (context, state) => MainShell(
           key: ValueKey(state.uri.toString()),
           initialIndex: _mainTabIndex(state.uri.queryParameters['tab']),
+          plannerArea: _parsePlannerArea(
+            state.uri.queryParameters['planner_area'],
+          ),
         ),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
@@ -326,6 +330,22 @@ int _mainTabIndex(String? raw) {
     case 'home':
     default:
       return 0;
+  }
+}
+
+PlannerArea? _parsePlannerArea(String? area) {
+  switch (area?.toLowerCase()) {
+    case 'tasks':
+    case 'task':
+      return PlannerArea.tasks;
+    case 'reminders':
+    case 'reminder':
+      return PlannerArea.reminders;
+    case 'habits':
+    case 'habit':
+      return PlannerArea.habits;
+    default:
+      return null;
   }
 }
 

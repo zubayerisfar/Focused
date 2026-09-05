@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/exp_gift.dart';
 import '../models/friend_user.dart';
 import '../models/partner_quest.dart';
+import '../../profile/models/user_profile.dart';
 
 class FriendsService {
   final FirebaseFirestore _firestore;
@@ -61,10 +63,28 @@ class FriendsService {
     required String username,
     required String currentUid,
   }) async {
-    final clean = username.trim().toLowerCase().replaceAll('@', '');
+    final clean = username
+        .trim()
+        .toLowerCase()
+        .replaceAll('@', '')
+        .replaceAll('.', '');
     if (clean.length < 3) return false;
+    if (clean == 'focuseduser' || clean == 'focused_user') return false;
 
     try {
+      // 1. Check registry collection
+      final usernameDoc = await _firestore
+          .collection('usernames')
+          .doc(clean)
+          .get();
+      if (usernameDoc.exists) {
+        final ownerUid = usernameDoc.data()?['uid'];
+        if (ownerUid != null && ownerUid != currentUid) {
+          return false;
+        }
+      }
+
+      // 2. Check users collection
       final snap = await _firestore
           .collection('users')
           .where('usernameLower', isEqualTo: clean)
@@ -88,7 +108,11 @@ class FriendsService {
     required String uid,
     required String username,
   }) async {
-    final clean = username.trim().toLowerCase().replaceAll('@', '');
+    final clean = username
+        .trim()
+        .toLowerCase()
+        .replaceAll('@', '')
+        .replaceAll('.', '');
     if (clean.length < 3) return false;
 
     final docRef = _firestore.collection('usernames').doc(clean);
@@ -111,43 +135,99 @@ class FriendsService {
     }
   }
 
-  /// Ensures full user initialization upon registration or sign in
-  Future<void> ensureUserDocumentInitialized({
+  /// Atomically claims [candidate] if available for [uid], or appends random digits until an
+  /// unclaimed unique username is found and reserved in `usernames/{usernameLower}`.
+  Future<String> claimOrGenerateUniqueUsername({
+    required String uid,
+    required String candidate,
+  }) async {
+    var cleanBase = candidate
+        .trim()
+        .toLowerCase()
+        .replaceAll('@', '')
+        .replaceAll('.', '')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+
+    if (cleanBase.isEmpty ||
+        cleanBase == 'focuseduser' ||
+        cleanBase == 'focused_user' ||
+        cleanBase.length < 3) {
+      final fallbackPrefix = uid.length >= 5
+          ? uid.substring(0, 5).toLowerCase()
+          : uid.toLowerCase();
+      cleanBase = 'user_$fallbackPrefix';
+    }
+
+    // Try base candidate first
+    final claimedBase = await reserveUsername(uid: uid, username: cleanBase);
+    if (claimedBase) {
+      return cleanBase;
+    }
+
+    // Collision! Generate suffix variations
+    final random = math.Random();
+    for (int attempt = 0; attempt < 10; attempt++) {
+      final suffix = random.nextInt(900) + 100; // 100 to 999
+      final candidateWithSuffix = '${cleanBase}_$suffix';
+      final ok = await reserveUsername(uid: uid, username: candidateWithSuffix);
+      if (ok) {
+        return candidateWithSuffix;
+      }
+    }
+
+    // Fallback timestamp suffix if multiple collisions occur
+    final timestampSuffix = DateTime.now().millisecondsSinceEpoch % 100000;
+    final fallbackUsername = '${cleanBase}_$timestampSuffix';
+    await reserveUsername(uid: uid, username: fallbackUsername);
+    return fallbackUsername;
+  }
+
+  /// Ensures full user initialization upon registration or sign in, guaranteeing
+  /// a globally unique, collision-free username.
+  Future<String> ensureUserDocumentInitialized({
     required String uid,
     required String displayName,
     required String email,
     String? preferredUsername,
     String? photoUrl,
   }) async {
-    if (uid.isEmpty) return;
+    if (uid.isEmpty) return '';
 
     final userDocRef = _firestore.collection('users').doc(uid);
     try {
       final userSnap = await userDocRef.get();
       if (!userSnap.exists) {
-        final defaultUsername =
-            preferredUsername != null && preferredUsername.trim().isNotEmpty
-            ? preferredUsername.trim().replaceAll('@', '').toLowerCase()
-            : (email.isNotEmpty
-                  ? email
-                        .split('@')
-                        .first
-                        .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
-                        .toLowerCase()
-                  : displayName.replaceAll(RegExp(r'\s+'), '').toLowerCase());
-        final cleanUsername = defaultUsername.isEmpty
-            ? 'user_${uid.substring(0, 5)}'
-            : defaultUsername;
+        final rawCandidate =
+            (preferredUsername != null &&
+                preferredUsername.trim().isNotEmpty &&
+                preferredUsername.trim().toLowerCase() != 'focuseduser' &&
+                preferredUsername.trim().toLowerCase() != 'focused_user')
+            ? preferredUsername
+            : UserProfile.defaultUsernameFromEmail(
+                email,
+                fallback:
+                    displayName.trim().isNotEmpty &&
+                        displayName.trim().toLowerCase() != 'focused user'
+                    ? displayName.replaceAll(RegExp(r'\s+'), '').toLowerCase()
+                    : 'user_${uid.length >= 5 ? uid.substring(0, 5).toLowerCase() : uid.toLowerCase()}',
+              );
+
+        final uniqueUsername = await claimOrGenerateUniqueUsername(
+          uid: uid,
+          candidate: rawCandidate,
+        );
+
+        final cleanDisplayName = displayName.trim().isEmpty
+            ? 'Focused User'
+            : displayName.trim();
 
         await _firestore.runTransaction((transaction) async {
           transaction.set(userDocRef, {
             'uid': uid,
-            'displayName': displayName.isEmpty ? 'Focused User' : displayName,
-            'displayNameLower':
-                (displayName.isEmpty ? 'focused user' : displayName)
-                    .toLowerCase(),
-            'username': cleanUsername,
-            'usernameLower': cleanUsername.toLowerCase(),
+            'displayName': cleanDisplayName,
+            'displayNameLower': cleanDisplayName.toLowerCase(),
+            'username': uniqueUsername,
+            'usernameLower': uniqueUsername.toLowerCase(),
             'photoUrl': photoUrl,
             'status': 'active',
             'streakDays': 0,
@@ -159,15 +239,6 @@ class FriendsService {
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
-          // Reserve in usernames collection
-          final usernameRef = _firestore
-              .collection('usernames')
-              .doc(cleanUsername.toLowerCase());
-          transaction.set(usernameRef, {
-            'uid': uid,
-            'reservedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-
           // Private profile
           final privateRef = userDocRef.collection('private').doc('profile');
           transaction.set(privateRef, {
@@ -177,34 +248,84 @@ class FriendsService {
             'createdAt': FieldValue.serverTimestamp(),
           });
         });
+
+        return uniqueUsername;
       } else {
-        // Backfill existing / older accounts so they become searchable immediately
+        // Backfill existing / older accounts so they get unique dot-stripped usernames and become searchable
         final data = userSnap.data() ?? {};
-        final existingUsername = data['username'] as String?;
+        final existingUsername = (data['username'] as String?)
+            ?.trim()
+            .replaceAll('@', '');
         final existingUsernameLower = data['usernameLower'] as String?;
         final existingDisplayName = data['displayName'] as String?;
         final existingDisplayNameLower = data['displayNameLower'] as String?;
 
-        final resolvedUsername =
-            (preferredUsername != null && preferredUsername.trim().isNotEmpty)
-            ? preferredUsername.trim().replaceAll('@', '').toLowerCase()
-            : ((existingUsername != null && existingUsername.isNotEmpty)
-                  ? existingUsername.replaceAll('@', '')
-                  : (email.isNotEmpty
-                        ? email
-                              .split('@')
-                              .first
-                              .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
-                              .toLowerCase()
-                        : displayName
-                              .replaceAll(RegExp(r'\s+'), '')
-                              .toLowerCase()));
-        final cleanUsername = resolvedUsername.isEmpty
-            ? 'user_${uid.substring(0, 5)}'
-            : resolvedUsername;
+        // Determine if existing username needs regeneration (e.g. stuck on 'focuseduser' or collision)
+        bool needsNewUsername = false;
+        if (existingUsername == null ||
+            existingUsername.isEmpty ||
+            existingUsername.toLowerCase() == 'focuseduser' ||
+            existingUsername.toLowerCase() == 'focused_user') {
+          needsNewUsername = true;
+        } else {
+          // Verify ownership in usernames collection
+          final reservationDoc = await _firestore
+              .collection('usernames')
+              .doc(existingUsername.toLowerCase())
+              .get();
+          if (reservationDoc.exists && reservationDoc.data()?['uid'] != uid) {
+            // Collision: taken by another user!
+            needsNewUsername = true;
+          } else if (!reservationDoc.exists) {
+            // Unreserved - try to reserve it now
+            final reserved = await reserveUsername(
+              uid: uid,
+              username: existingUsername,
+            );
+            if (!reserved) {
+              needsNewUsername = true;
+            }
+          }
+        }
 
-        final resolvedDisplayName = (displayName.isNotEmpty)
-            ? displayName
+        String finalUsername;
+        if (needsNewUsername) {
+          final candidate =
+              (preferredUsername != null &&
+                  preferredUsername.trim().isNotEmpty &&
+                  preferredUsername.trim().toLowerCase() != 'focuseduser' &&
+                  preferredUsername.trim().toLowerCase() != 'focused_user')
+              ? preferredUsername
+              : UserProfile.defaultUsernameFromEmail(
+                  email,
+                  fallback:
+                      (existingDisplayName != null &&
+                          existingDisplayName.isNotEmpty &&
+                          existingDisplayName.toLowerCase() != 'focused user')
+                      ? existingDisplayName
+                            .replaceAll(RegExp(r'\s+'), '')
+                            .toLowerCase()
+                      : (displayName.trim().isNotEmpty &&
+                                displayName.trim().toLowerCase() !=
+                                    'focused user'
+                            ? displayName
+                                  .replaceAll(RegExp(r'\s+'), '')
+                                  .toLowerCase()
+                            : 'user_${uid.length >= 5 ? uid.substring(0, 5).toLowerCase() : uid.toLowerCase()}'),
+                );
+
+          finalUsername = await claimOrGenerateUniqueUsername(
+            uid: uid,
+            candidate: candidate,
+          );
+        } else {
+          finalUsername = existingUsername!;
+        }
+
+        final resolvedDisplayName =
+            (displayName.trim().isNotEmpty &&
+                displayName.trim().toLowerCase() != 'focused user')
+            ? displayName.trim()
             : ((existingDisplayName != null && existingDisplayName.isNotEmpty)
                   ? existingDisplayName
                   : 'Focused User');
@@ -215,23 +336,9 @@ class FriendsService {
 
         if (existingUsernameLower == null ||
             existingUsername == null ||
-            existingUsername != cleanUsername) {
-          updates['username'] = cleanUsername;
-          updates['usernameLower'] = cleanUsername.toLowerCase();
-          // Also reserve in usernames registry
-          try {
-            await _firestore
-                .collection('usernames')
-                .doc(cleanUsername.toLowerCase())
-                .set({
-                  'uid': uid,
-                  'reservedAt': FieldValue.serverTimestamp(),
-                }, SetOptions(merge: true));
-          } catch (e) {
-            debugPrint(
-              'Could not register username in usernames collection: $e',
-            );
-          }
+            existingUsername != finalUsername) {
+          updates['username'] = finalUsername;
+          updates['usernameLower'] = finalUsername.toLowerCase();
         }
 
         if (existingDisplayNameLower == null || existingDisplayName == null) {
@@ -245,10 +352,15 @@ class FriendsService {
           updates['photoUrl'] = photoUrl;
         }
 
-        await userDocRef.set(updates, SetOptions(merge: true));
+        if (updates.length > 1) {
+          await userDocRef.set(updates, SetOptions(merge: true));
+        }
+
+        return finalUsername;
       }
     } catch (e) {
       debugPrint('Could not initialize user document: $e');
+      return '';
     }
   }
 

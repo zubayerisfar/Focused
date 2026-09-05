@@ -15,17 +15,42 @@ class UserProfile {
     this.birthday,
   });
 
+  /// Generates default username from the first part of the email before '@',
+  /// removing any dots and non-alphanumeric characters (e.g. "john.doe@gmail.com" -> "johndoe").
+  static String defaultUsernameFromEmail(
+    String? email, {
+    String fallback = 'user',
+  }) {
+    final cleanEmail = email?.trim() ?? '';
+    if (cleanEmail.isEmpty || !cleanEmail.contains('@')) {
+      return fallback;
+    }
+    final localPart = cleanEmail.split('@').first.trim();
+    final sanitized = localPart
+        .replaceAll('.', '')
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
+        .toLowerCase();
+    return sanitized.isNotEmpty ? sanitized : fallback;
+  }
+
   /// Provides a clean display username with '@' prefix
   String get handle {
-    final clean = username.trim();
-    if (clean.isNotEmpty) {
-      return clean.startsWith('@') ? clean : '@$clean';
+    final clean = username.trim().replaceAll('@', '');
+    if (clean.isNotEmpty &&
+        clean.toLowerCase() != 'focuseduser' &&
+        clean.toLowerCase() != 'focused_user') {
+      return '@$clean';
     }
-    // Fallback based on email or displayName
-    final fallback = email.isNotEmpty
-        ? email.split('@').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
-        : displayName.replaceAll(RegExp(r'\s+'), '').toLowerCase();
-    return '@${fallback.isEmpty ? "user" : fallback}';
+    // Fallback: first part before @ with dots removed
+    final defaultUser = defaultUsernameFromEmail(
+      email,
+      fallback:
+          (displayName.trim().isNotEmpty &&
+              displayName.trim().toLowerCase() != 'focused user')
+          ? displayName.replaceAll(RegExp(r'\s+'), '').toLowerCase()
+          : 'user',
+    );
+    return '@${defaultUser.isEmpty ? "user" : defaultUser}';
   }
 
   UserProfile copyWith({
@@ -73,7 +98,8 @@ class UserProfile {
     }
 
     final rawUsername = map['username']?.toString() ?? '';
-    final rawJoinedYear = (map['joinedYear'] as num?)?.toInt() ?? DateTime.now().year;
+    final rawJoinedYear =
+        (map['joinedYear'] as num?)?.toInt() ?? DateTime.now().year;
     final rawNationality = map['nationality'];
     final rawBirthday = map['birthday'];
     DateTime? birthday;

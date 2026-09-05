@@ -52,7 +52,17 @@ class DailyPlanSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: SvgPicture.asset(
+                'assets/planner_page_icons/planner_task_creation.svg',
+                width: 24,
+                height: 24,
+              ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,17 +221,6 @@ class _NextTaskCard extends StatelessWidget {
                       ),
                     ),
                   ],
-                ),
-              ),
-              IconButton.filledTonal(
-                tooltip: 'Start focus',
-                onPressed: () => context.push(
-                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(next.date)}',
-                ),
-                icon: SvgPicture.asset(
-                  'assets/icon/focus_icon.svg',
-                  width: 22,
-                  height: 22,
                 ),
               ),
             ],

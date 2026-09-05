@@ -406,6 +406,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                     ? 'Start Quick Focus'
                     : 'Start Focus Session',
                 style: const TextStyle(
+                  fontFamily: 'Quicksand',
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),

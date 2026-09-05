@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/account_provider.dart';
+import '../../profile/models/user_profile.dart';
 import '../../profile/providers/user_profile_provider.dart';
 
 enum _AuthMode { register, login }
@@ -379,13 +380,19 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {}
   }
 
-  Future<void> _syncLocalProfile(User user) {
+  Future<void> _syncLocalProfile(User user) async {
     final account = context.read<AccountProvider>();
+    final email = user.email ?? '';
 
-    return context.read<UserProfileProvider>().updateProfile(
+    await context.read<UserProfileProvider>().updateProfile(
       displayName: account.displayName,
-      email: user.email ?? '',
+      email: email,
+      username: UserProfile.defaultUsernameFromEmail(email),
     );
+
+    if (mounted) {
+      await context.read<UserProfileProvider>().syncFromFirestore(user.uid);
+    }
   }
 }
 

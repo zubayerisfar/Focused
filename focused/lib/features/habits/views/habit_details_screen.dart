@@ -19,7 +19,11 @@ class HabitDetailsScreen extends StatelessWidget {
 
     if (habit == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          leading: BackButton(
+            onPressed: () => context.go('/?tab=planner&planner_area=habits'),
+          ),
+        ),
         body: const Center(child: Text('Habit not found.')),
       );
     }
@@ -33,86 +37,97 @@ class HabitDetailsScreen extends StatelessWidget {
         scheduledToday && provider.isCompletedForDate(habit, today);
     final analytics = provider.analyticsFor(habit, asOf: today);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Habit'),
-        actions: [
-          IconButton(
-            tooltip: 'Delete habit',
-            icon: Icon(
-              Icons.delete_outline_rounded,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Delete habit?'),
-                  content: const Text(
-                    'This also removes its local progress history.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/?tab=planner&planner_area=habits');
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: BackButton(
+            onPressed: () => context.go('/?tab=planner&planner_area=habits'),
+          ),
+          title: const Text('Habit'),
+          actions: [
+            IconButton(
+              tooltip: 'Delete habit',
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete habit?'),
+                    content: const Text(
+                      'This also removes its local progress history.',
                     ),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.error,
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
                       ),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
 
-              if (confirmed == true && context.mounted) {
-                await provider.deleteHabit(habit.id);
-                if (context.mounted) {
-                  Navigator.pop(context);
+                if (confirmed == true && context.mounted) {
+                  await provider.deleteHabit(habit.id);
+                  if (context.mounted) {
+                    context.go('/?tab=planner&planner_area=habits');
+                  }
                 }
-              }
-            },
-          ),
-          TextButton(
-            onPressed: () =>
-                context.push('/habit/edit/${Uri.encodeComponent(habit.id)}'),
-            child: const Text('Edit'),
-          ),
-          const SizedBox(width: 6),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        children: [
-          _HabitHeader(habit: habit),
-          const SizedBox(height: 24),
-          if (!scheduledToday)
-            _InfoCard(
-              title: 'Not scheduled today',
-              body:
-                  'This routine is scheduled for ${_repeatText(habit).toLowerCase()}.',
-            )
-          else
-            _TodayProgressCard(
-              habit: habit,
-              progress: progress,
-              completed: completed,
-              onDecrease:
-                  habit.goalType == HabitGoalType.checkIn || progress == 0
-                  ? null
-                  : () => provider.setProgress(habit.id, today, progress - 1),
-              onIncrease: habit.goalType == HabitGoalType.checkIn || completed
-                  ? null
-                  : () => provider.setProgress(habit.id, today, progress + 1),
-              onToggle: () => provider.toggleCompleted(habit.id, today),
+              },
             ),
-          const SizedBox(height: 24),
-          _ReminderCard(habit: habit),
-          const SizedBox(height: 24),
-          _AnalyticsSection(habit: habit, analytics: analytics),
-        ],
+            TextButton(
+              onPressed: () =>
+                  context.push('/habit/edit/${Uri.encodeComponent(habit.id)}'),
+              child: const Text('Edit'),
+            ),
+            const SizedBox(width: 6),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [
+            _HabitHeader(habit: habit),
+            const SizedBox(height: 24),
+            if (!scheduledToday)
+              _InfoCard(
+                title: 'Not scheduled today',
+                body:
+                    'This routine is scheduled for ${_repeatText(habit).toLowerCase()}.',
+              )
+            else
+              _TodayProgressCard(
+                habit: habit,
+                progress: progress,
+                completed: completed,
+                onDecrease:
+                    habit.goalType == HabitGoalType.checkIn || progress == 0
+                    ? null
+                    : () => provider.setProgress(habit.id, today, progress - 1),
+                onIncrease: habit.goalType == HabitGoalType.checkIn || completed
+                    ? null
+                    : () => provider.setProgress(habit.id, today, progress + 1),
+                onToggle: () => provider.toggleCompleted(habit.id, today),
+              ),
+            const SizedBox(height: 24),
+            _ReminderCard(habit: habit),
+            const SizedBox(height: 24),
+            _AnalyticsSection(habit: habit, analytics: analytics),
+          ],
+        ),
       ),
     );
   }

@@ -138,7 +138,11 @@ class SquadTaskActions {
                   icon: const Icon(Icons.play_arrow_rounded, size: 22),
                   label: const Text(
                     'Start Focus Session',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
                   ),
                   onPressed: () => Navigator.pop(bCtx, 'focus'),
                 ),

@@ -29,6 +29,42 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
         private const val NOTIFICATION_ID_5PM = 9201
         private const val NOTIFICATION_ID_11PM = 9202
         private const val NOTIFICATION_ID_TEST = 9203
+
+        private val IGNORED_PACKAGES = setOf(
+            // Core Android Framework & System UI
+            "android",
+            "com.android.systemui",
+            "com.android.keyguard",
+            "com.android.settings",
+            "com.google.android.permissioncontroller",
+            "com.android.permissioncontroller",
+            "com.google.android.packageinstaller",
+            "com.android.packageinstaller",
+            "com.android.intentresolver",
+            "com.android.documentsui",
+            "com.google.android.setupwizard",
+            "com.android.setupwizard",
+            "com.google.android.gms",
+            // OEM Launchers & Home Screens
+            "com.motorola.launcher3",
+            "com.motorola.launcher",
+            "com.motorola.gesture",
+            "com.google.android.apps.nexuslauncher",
+            "com.sec.android.app.launcher",
+            "com.miui.home",
+            "com.mi.android.globallauncher",
+            "com.oppo.launcher",
+            "com.oneplus.launcher",
+            "com.teslacoilsw.launcher",
+            "com.microsoft.launcher",
+            "com.android.launcher",
+            "com.android.launcher2",
+            "com.android.launcher3",
+            // Keyboards & Input Methods
+            "com.google.android.inputmethod.latin",
+            "com.touchtype.swiftkey",
+            "com.samsung.android.honeyboard"
+        )
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -76,14 +112,11 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
 
         if (usageStatsManager != null) {
             try {
-                val statsList = usageStatsManager.queryUsageStats(
-                    UsageStatsManager.INTERVAL_DAILY,
-                    startOfDayMs,
-                    nowMs,
-                )
-                for (stat in statsList) {
+                val aggregated = usageStatsManager.queryAndAggregateUsageStats(startOfDayMs, nowMs)
+                for ((pkg, stat) in aggregated) {
+                    if (isIgnoredPackage(context, pkg)) continue
                     if (stat.totalTimeInForeground > 30_000) { // More than 30s
-                        appUsageMap[stat.packageName] = (appUsageMap[stat.packageName] ?: 0L) + stat.totalTimeInForeground
+                        appUsageMap[pkg] = stat.totalTimeInForeground
                     }
                 }
 
@@ -103,7 +136,6 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
 
         // 2. Identify top 6 apps
         val sortedApps = appUsageMap.entries
-            .filter { entry -> !isIgnoredPackage(context, entry.key) }
             .sortedByDescending { it.value }
             .take(6)
 
@@ -215,7 +247,7 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
     }
 
     private fun isIgnoredPackage(context: Context, packageName: String): Boolean {
-        if (packageName == context.packageName) return true
+        if (IGNORED_PACKAGES.contains(packageName)) return true
         if (packageName.startsWith("com.android.systemui")) return true
         if (packageName.contains("launcher") || packageName.contains("nexuslauncher")) return true
         if (packageName == "com.google.android.googlequicksearchbox") return true

@@ -7,14 +7,16 @@ import '../../tasks/providers/task_provider.dart';
 import '../../wellbeing/providers/usage_provider.dart';
 import '../../focus/views/focus_screen.dart';
 import '../../friends/views/friends_screen.dart';
+import '../../planner/views/planner_hub_body.dart';
 import '../../planner/views/planner_screen.dart';
 import '../../settings/views/settings_screen.dart';
 import '../../today/views/today_screen.dart';
 
 class MainShell extends StatefulWidget {
   final int initialIndex;
+  final PlannerArea? plannerArea;
 
-  const MainShell({super.key, this.initialIndex = 0});
+  const MainShell({super.key, this.initialIndex = 0, this.plannerArea});
 
   static bool switchToTab(BuildContext context, int index) {
     final state = context.findAncestorStateOfType<_MainShellState>();
@@ -31,6 +33,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late int _currentIndex;
+  late final List<Widget> _screens;
 
   void setIndex(int index) {
     setState(() {
@@ -38,18 +41,19 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
-  static const List<Widget> _screens = [
-    PrimaryScrollController.none(child: TodayScreen()),
-    PrimaryScrollController.none(child: PlannerScreen()),
-    PrimaryScrollController.none(child: FocusScreen()),
-    PrimaryScrollController.none(child: FriendsScreen()),
-    PrimaryScrollController.none(child: SettingsScreen(embedded: true)),
-  ];
-
   @override
   void initState() {
     super.initState();
     _currentIndex = _safeIndex(widget.initialIndex);
+    _screens = [
+      const PrimaryScrollController.none(child: TodayScreen()),
+      PrimaryScrollController.none(
+        child: PlannerScreen(initialArea: widget.plannerArea),
+      ),
+      const PrimaryScrollController.none(child: FocusScreen()),
+      const PrimaryScrollController.none(child: FriendsScreen()),
+      const PrimaryScrollController.none(child: SettingsScreen(embedded: true)),
+    ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _requestInitialPermissions();
     });

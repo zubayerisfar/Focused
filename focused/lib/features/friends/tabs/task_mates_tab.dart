@@ -14,7 +14,8 @@ class TaskMatesTab extends StatelessWidget {
   final Function(TaskGroup, int) onPickTime;
   final Function(TaskGroup, int) onStartTask;
 
-  const TaskMatesTab({super.key, 
+  const TaskMatesTab({
+    super.key,
     required this.isDark,
     required this.onCreateGroup,
     required this.onAssignTask,
@@ -101,6 +102,7 @@ class TaskMatesTab extends StatelessWidget {
               Text(
                 'No Task Squads Yet',
                 style: TextStyle(
+                  fontFamily: 'Quicksand',
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: isDark ? Colors.white : scheme.onSurface,
@@ -111,6 +113,7 @@ class TaskMatesTab extends StatelessWidget {
                 'Team up with up to 4 friends (up to 5 members total)! Upload up to 3 shared tasks/habits and earn double EXP (+200 EXP) when finished.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
+                  fontFamily: 'Quicksand',
                   color: isDark
                       ? const Color(0xFF77878F)
                       : scheme.onSurfaceVariant,
@@ -134,7 +137,11 @@ class TaskMatesTab extends StatelessWidget {
                 icon: const Icon(Icons.group_add_rounded),
                 label: const Text(
                   'Create a Task Squad',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
                 ),
               ),
             ],
@@ -151,6 +158,7 @@ class TaskMatesTab extends StatelessWidget {
             Text(
               'YOUR SQUADS (${groups.length}/3)',
               style: TextStyle(
+                fontFamily: 'Quicksand',
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: isDark
@@ -171,6 +179,7 @@ class TaskMatesTab extends StatelessWidget {
                 label: const Text(
                   'New Squad',
                   style: TextStyle(
+                    fontFamily: 'Quicksand',
                     color: Color(0xFF1CB0F6),
                     fontWeight: FontWeight.bold,
                   ),
@@ -268,6 +277,7 @@ class TaskMatesTab extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
+                                      fontFamily: 'Quicksand',
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: -0.2,
@@ -293,6 +303,7 @@ class TaskMatesTab extends StatelessWidget {
                                     child: const Text(
                                       'Owner',
                                       style: TextStyle(
+                                        fontFamily: 'Quicksand',
                                         color: Color(0xFF1CB0F6),
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
@@ -378,6 +389,7 @@ class TaskMatesTab extends StatelessWidget {
                                 Text(
                                   '${group.members.length} members',
                                   style: TextStyle(
+                                    fontFamily: 'Quicksand',
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w600,
                                     color: isDark
@@ -426,6 +438,7 @@ class TaskMatesTab extends StatelessWidget {
                                         ? '$activeCount/3 Tasks Active (+200 EXP)'
                                         : 'No Active Tasks (0/3)',
                                     style: TextStyle(
+                                      fontFamily: 'Quicksand',
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w800,
                                       color: activeCount > 0
@@ -543,6 +556,7 @@ class TaskMatesTab extends StatelessWidget {
                               Text(
                                 group.name,
                                 style: TextStyle(
+                                  fontFamily: 'Quicksand',
                                   color: isDark
                                       ? Colors.white
                                       : scheme.onSurface,
@@ -554,6 +568,7 @@ class TaskMatesTab extends StatelessWidget {
                               Text(
                                 '${group.members.length} members • ${group.activeTasks.length}/3 Tasks',
                                 style: TextStyle(
+                                  fontFamily: 'Quicksand',
                                   color: isDark
                                       ? const Color(0xFF77878F)
                                       : scheme.onSurfaceVariant,

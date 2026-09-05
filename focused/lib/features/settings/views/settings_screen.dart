@@ -9,6 +9,7 @@ import '../../auth/providers/account_provider.dart';
 import '../providers/cloud_sync_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../wellbeing/providers/usage_provider.dart';
+import '../../profile/models/user_profile.dart';
 import '../../profile/providers/user_profile_provider.dart';
 import '../../friends/providers/friends_provider.dart';
 import '../providers/notification_preferences_provider.dart';
@@ -696,8 +697,17 @@ class SettingsScreen extends StatelessWidget {
     final account = context.read<AccountProvider>();
     final localProfile = context.read<UserProfileProvider>();
     final current = localProfile.profile;
+    final resolvedUsername =
+        (current.username.trim().isNotEmpty &&
+            current.username.trim().toLowerCase() != 'focuseduser' &&
+            current.username.trim().toLowerCase() != 'focused_user')
+        ? current.username.trim()
+        : UserProfile.defaultUsernameFromEmail(
+            account.email,
+            fallback: current.handle.replaceFirst('@', ''),
+          );
     final nameController = TextEditingController(text: account.displayName);
-    final usernameController = TextEditingController(text: current.username);
+    final usernameController = TextEditingController(text: resolvedUsername);
     final nationalityController = TextEditingController(
       text: current.nationality,
     );
@@ -892,6 +902,15 @@ class SettingsScreen extends StatelessWidget {
     if (save == true && nameController.text.trim().isNotEmpty) {
       final cleanUsername = usernameController.text.trim().replaceAll('@', '');
       await account.updateDisplayName(nameController.text);
+      if (cleanUsername.isNotEmpty &&
+          cleanUsername != current.username &&
+          account.isSignedIn &&
+          context.mounted) {
+        await context.read<FriendsProvider>().updateUsername(
+          oldUsername: current.username,
+          newUsername: cleanUsername,
+        );
+      }
       await localProfile.updateProfile(
         displayName: account.displayName,
         email: account.email,

@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart'
 import '../services/account_lifecycle_service.dart';
 import '../services/auth_service.dart';
 import '../../friends/services/friends_service.dart';
+import '../../profile/models/user_profile.dart';
 
 class AccountProvider extends ChangeNotifier {
   AccountProvider({
@@ -105,6 +106,7 @@ class AccountProvider extends ChangeNotifier {
         uid: user.uid,
         displayName: user.displayName ?? '',
         email: user.email ?? '',
+        preferredUsername: UserProfile.defaultUsernameFromEmail(user.email),
         photoUrl: user.photoURL,
       );
     } catch (e) {

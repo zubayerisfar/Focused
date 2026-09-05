@@ -20,6 +20,7 @@ import 'features/streak/providers/streak_goal_provider.dart';
 import 'features/tasks/providers/task_provider.dart';
 import 'core/providers/theme_provider.dart';
 import 'features/wellbeing/providers/usage_provider.dart';
+import 'features/profile/models/user_profile.dart';
 import 'features/profile/providers/user_profile_provider.dart';
 import 'features/streak/providers/user_stats_provider.dart';
 import 'router/app_router.dart';
@@ -221,7 +222,9 @@ Future<void> main() async {
     await userProfileProvider.updateProfile(
       displayName: accountProvider.displayName,
       email: accountProvider.email,
+      username: UserProfile.defaultUsernameFromEmail(accountProvider.email),
     );
+    await userProfileProvider.syncFromFirestore(accountProvider.user!.uid);
   }
 
   final cloudSyncService = CloudSyncService(

@@ -15,16 +15,33 @@ import '../widgets/planner_header.dart';
 import '../../tasks/views/task_calendar_body.dart';
 
 class PlannerScreen extends StatefulWidget {
-  const PlannerScreen({super.key});
+  final PlannerArea? initialArea;
+
+  const PlannerScreen({super.key, this.initialArea});
 
   @override
   State<PlannerScreen> createState() => _PlannerScreenState();
 }
 
 class _PlannerScreenState extends State<PlannerScreen> {
-  PlannerArea _area = PlannerArea.hub;
+  late PlannerArea _area;
   PlannerCalendarMode _calendarMode = PlannerCalendarMode.schedule;
   DateTime _selectedDate = _dateOnly(DateTime.now());
+
+  @override
+  void initState() {
+    super.initState();
+    _area = widget.initialArea ?? PlannerArea.hub;
+  }
+
+  @override
+  void didUpdateWidget(covariant PlannerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialArea != null &&
+        widget.initialArea != oldWidget.initialArea) {
+      _area = widget.initialArea!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,13 +90,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
               Column(
                 children: [
                   Material(
-                    elevation: isDark ? 4 : 2.5,
-                    shadowColor: Colors.black.withValues(
-                      alpha: isDark ? 0.50 : 0.14,
-                    ),
-                    color: isDark
-                        ? const Color(0xFF171A23)
-                        : baseTheme.colorScheme.surface,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    color: _area == PlannerArea.hub
+                        ? (isDark
+                              ? const Color(0xFF171A23)
+                              : baseTheme.colorScheme.surface)
+                        : pageTint,
                     child: PlannerHeader(
                       selectedDate: _selectedDate,
                       area: _area,
@@ -105,34 +122,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     ),
                   ),
                   Expanded(
-                    child: Stack(
-                      children: [
-                        ColoredBox(
-                          color: pageTint,
-                          child: SizedBox.expand(child: _buildAreaBody()),
-                        ),
-                        // Drop shadow overlay from appbar onto the body
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            height: 8,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.black.withValues(
-                                    alpha: isDark ? 0.32 : 0.08,
-                                  ),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: ColoredBox(
+                      color: pageTint,
+                      child: SizedBox.expand(child: _buildAreaBody()),
                     ),
                   ),
                   if (_area != PlannerArea.tasks) const AppBannerAdWidget(),

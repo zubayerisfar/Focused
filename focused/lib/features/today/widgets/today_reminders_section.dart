@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -41,12 +42,12 @@ class TodayRemindersSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(
-              Icons.notifications_active_outlined,
-              size: 22,
-              color: accent,
+            SvgPicture.asset(
+              'assets/planner_page_icons/planner_reminder_icon.svg',
+              width: 24,
+              height: 24,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'Reminders',
@@ -76,21 +77,13 @@ class TodayRemindersSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: Theme.of(context).dividerColor),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.notifications_off_outlined,
-                  color: scheme.onSurfaceVariant,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'No active reminders for today.',
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  ),
-                ),
-              ],
+            child: Text(
+              'No active reminders for today.',
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           )
         else
@@ -176,4 +169,3 @@ class TodayRemindersSection extends StatelessWidget {
     );
   }
 }
-
