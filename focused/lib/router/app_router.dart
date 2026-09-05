@@ -19,6 +19,7 @@ import '../screens/onboarding/intro_sequence_screen.dart';
 import '../screens/onboarding/ad_notice_screen.dart';
 import '../screens/profile/badges_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/reminders/reminder_edit_screen.dart';
 import '../screens/settings/notification_access_screen.dart';
 import '../screens/settings/notification_permission_screen.dart';
 import '../screens/settings/cloud_sync_screen.dart';
@@ -216,6 +217,15 @@ GoRouter createAppRouter({
         path: '/task/edit/:taskId',
         builder: (context, state) =>
             TaskEditScreen(taskId: state.pathParameters['taskId']),
+      ),
+      GoRoute(
+        path: '/reminder/new',
+        builder: (context, state) => const ReminderEditScreen(),
+      ),
+      GoRoute(
+        path: '/reminder/edit/:reminderId',
+        builder: (context, state) =>
+            ReminderEditScreen(reminderId: state.pathParameters['reminderId']),
       ),
       GoRoute(
         path: '/habit/new',

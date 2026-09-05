@@ -815,17 +815,21 @@ class _HighlightedLimitsCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Text(
-                          'App Limits & Timers',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
+                        const Flexible(
+                          child: Text(
+                            'App Limits & Timers',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15.5,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
+                            horizontal: 5,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
@@ -835,7 +839,7 @@ class _HighlightedLimitsCard extends StatelessWidget {
                           child: const Text(
                             'ACTIVE',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 8.5,
                               fontWeight: FontWeight.w900,
                               color: Colors.white,
                             ),

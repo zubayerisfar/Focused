@@ -86,6 +86,7 @@ class HabitProvider extends ChangeNotifier {
     required int iconCodePoint,
     required int colorValue,
     int? reminderMinutesFromMidnight,
+    int? lateReminderMinutesAfter,
     DateTime? createdAt,
   }) async {
     final now = createdAt ?? DateTime.now();
@@ -99,6 +100,7 @@ class HabitProvider extends ChangeNotifier {
       iconCodePoint: iconCodePoint,
       colorValue: colorValue,
       reminderMinutesFromMidnight: reminderMinutesFromMidnight,
+      lateReminderMinutesAfter: lateReminderMinutesAfter,
       createdAt: now,
     );
 

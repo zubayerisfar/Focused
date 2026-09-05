@@ -79,6 +79,9 @@ flutter:
     - assets/badges/
     - assets/navbar_icon/
     - assets/icon/
+    - assets/app_icon/
+    - assets/notification_icons/
+    - assets/planner_page_icons/
     - assets/sound/
 
   fonts:
@@ -127,9 +130,11 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 flutter_launcher_icons:
   android: true
-  image_path: "assets/icon/app_icon.png"
+  image_path: "assets/app_icon/app_icon.png"
+  adaptive_icon_background: "@drawable/ic_launcher_background"
+  adaptive_icon_foreground: "assets/app_icon/app_icon.png"
 
   windows:
     generate: true
-    image_path: "assets/icon/app_icon.png"
+    image_path: "assets/app_icon/app_icon.png"
     icon_size: 256

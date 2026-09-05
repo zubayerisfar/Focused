@@ -48,6 +48,11 @@ class ProfileStreakXpBar extends StatelessWidget {
     final streak = math.max(localStreak, userStats.syncedStreakDays);
     final xpPoints = userStats.xpPoints;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final compact = screenWidth < 380;
+    final chipPadding = EdgeInsets.symmetric(horizontal: compact ? 8 : 12);
+    final chipGap = compact ? 5.0 : 8.0;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -57,8 +62,8 @@ class ProfileStreakXpBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(19),
           onTap: () => context.push('/xp'),
           child: Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 13),
+            height: 36,
+            padding: chipPadding,
             decoration: BoxDecoration(
               color: const Color(
                 0xFF1CB0F6,
@@ -75,14 +80,14 @@ class ProfileStreakXpBar extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.bolt_rounded,
-                  size: 20,
+                  size: 18,
                   color: Color(0xFF1CB0F6),
                 ),
-                const SizedBox(width: 5),
+                const SizedBox(width: 4),
                 Text(
                   '$xpPoints',
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF1CB0F6),
                   ),
@@ -91,15 +96,15 @@ class ProfileStreakXpBar extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: chipGap),
 
         // Streak chip
         InkWell(
           borderRadius: BorderRadius.circular(19),
           onTap: () => context.push('/streak'),
           child: Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 13),
+            height: 36,
+            padding: chipPadding,
             decoration: BoxDecoration(
               color: const Color(
                 0xFFFF9600,
@@ -114,12 +119,12 @@ class ProfileStreakXpBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text('🔥', style: TextStyle(fontSize: 16, height: 1.0)),
-                const SizedBox(width: 5),
+                const Text('🔥', style: TextStyle(fontSize: 15, height: 1.0)),
+                const SizedBox(width: 4),
                 Text(
                   '$streak',
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFFFF9600),
                   ),

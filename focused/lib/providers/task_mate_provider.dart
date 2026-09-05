@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../models/friend_user.dart';
 import '../models/habit.dart';
 import '../models/task.dart';
 import '../models/task_group.dart';
 import '../models/task_recurrence.dart';
+import '../services/friends_service.dart';
 import '../services/task_mate_service.dart';
 import '../services/task_notification_service.dart';
 import 'habit_provider.dart';
@@ -19,6 +20,7 @@ class TaskMateProvider extends ChangeNotifier {
   final TaskNotificationService _notificationService;
   final UserStatsProvider _statsProvider;
   final UserProfileProvider _profileProvider;
+  final FriendsService? _friendsService;
   TaskProvider? _taskProvider;
   HabitProvider? _habitProvider;
 
@@ -32,12 +34,14 @@ class TaskMateProvider extends ChangeNotifier {
     required TaskNotificationService notificationService,
     required UserStatsProvider statsProvider,
     required UserProfileProvider profileProvider,
+    FriendsService? friendsService,
     TaskProvider? taskProvider,
     HabitProvider? habitProvider,
   }) : _service = service,
        _notificationService = notificationService,
        _statsProvider = statsProvider,
        _profileProvider = profileProvider,
+       _friendsService = friendsService,
        _taskProvider = taskProvider,
        _habitProvider = habitProvider;
 
@@ -226,19 +230,22 @@ class TaskMateProvider extends ChangeNotifier {
     // 3. Automated Sync: If habit category, auto-sync to habit
     if (isHabit && _habitProvider != null) {
       try {
-        await _habitProvider!.createHabit(
+        final habit = await _habitProvider!.createHabit(
           title: taskTitle,
           goalType: HabitGoalType.checkIn,
           targetValue: 1,
           unit: 'times',
           weekdays: {1, 2, 3, 4, 5, 6, 7},
-          iconCodePoint: 0xe156, // check_circle
+          iconCodePoint: Icons.check_rounded.codePoint,
           colorValue: 0xFF9B51E0,
           reminderMinutesFromMidnight:
               scheduledTime.hour * 60 + scheduledTime.minute,
         );
-      } catch (e) {
-        debugPrint('Auto-sync to habit error: $e');
+        debugPrint(
+          'Squad habit auto-synced successfully: ${habit.title} (${habit.id})',
+        );
+      } catch (e, st) {
+        debugPrint('Auto-sync to habit error: $e\n$st');
       }
     }
   }
@@ -333,6 +340,40 @@ class TaskMateProvider extends ChangeNotifier {
             }, SetOptions(merge: true));
       } catch (e) {
         debugPrint('Direct Firestore XP increment error: $e');
+      }
+    }
+
+    // Broadcast completion to other squad members so they get "friend finished task, now it's your turn!"
+    if (_friendsService != null) {
+      try {
+        final group = _groups.firstWhere(
+          (g) => g.id == groupId,
+          orElse: () => TaskGroup(
+            id: '',
+            name: '',
+            createdBy: '',
+            memberUids: [],
+            members: {},
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        if (group.memberUids.isNotEmpty) {
+          final taskTitle = taskIndex < group.activeTasks.length
+              ? group.activeTasks[taskIndex].title
+              : 'Squad Task';
+          final myName = _profileProvider.profile.displayName.isNotEmpty
+              ? _profileProvider.profile.displayName
+              : 'Your squad mate';
+          await _friendsService.notifyTaskMateCompletion(
+            targetMemberUids: group.memberUids,
+            completedByUid: _currentUid,
+            completedByName: myName,
+            taskTitle: taskTitle,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error broadcasting squad task completion: $e');
       }
     }
   }

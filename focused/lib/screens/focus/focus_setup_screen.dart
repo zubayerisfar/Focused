@@ -172,38 +172,38 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                 ),
                 child: Icon(
                   selectedTask == null
-                      ? Icons.add_task_rounded
+                      ? Icons.bolt_rounded
                       : Icons.task_alt_rounded,
                   color: AppTheme.primaryBlue,
                 ),
               ),
               title: Text(
-                selectedTask?.title ?? 'Choose a task',
+                selectedTask?.title ?? 'Quick Focus Session',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
                 selectedTask == null
-                    ? 'Create a task before starting focus'
+                    ? 'Automatically added to your daily planner'
                     : '${_taskDurationLabel(selectedTask)} • ${selectedTask.priority.label}${selectedOccurrence == null ? '' : ' • ${_occurrenceLabel(selectedOccurrence.start, selectedOccurrence.end)}'}',
               ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-            ),
-          ),
-
-          if (selectedTask == null) ...[
-            const SizedBox(height: 10),
-
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  context.push('/task/new');
-                },
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Create a Task'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selectedTask != null)
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      tooltip: 'Unlink task',
+                      onPressed: () {
+                        setState(() {
+                          _selectedTaskId = '';
+                        });
+                      },
+                    ),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
               ),
             ),
-          ],
+          ),
 
           const SizedBox(height: 26),
 
@@ -339,34 +339,76 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
           SizedBox(
             height: 58,
             child: FilledButton.icon(
-              onPressed: selectedTask == null
-                  ? null
-                  : () {
-                      final occurrence = context
-                          .read<TaskProvider>()
-                          .occurrenceForTaskOnDate(
-                            selectedTask!,
-                            _occurrenceDate,
-                          );
+              onPressed: () async {
+                Task? sessionTask = selectedTask;
+                final taskProvider = context.read<TaskProvider>();
+                final focusProvider = context.read<FocusProvider>();
+                final router = GoRouter.of(context);
 
-                      context.read<FocusProvider>().startSession(
-                        taskId: selectedTask!.id,
-                        taskName: selectedTask.title,
-                        taskOccurrenceDate: _occurrenceDate,
-                        taskScheduledStart: occurrence?.start,
-                        taskScheduledEnd: occurrence?.end,
-                        totalFocusMinutes: _totalMinutes,
-                        focusBlockMinutes: _focusMinutes,
-                        breakMinutes: _breakMinutes,
-                        guardWarningSeconds: _guardWarningSeconds,
+                if (sessionTask == null) {
+                  // Auto create a task in the daily planner for Quick Focus
+                  final now = DateTime.now();
+                  final startTime = DateTime(
+                    _occurrenceDate.year,
+                    _occurrenceDate.month,
+                    _occurrenceDate.day,
+                    now.hour,
+                    now.minute,
+                  );
+                  final endTime = startTime.add(
+                    Duration(minutes: _totalMinutes),
+                  );
+                  final autoTask = Task(
+                    id: 'quick_focus_${DateTime.now().millisecondsSinceEpoch}',
+                    title: 'Quick Focus Session',
+                    description: 'Auto-created quick focus task',
+                    priority: TaskPriority.growth,
+                    plannedDate: _occurrenceDate,
+                    scheduledStart: startTime,
+                    scheduledEnd: endTime,
+                    guardWarningSeconds: _guardWarningSeconds,
+                    createdAt: DateTime.now(),
+                  );
+                  try {
+                    await taskProvider.addTask(autoTask);
+                    sessionTask = autoTask;
+                  } catch (_) {
+                    // Fallback to starting session even if task add fails
+                  }
+                }
+
+                if (!mounted) return;
+
+                final occurrence = sessionTask == null
+                    ? null
+                    : taskProvider.occurrenceForTaskOnDate(
+                        sessionTask,
+                        _occurrenceDate,
                       );
 
-                      context.push('/focus/session');
-                    },
+                focusProvider.startSession(
+                  taskId: sessionTask?.id,
+                  taskName: sessionTask?.title ?? 'Quick Focus Session',
+                  taskOccurrenceDate: _occurrenceDate,
+                  taskScheduledStart: occurrence?.start,
+                  taskScheduledEnd: occurrence?.end,
+                  totalFocusMinutes: _totalMinutes,
+                  focusBlockMinutes: _focusMinutes,
+                  breakMinutes: _breakMinutes,
+                  guardWarningSeconds: _guardWarningSeconds,
+                );
+
+                router.push('/focus/session');
+              },
               icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text(
-                'Start Focus Session',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              label: Text(
+                selectedTask == null
+                    ? 'Start Quick Focus'
+                    : 'Start Focus Session',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -393,8 +435,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
 
       remainingMinutes -= currentFocusMinutes;
 
-      // Break time is NOT counted toward total focus duration.
-      // Add a break only when another focus block remains.
       if (remainingMinutes > 0 && _breakMinutes > 0) {
         plan.add(_FocusPlanItem(isWork: false, minutes: _breakMinutes));
       }
@@ -408,6 +448,8 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   // =========================================================
 
   void _showTaskPicker() {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
     final taskProvider = context.read<TaskProvider>();
     final tasks = widget.initialOccurrenceDate != null
         ? taskProvider.tasksForDate(_occurrenceDate, includeCompleted: false)
@@ -418,26 +460,12 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
               )
               .toList();
 
-    if (tasks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('You do not have any unfinished tasks yet.'),
-          action: SnackBarAction(
-            label: 'Create',
-            onPressed: () {
-              context.push('/task/new');
-            },
-          ),
-        ),
-      );
-
-      return;
-    }
-
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
+        final scheme = Theme.of(sheetContext).colorScheme;
+
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
@@ -451,54 +479,129 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
-              ...tasks.map((task) {
-                final selected = task.id == _selectedTaskId;
+              // Option 1: Quick Focus (No task linked)
+              ListTile(
+                leading: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1CB0F6).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.bolt_rounded,
+                    color: Color(0xFF1CB0F6),
+                  ),
+                ),
+                title: const Text(
+                  'Quick Focus (No task linked)',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text('Focus freely without attaching a task'),
+                trailing: _selectedTaskId == null || _selectedTaskId!.isEmpty
+                    ? const Icon(Icons.check_rounded, color: Color(0xFF1CB0F6))
+                    : null,
+                onTap: () {
+                  setState(() {
+                    _selectedTaskId = '';
+                  });
+                  Navigator.pop(sheetContext);
+                },
+              ),
 
-                return ListTile(
-                  leading: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: _taskColor(task.priority).withOpacity(0.12),
-                      shape: BoxShape.circle,
+              const Divider(height: 12),
+
+              if (tasks.isEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 40,
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No unfinished tasks found',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          context.push('/task/new');
+                        },
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Create a New Task'),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                ...tasks.map((task) {
+                  final selected = task.id == _selectedTaskId;
+
+                  return ListTile(
+                    leading: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: _taskColor(
+                          task.priority,
+                        ).withValues(alpha: 0.14),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.task_alt_rounded,
+                        color: _taskColor(task.priority),
+                      ),
                     ),
-                    child: Icon(
-                      Icons.task_alt_rounded,
-                      color: _taskColor(task.priority),
+                    title: Text(
+                      task.title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  ),
-                  title: Text(
-                    task.title,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    '${_taskDurationLabel(task)} • ${task.priority.label}',
-                  ),
-                  trailing: selected
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: AppTheme.primaryBlue,
-                        )
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _selectedTaskId = task.id;
-                      if (widget.initialOccurrenceDate == null) {
-                        _occurrenceDate = _executionDateForTask(
-                          taskProvider,
-                          task,
-                        );
-                      }
+                    subtitle: Text(
+                      '${_taskDurationLabel(task)} • ${task.priority.label}',
+                    ),
+                    trailing: selected
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: AppTheme.primaryBlue,
+                          )
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedTaskId = task.id;
+                        if (widget.initialOccurrenceDate == null) {
+                          _occurrenceDate = _executionDateForTask(
+                            taskProvider,
+                            task,
+                          );
+                        }
 
-                      _totalMinutes = _focusMinutesForTask(task);
-                    });
+                        _totalMinutes = _focusMinutesForTask(task);
+                      });
 
+                      Navigator.pop(sheetContext);
+                    },
+                  );
+                }),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () {
                     Navigator.pop(sheetContext);
+                    context.push('/task/new');
                   },
-                );
-              }),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Create Another Task'),
+                ),
+              ],
             ],
           ),
         );

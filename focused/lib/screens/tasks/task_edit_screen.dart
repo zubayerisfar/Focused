@@ -36,6 +36,8 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
   TaskRecurrence _recurrence = TaskRecurrence.none;
   Set<int> _customWeekdays = <int>{};
   int? _reminderMinutesBefore;
+  bool _enableLateReminder = false;
+  int _lateReminderMinutes = 30;
   int _guardWarningSeconds = 30;
 
   bool _isSaving = false;
@@ -85,6 +87,8 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     _recurrence = task.recurrence;
     _customWeekdays = Set<int>.from(task.customWeekdays);
     _reminderMinutesBefore = task.reminderMinutesBefore;
+    _enableLateReminder = task.lateReminderMinutesAfter != null;
+    _lateReminderMinutes = task.lateReminderMinutesAfter ?? 30;
     _guardWarningSeconds = task.guardWarningSeconds;
 
     if (task.scheduledStart != null && task.scheduledEnd != null) {
@@ -307,6 +311,36 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                   value: _reminderLabel(_reminderMinutesBefore),
                   onTap: _showReminderPicker,
                 ),
+                const Divider(height: 1),
+                SwitchListTile.adaptive(
+                  secondary: const Icon(Icons.alarm_off_outlined),
+                  title: const Text(
+                    'Late reminder if delayed',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    _enableLateReminder
+                        ? 'Remind $_lateReminderMinutes min after scheduled time'
+                        : 'No notification if overdue',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  value: _enableLateReminder,
+                  onChanged: (val) {
+                    setState(() => _enableLateReminder = val);
+                  },
+                ),
+                if (_enableLateReminder) ...[
+                  const Divider(height: 1),
+                  _SettingRow(
+                    icon: Icons.timer_outlined,
+                    title: 'Late delay',
+                    value: '$_lateReminderMinutes min after',
+                    onTap: _showLateDelayPicker,
+                  ),
+                ],
               ],
             ),
             if (_recurrence == TaskRecurrence.customDays) ...[
@@ -532,6 +566,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         ? Set<int>.from(_customWeekdays)
         : <int>{};
     final reminder = _scheduleOnCalendar ? _reminderMinutesBefore : null;
+    final lateReminder = (_scheduleOnCalendar && _enableLateReminder)
+        ? _lateReminderMinutes
+        : null;
 
     setState(() {
       _isSaving = true;
@@ -558,6 +595,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           recurrence: recurrence,
           customWeekdays: customWeekdays,
           reminderMinutesBefore: reminder,
+          lateReminderMinutesAfter: lateReminder,
           guardWarningSeconds: _guardWarningSeconds,
           isCompleted: original.isCompleted,
           createdAt: original.createdAt,
@@ -578,6 +616,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           recurrence: recurrence,
           customWeekdays: customWeekdays,
           reminderMinutesBefore: reminder,
+          lateReminderMinutesAfter: lateReminder,
           guardWarningSeconds: _guardWarningSeconds,
         );
 
@@ -1005,6 +1044,60 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                   onTap: () {
                     setState(() {
                       _guardWarningSeconds = sec;
+                    });
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLateDelayPicker() {
+    final options = [15, 20, 30, 45, 60];
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final scheme = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.only(bottom: 16),
+            children: [
+              ListTile(
+                title: Text(
+                  'Late reminder delay',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: const Text(
+                  'How long after the task end to notify you if incomplete.',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+              ...options.map(
+                (mins) => ListTile(
+                  title: Text(
+                    '$mins minutes after',
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontWeight: mins == _lateReminderMinutes
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  trailing: mins == _lateReminderMinutes
+                      ? Icon(Icons.check_rounded, color: scheme.primary)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _lateReminderMinutes = mins;
                     });
                     Navigator.pop(sheetContext);
                   },

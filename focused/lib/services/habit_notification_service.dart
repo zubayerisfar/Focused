@@ -1,3 +1,5 @@
+import 'dart:ui' show Color;
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -46,7 +48,7 @@ class HabitNotificationService implements HabitReminderScheduler {
     }
 
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      android: AndroidInitializationSettings('@drawable/ic_notification'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -124,11 +126,31 @@ class HabitNotificationService implements HabitReminderScheduler {
           matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
           payload: 'habit:${habit.id}',
         );
+
+        if (habit.lateReminderMinutesAfter != null &&
+            habit.lateReminderMinutesAfter! > 0) {
+          final lateTime = next.add(
+            Duration(minutes: habit.lateReminderMinutesAfter!),
+          );
+          await _notifications.zonedSchedule(
+            _lateNotificationId(habit.id, weekday),
+            '⏳ Don\'t forget: ${habit.title}',
+            'Did you finish "${habit.title}" today? Check it off now to keep your streak!',
+            _toLocalTz(lateTime),
+            _details,
+            androidScheduleMode: useExactScheduling
+                ? AndroidScheduleMode.exactAllowWhileIdle
+                : AndroidScheduleMode.inexactAllowWhileIdle,
+            matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+            payload: 'habit_late:${habit.id}',
+          );
+        }
       }
 
       final pendingCount = await pendingReminderCountForHabit(habit.id);
 
-      if (pendingCount != weekdays.length) {
+      final expectedMin = weekdays.length;
+      if (pendingCount < expectedMin) {
         await cancelForHabit(habit.id);
         return HabitReminderScheduleResult.error(
           habitId: habit.id,
@@ -168,6 +190,7 @@ class HabitNotificationService implements HabitReminderScheduler {
     await init();
     for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
       await _notifications.cancel(_notificationId(habitId, weekday));
+      await _notifications.cancel(_lateNotificationId(habitId, weekday));
     }
   }
 
@@ -181,8 +204,14 @@ class HabitNotificationService implements HabitReminderScheduler {
   Future<int> pendingReminderCountForHabit(String habitId) async {
     await init();
     final expected = <int>{
-      for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++)
+      for (
+        var weekday = DateTime.monday;
+        weekday <= DateTime.sunday;
+        weekday++
+      ) ...[
         _notificationId(habitId, weekday),
+        _lateNotificationId(habitId, weekday),
+      ],
     };
 
     final pending = await _notifications.pendingNotificationRequests();
@@ -261,6 +290,16 @@ class HabitNotificationService implements HabitReminderScheduler {
     return 1100000000 + ((hash % 100000000) * 7) + weekday;
   }
 
+  int _lateNotificationId(String habitId, int weekday) {
+    var hash = 2166136261;
+    for (final unit in habitId.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 16777619) & 0x7fffffff;
+    }
+
+    return 1200000000 + ((hash % 100000000) * 7) + weekday;
+  }
+
   static const NotificationDetails _details = NotificationDetails(
     android: AndroidNotificationDetails(
       'habit_reminders_v1',
@@ -270,8 +309,71 @@ class HabitNotificationService implements HabitReminderScheduler {
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_habit_reminder'),
+      color: Color(0xFF4E25AA),
     ),
     iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
     macOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
   );
+
+  Future<void> scheduleStreakContinuationReminder({
+    required int streakDays,
+    required int hour,
+    required int minute,
+  }) async {
+    const reminderId = 776655;
+    await _notifications.cancel(reminderId);
+
+    const streakDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'focused_streak_reminders_v1',
+        'Streak Continuity Reminders',
+        channelDescription:
+            'Alerts to protect and continue your active habit streak.',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        icon: '@drawable/ic_notification',
+        largeIcon: DrawableResourceAndroidBitmap('notif_streak'),
+        color: Color(0xFF4E25AA),
+      ),
+      iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+      macOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    );
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+
+    try {
+      await _notifications.zonedSchedule(
+        reminderId,
+        '🔥 Keep your $streakDays-day streak alive!',
+        'You have active habits waiting today. Check them off before midnight.',
+        scheduled,
+        streakDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'streak_continue_reminder',
+      );
+    } catch (e) {
+      // Ignored if timezone error
+    }
+  }
+
+  Future<void> cancelStreakContinuationReminder() async {
+    const reminderId = 776655;
+    await _notifications.cancel(reminderId);
+  }
 }

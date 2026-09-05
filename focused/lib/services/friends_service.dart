@@ -514,7 +514,51 @@ class FriendsService {
       'followedAt': FieldValue.serverTimestamp(),
     });
 
+    // 3. Add follower notice for real-time notification
+    final followerNoticeRef = _firestore
+        .collection('users')
+        .doc(targetUser.uid)
+        .collection('follower_notices')
+        .doc();
+
+    batch.set(followerNoticeRef, {
+      'fromUid': currentUid,
+      'fromName': myDisplayName,
+      'fromUsername': cleanMyUsername,
+      'photoUrl': myPhotoUrl,
+      'createdAt': FieldValue.serverTimestamp(),
+      'read': false,
+    });
+
     await batch.commit();
+  }
+
+  /// Listens for incoming follower notices to show local notifications
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  listenForIncomingFollowerNotices({
+    required String currentUid,
+    required Function(String followerName, String? photoUrl) onFollowerReceived,
+  }) {
+    if (currentUid.isEmpty) return null;
+
+    return _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('follower_notices')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .listen((snap) {
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final followerName = data['fromName']?.toString() ?? 'A Friend';
+            final photoUrl = data['photoUrl']?.toString();
+
+            onFollowerReceived(followerName, photoUrl);
+
+            // Mark as read
+            doc.reference.update({'read': true});
+          }
+        });
   }
 
   Future<void> unfollowUser({
@@ -625,12 +669,14 @@ class FriendsService {
         });
   }
 
-  /// Listens for incoming group notices to alert user of newly joined squads
+  /// Listens for incoming group notices to alert user of newly joined squads or assigned tasks
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
   listenForIncomingGroupNotices({
     required String currentUid,
     required Function(String groupName, String creatorName)
     onGroupNoticeReceived,
+    Function(String groupName, String assignerName, String taskTitle)?
+    onTaskAssignedReceived,
   }) {
     if (currentUid.isEmpty) return null;
 
@@ -645,8 +691,14 @@ class FriendsService {
             final data = doc.data();
             final groupName = data['groupName']?.toString() ?? 'Task Squad';
             final creatorName = data['creatorName']?.toString() ?? 'A Friend';
+            final isTaskAssignment = data['isTaskAssignment'] == true;
+            final taskTitle = data['taskTitle']?.toString() ?? 'a task';
 
-            onGroupNoticeReceived(groupName, creatorName);
+            if (isTaskAssignment && onTaskAssignedReceived != null) {
+              onTaskAssignedReceived(groupName, creatorName, taskTitle);
+            } else {
+              onGroupNoticeReceived(groupName, creatorName);
+            }
 
             // Mark as read
             doc.reference.update({'read': true});
@@ -753,5 +805,65 @@ class FriendsService {
         .collection('partner_quest')
         .doc('current')
         .set(quest.toMap(), SetOptions(merge: true));
+  }
+
+  // ===========================================================================
+  // PARTNER TASK COMPLETION NOTICES
+  // ===========================================================================
+
+  Future<void> notifyTaskMateCompletion({
+    required List<String> targetMemberUids,
+    required String completedByUid,
+    required String completedByName,
+    required String taskTitle,
+  }) async {
+    final batch = _firestore.batch();
+    for (final memberUid in targetMemberUids) {
+      if (memberUid == completedByUid) continue;
+      final docRef = _firestore
+          .collection('users')
+          .doc(memberUid)
+          .collection('partner_completion_notices')
+          .doc();
+      batch.set(docRef, {
+        'fromUid': completedByUid,
+        'fromName': completedByName,
+        'taskTitle': taskTitle,
+        'createdAt': FieldValue.serverTimestamp(),
+        'read': false,
+      });
+    }
+    try {
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Could not send partner task completion notices: $e');
+    }
+  }
+
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  listenForIncomingPartnerCompletions({
+    required String currentUid,
+    required Function(String friendName, String taskTitle) onCompletionReceived,
+  }) {
+    if (currentUid.isEmpty) return null;
+
+    return _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('partner_completion_notices')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .listen((snap) {
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final friendName = data['fromName']?.toString() ?? 'A Friend';
+            final taskTitle = data['taskTitle']?.toString() ?? 'their task';
+
+            onCompletionReceived(friendName, taskTitle);
+
+            // Mark as read
+            doc.reference.update({'read': true});
+          }
+        });
   }
 }

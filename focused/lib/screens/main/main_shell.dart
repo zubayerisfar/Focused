@@ -88,151 +88,161 @@ class _MainShellState extends State<MainShell> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
-      child: Scaffold(
-        body: IndexedStack(index: _currentIndex, children: _screens),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF171A23)
-                : Theme.of(context).colorScheme.surface,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
-              ),
-            ],
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.6),
-                width: 1,
-              ),
-            ),
-          ),
-          child: NavigationBarTheme(
-            data: NavigationBarThemeData(
-              indicatorColor: Colors.transparent,
-              overlayColor: WidgetStateProperty.all(Colors.transparent),
-              height: 68,
-              labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
-                states,
-              ) {
-                final isSelected = states.contains(WidgetState.selected);
-                return TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  letterSpacing: -0.1,
-                  color: isSelected
-                      ? (isDark ? Colors.white : const Color(0xFF1E293B))
-                      : (isDark
-                            ? Colors.white.withValues(alpha: 0.55)
-                            : const Color(0xFF64748B)),
-                );
-              }),
-            ),
-            child: NavigationBar(
-              selectedIndex: _currentIndex,
-              height: 68,
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              onDestinationSelected: (index) {
-                if (_currentIndex != index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                }
-              },
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: const [
-                NavigationDestination(
-                  icon: _NavIcon(
-                    assetName: 'nav_home.svg',
-                    fallbackIcon: Icons.home_outlined,
-                    color: Color(0xFFFF8228), // Orange
-                    isSelected: false,
-                    size: 24,
-                  ),
-                  selectedIcon: _NavIcon(
-                    assetName: 'nav_home.svg',
-                    fallbackIcon: Icons.home_rounded,
-                    color: Color(0xFFFF8228), // Orange
-                    isSelected: true,
-                    size: 24,
-                  ),
-                  label: 'Home',
-                ),
-                NavigationDestination(
-                  icon: _NavIcon(
-                    assetName: 'nav_planner.svg',
-                    fallbackIcon: Icons.view_timeline_outlined,
-                    color: Color(0xFF58CC02), // Green
-                    isSelected: false,
-                    size: 24,
-                  ),
-                  selectedIcon: _NavIcon(
-                    assetName: 'nav_planner.svg',
-                    fallbackIcon: Icons.view_timeline_rounded,
-                    color: Color(0xFF58CC02), // Green
-                    isSelected: true,
-                    size: 24,
-                  ),
-                  label: 'Planner',
-                ),
-                NavigationDestination(
-                  icon: _NavIcon(
-                    assetName: 'nav_focus.svg',
-                    fallbackIcon: Icons.center_focus_strong_outlined,
-                    color: Color(0xFFFF5252), // Red
-                    isSelected: false,
-                    size: 24,
-                  ),
-                  selectedIcon: _NavIcon(
-                    assetName: 'nav_focus.svg',
-                    fallbackIcon: Icons.center_focus_strong_rounded,
-                    color: Color(0xFFFF5252), // Red
-                    isSelected: true,
-                    size: 24,
-                  ),
-                  label: 'Focus',
-                ),
-                NavigationDestination(
-                  icon: _NavIcon(
-                    assetName: 'nav_friends.svg',
-                    alternateAssetName: 'friends_icon.svg',
-                    fallbackIcon: Icons.people_alt_outlined,
-                    color: Color(0xFF9B51E0), // Purple
-                    isSelected: false,
-                    size: 24,
-                  ),
-                  selectedIcon: _NavIcon(
-                    assetName: 'nav_friends.svg',
-                    alternateAssetName: 'friends_icon.svg',
-                    fallbackIcon: Icons.people_alt_rounded,
-                    color: Color(0xFF9B51E0), // Purple
-                    isSelected: true,
-                    size: 24,
-                  ),
-                  label: 'Friends',
-                ),
-                NavigationDestination(
-                  icon: _NavIcon(
-                    assetName: 'nav_settings.svg',
-                    fallbackIcon: Icons.settings_outlined,
-                    color: Color(0xFF0EA5E9), // Bluish
-                    isSelected: false,
-                    size: 24,
-                  ),
-                  selectedIcon: _NavIcon(
-                    assetName: 'nav_settings.svg',
-                    fallbackIcon: Icons.settings_rounded,
-                    color: Color(0xFF0EA5E9), // Bluish
-                    isSelected: true,
-                    size: 24,
-                  ),
-                  label: 'Settings',
+      child: PopScope(
+        canPop: _currentIndex == 0,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) {
+            setState(() {
+              _currentIndex = 0;
+            });
+          }
+        },
+        child: Scaffold(
+          body: IndexedStack(index: _currentIndex, children: _screens),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF171A23)
+                  : Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
                 ),
               ],
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.6),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: NavigationBarTheme(
+              data: NavigationBarThemeData(
+                indicatorColor: Colors.transparent,
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+                height: 68,
+                labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
+                  states,
+                ) {
+                  final isSelected = states.contains(WidgetState.selected);
+                  return TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: -0.1,
+                    color: isSelected
+                        ? (isDark ? Colors.white : const Color(0xFF1E293B))
+                        : (isDark
+                              ? Colors.white.withValues(alpha: 0.55)
+                              : const Color(0xFF64748B)),
+                  );
+                }),
+              ),
+              child: NavigationBar(
+                selectedIndex: _currentIndex,
+                height: 68,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                onDestinationSelected: (index) {
+                  if (_currentIndex != index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  }
+                },
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                destinations: const [
+                  NavigationDestination(
+                    icon: _NavIcon(
+                      assetName: 'nav_home.svg',
+                      fallbackIcon: Icons.home_outlined,
+                      color: Color(0xFFFF8228), // Orange
+                      isSelected: false,
+                      size: 24,
+                    ),
+                    selectedIcon: _NavIcon(
+                      assetName: 'nav_home.svg',
+                      fallbackIcon: Icons.home_rounded,
+                      color: Color(0xFFFF8228), // Orange
+                      isSelected: true,
+                      size: 24,
+                    ),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: _NavIcon(
+                      assetName: 'nav_planner.svg',
+                      fallbackIcon: Icons.view_timeline_outlined,
+                      color: Color(0xFF58CC02), // Green
+                      isSelected: false,
+                      size: 24,
+                    ),
+                    selectedIcon: _NavIcon(
+                      assetName: 'nav_planner.svg',
+                      fallbackIcon: Icons.view_timeline_rounded,
+                      color: Color(0xFF58CC02), // Green
+                      isSelected: true,
+                      size: 24,
+                    ),
+                    label: 'Planner',
+                  ),
+                  NavigationDestination(
+                    icon: _NavIcon(
+                      assetName: 'nav_focus.svg',
+                      fallbackIcon: Icons.center_focus_strong_outlined,
+                      color: Color(0xFFFF5252), // Red
+                      isSelected: false,
+                      size: 24,
+                    ),
+                    selectedIcon: _NavIcon(
+                      assetName: 'nav_focus.svg',
+                      fallbackIcon: Icons.center_focus_strong_rounded,
+                      color: Color(0xFFFF5252), // Red
+                      isSelected: true,
+                      size: 24,
+                    ),
+                    label: 'Focus',
+                  ),
+                  NavigationDestination(
+                    icon: _NavIcon(
+                      assetName: 'nav_friends.svg',
+                      alternateAssetName: 'friends_icon.svg',
+                      fallbackIcon: Icons.people_alt_outlined,
+                      color: Color(0xFF9B51E0), // Purple
+                      isSelected: false,
+                      size: 24,
+                    ),
+                    selectedIcon: _NavIcon(
+                      assetName: 'nav_friends.svg',
+                      alternateAssetName: 'friends_icon.svg',
+                      fallbackIcon: Icons.people_alt_rounded,
+                      color: Color(0xFF9B51E0), // Purple
+                      isSelected: true,
+                      size: 24,
+                    ),
+                    label: 'Friends',
+                  ),
+                  NavigationDestination(
+                    icon: _NavIcon(
+                      assetName: 'nav_settings.svg',
+                      fallbackIcon: Icons.settings_outlined,
+                      color: Color(0xFF0EA5E9), // Bluish
+                      isSelected: false,
+                      size: 24,
+                    ),
+                    selectedIcon: _NavIcon(
+                      assetName: 'nav_settings.svg',
+                      fallbackIcon: Icons.settings_rounded,
+                      color: Color(0xFF0EA5E9), // Bluish
+                      isSelected: true,
+                      size: 24,
+                    ),
+                    label: 'Settings',
+                  ),
+                ],
+              ),
             ),
           ),
         ),

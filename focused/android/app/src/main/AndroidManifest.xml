@@ -18,6 +18,13 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
+
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
@@ -105,6 +112,14 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-7510036527454914~7432248901" />
+
+        <!-- Notification Icon and Accent Color -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
     </application>
 
     <queries>

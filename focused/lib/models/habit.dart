@@ -16,6 +16,7 @@ class Habit {
   final int iconCodePoint;
   final int colorValue;
   final int? reminderMinutesFromMidnight;
+  final int? lateReminderMinutesAfter;
   final DateTime createdAt;
 
   /// The local calendar day from which the current goal/repeat definition
@@ -33,6 +34,7 @@ class Habit {
     required this.iconCodePoint,
     required this.colorValue,
     this.reminderMinutesFromMidnight,
+    this.lateReminderMinutesAfter,
     required DateTime createdAt,
     DateTime? definitionEffectiveFromDay,
     List<HabitDefinitionRevision> definitionHistory = const [],
@@ -153,6 +155,7 @@ class Habit {
     int? iconCodePoint,
     int? colorValue,
     Object? reminderMinutesFromMidnight = _unset,
+    Object? lateReminderMinutesAfter = _unset,
     DateTime? createdAt,
     DateTime? definitionEffectiveFromDay,
     List<HabitDefinitionRevision>? definitionHistory,
@@ -170,6 +173,9 @@ class Habit {
           identical(reminderMinutesFromMidnight, _unset)
           ? this.reminderMinutesFromMidnight
           : reminderMinutesFromMidnight as int?,
+      lateReminderMinutesAfter: identical(lateReminderMinutesAfter, _unset)
+          ? this.lateReminderMinutesAfter
+          : lateReminderMinutesAfter as int?,
       createdAt: createdAt ?? this.createdAt,
       definitionEffectiveFromDay:
           definitionEffectiveFromDay ?? this.definitionEffectiveFromDay,
@@ -189,6 +195,7 @@ class Habit {
       'iconCodePoint': iconCodePoint,
       'colorValue': colorValue,
       'reminderMinutesFromMidnight': reminderMinutesFromMidnight,
+      'lateReminderMinutesAfter': lateReminderMinutesAfter,
       'createdAt': createdAt.toIso8601String(),
       'definitionEffectiveFromDay': definitionEffectiveFromDay
           .toIso8601String(),
@@ -208,6 +215,7 @@ class Habit {
     final iconCodePoint = map['iconCodePoint'];
     final colorValue = map['colorValue'];
     final reminderRaw = map['reminderMinutesFromMidnight'];
+    final lateReminderRaw = map['lateReminderMinutesAfter'];
     final createdAtRaw = map['createdAt'];
     final definitionEffectiveRaw = map['definitionEffectiveFromDay'];
     final definitionHistoryRaw = map['definitionHistory'];
@@ -226,6 +234,9 @@ class Habit {
     }
     if (reminderRaw != null && reminderRaw is! int) {
       throw const FormatException('Invalid habit reminder time.');
+    }
+    if (lateReminderRaw != null && lateReminderRaw is! int) {
+      throw const FormatException('Invalid habit late reminder time.');
     }
     if (definitionEffectiveRaw != null && definitionEffectiveRaw is! String) {
       throw const FormatException('Invalid habit definition start.');
@@ -272,6 +283,7 @@ class Habit {
       iconCodePoint: iconCodePoint,
       colorValue: colorValue,
       reminderMinutesFromMidnight: reminderRaw as int?,
+      lateReminderMinutesAfter: lateReminderRaw as int?,
       createdAt: createdAt,
       definitionEffectiveFromDay: definitionEffectiveFromDay,
       definitionHistory: history,

@@ -335,8 +335,8 @@ class _FriendsScreenState extends State<FriendsScreen>
                               ),
                               content: Text(
                                 success
-                                    ? '🔔 Task reminder sent to ${quest.partnerName}! (${friendsProvider.remindersSentToday}/3 sent today)'
-                                    : 'Daily reminder limit of 3 reached for today.',
+                                    ? '🔔 Task reminder sent to ${quest.partnerName}! (${friendsProvider.remindersSentToday}/5 sent today)'
+                                    : 'Daily reminder limit of 5 reached for today.',
                               ),
                             ),
                           );
@@ -410,6 +410,7 @@ class _FriendsScreenState extends State<FriendsScreen>
               isFollowingTab: true,
               isDark: isDark,
               canSendReminder: friendsProvider.canSendReminder,
+              canSendGift: friendsProvider.canSendGift,
               onSendReminder: (f) async {
                 final ok = await friendsProvider.sendReminder(f.uid);
                 if (context.mounted) {
@@ -418,8 +419,8 @@ class _FriendsScreenState extends State<FriendsScreen>
                       behavior: SnackBarBehavior.floating,
                       content: Text(
                         ok
-                            ? '🔔 Reminder sent to ${f.displayName}!'
-                            : 'Daily limit of 3 reminders reached.',
+                            ? '🔔 Reminder sent to ${f.displayName}! (${friendsProvider.remindersSentToday}/5 sent today)'
+                            : 'Daily limit of 5 reminders reached.',
                       ),
                     ),
                   );
@@ -427,7 +428,7 @@ class _FriendsScreenState extends State<FriendsScreen>
               },
               onSendExp: (f) => _confirmSendExp(context, f.uid, f.displayName),
               onPairQuest: (f) => friendsProvider.pairWithFriend(f),
-              onUnfollow: (f) => friendsProvider.unfollow(f.uid),
+              onUnfollow: (f) => _confirmUnfollow(context, f),
             ),
 
             // 3. Followers Tab
@@ -436,24 +437,12 @@ class _FriendsScreenState extends State<FriendsScreen>
               isFollowingTab: false,
               isDark: isDark,
               canSendReminder: friendsProvider.canSendReminder,
-              onSendReminder: (f) async {
-                final ok = await friendsProvider.sendReminder(f.uid);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      content: Text(
-                        ok
-                            ? '🔔 Reminder sent to ${f.displayName}!'
-                            : 'Daily limit of 3 reminders reached.',
-                      ),
-                    ),
-                  );
-                }
-              },
-              onSendExp: (f) => _confirmSendExp(context, f.uid, f.displayName),
+              canSendGift: friendsProvider.canSendGift,
+              onSendReminder: (_) {},
+              onSendExp: (_) {},
               onPairQuest: (f) => friendsProvider.pairWithFriend(f),
               onFollowBack: (f) => friendsProvider.follow(f),
+              onUnfollow: (f) => _confirmUnfollow(context, f),
             ),
           ],
         ),
@@ -557,6 +546,78 @@ class _FriendsScreenState extends State<FriendsScreen>
     }
   }
 
+  // ── UNFOLLOW WITH GROUP CLEANUP ──
+
+  Future<void> _confirmUnfollow(BuildContext context, FriendUser friend) async {
+    final taskMateProvider = context.read<TaskMateProvider>();
+    final friendsProvider = context.read<FriendsProvider>();
+    final account = context.read<AccountProvider>();
+    final myUid = account.user?.uid ?? '';
+
+    // Find groups shared with this user
+    final sharedGroups = taskMateProvider.groups
+        .where((g) => g.memberUids.contains(friend.uid))
+        .toList();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1A282F) : scheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Text(
+          'Unfollow?',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: Text(
+          sharedGroups.isNotEmpty
+              ? 'You have ${sharedGroups.length} shared group${sharedGroups.length > 1 ? 's' : ''} with ${friend.displayName}. Unfollowing will permanently destroy ${sharedGroups.length > 1 ? 'these groups' : 'this group'} and remove all shared tasks.'
+              : 'Are you sure you want to unfollow ${friend.displayName}?',
+          style: TextStyle(
+            color: isDark ? const Color(0xFFAFBBC1) : scheme.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: sharedGroups.isNotEmpty
+                  ? Colors.red
+                  : scheme.primary,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              sharedGroups.isNotEmpty ? 'Unfollow & Destroy Group' : 'Unfollow',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      // Destroy all shared groups first
+      for (final group in sharedGroups) {
+        final isCreator = group.createdBy == myUid;
+        await taskMateProvider.leaveOrDeleteGroup(
+          groupId: group.id,
+          isCreator: isCreator,
+        );
+      }
+      if (context.mounted) {
+        await friendsProvider.unfollow(friend.uid);
+      }
+    }
+  }
+
   // ── TASK MATES DIALOGS & ACTIONS ──
 
   void _showCreateGroupDialog(BuildContext context) {
@@ -584,233 +645,246 @@ class _FriendsScreenState extends State<FriendsScreen>
           final scheme = Theme.of(context).colorScheme;
 
           return Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              16,
-              20,
-              20 + MediaQuery.viewInsetsOf(context).bottom,
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(context).bottom,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF2B3D47)
-                          : scheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+              ),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SvgPicture.asset(
-                      'assets/icon/group_icon.svg',
-                      width: 26,
-                      height: 26,
-                      colorFilter: ColorFilter.mode(
-                        scheme.primary,
-                        BlendMode.srcIn,
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF2B3D47)
+                              : scheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        SvgPicture.asset(
+                          'assets/icon/group_icon.svg',
+                          width: 26,
+                          height: 26,
+                          colorFilter: ColorFilter.mode(
+                            scheme.primary,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Create Task Squad',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : scheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Text(
-                      'Create Task Squad',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : scheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Partner with up to 4 friends (up to 5 members total). Squad members can share up to 3 active tasks and earn double EXP (+200 EXP)!',
-                  style: TextStyle(
-                    color: isDark
-                        ? const Color(0xFF77878F)
-                        : scheme.onSurfaceVariant,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Squad Name',
-                    hintText: 'e.g. Focus Duo, Daily Grind',
-                    filled: true,
-                    fillColor: scheme.surfaceContainerHigh,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: scheme.outlineVariant),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: scheme.outlineVariant),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Choose up to 4 Friends (${selectedFriends.length}/4):',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: isDark ? Colors.white : scheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (friends.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'You have not followed any friends yet. Follow friends first to create a squad!',
+                      'Partner with up to 4 friends (up to 5 members total). Squad members can share up to 3 active tasks and earn double EXP (+200 EXP)!',
                       style: TextStyle(
                         color: isDark
                             ? const Color(0xFF77878F)
                             : scheme.onSurfaceVariant,
+                        fontSize: 13,
                       ),
                     ),
-                  )
-                else
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 180),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: friends.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
-                      itemBuilder: (context, i) {
-                        final f = friends[i];
-                        final isSelected = selectedFriends.any(
-                          (sf) => sf.uid == f.uid,
-                        );
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Squad Name',
+                        hintText: 'e.g. Focus Duo, Daily Grind',
+                        filled: true,
+                        fillColor: scheme.surfaceContainerHigh,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: scheme.outlineVariant),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: scheme.outlineVariant),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Choose up to 4 Friends (${selectedFriends.length}/4):',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: isDark ? Colors.white : scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (friends.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          'You have not followed any friends yet. Follow friends first to create a squad!',
+                          style: TextStyle(
+                            color: isDark
+                                ? const Color(0xFF77878F)
+                                : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      )
+                    else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 180),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: friends.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 6),
+                          itemBuilder: (context, i) {
+                            final f = friends[i];
+                            final isSelected = selectedFriends.any(
+                              (sf) => sf.uid == f.uid,
+                            );
 
-                        return CheckboxListTile(
+                            return CheckboxListTile(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              tileColor: scheme.surfaceContainerHigh,
+                              secondary: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: const Color(0xFF58CC02),
+                                backgroundImage:
+                                    f.photoUrl != null && f.photoUrl!.isNotEmpty
+                                    ? NetworkImage(f.photoUrl!)
+                                    : null,
+                                onBackgroundImageError: f.photoUrl != null
+                                    ? (_, __) {}
+                                    : null,
+                                child: f.photoUrl == null || f.photoUrl!.isEmpty
+                                    ? Text(
+                                        f.displayName.isNotEmpty
+                                            ? f.displayName[0].toUpperCase()
+                                            : 'U',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              title: Text(
+                                f.displayName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? Colors.white
+                                      : scheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Text(
+                                f.handle,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? const Color(0xFF77878F)
+                                      : scheme.onSurfaceVariant,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              value: isSelected,
+                              onChanged: (val) {
+                                setSheetState(() {
+                                  if (val == true) {
+                                    if (selectedFriends.length < 4) {
+                                      selectedFriends.add(f);
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Maximum 4 friends can be added (5 members total).',
+                                          ),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    selectedFriends.removeWhere(
+                                      (sf) => sf.uid == f.uid,
+                                    );
+                                  }
+                                });
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1CB0F6),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          tileColor: scheme.surfaceContainerHigh,
-                          secondary: CircleAvatar(
-                            radius: 18,
-                            backgroundColor: const Color(0xFF58CC02),
-                            backgroundImage:
-                                f.photoUrl != null && f.photoUrl!.isNotEmpty
-                                ? NetworkImage(f.photoUrl!)
-                                : null,
-                            onBackgroundImageError: f.photoUrl != null
-                                ? (_, __) {}
-                                : null,
-                            child: f.photoUrl == null || f.photoUrl!.isEmpty
-                                ? Text(
-                                    f.displayName.isNotEmpty
-                                        ? f.displayName[0].toUpperCase()
-                                        : 'U',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                          title: Text(
-                            f.displayName,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : scheme.onSurface,
-                            ),
-                          ),
-                          subtitle: Text(
-                            f.handle,
-                            style: TextStyle(
-                              color: isDark
-                                  ? const Color(0xFF77878F)
-                                  : scheme.onSurfaceVariant,
-                              fontSize: 12,
-                            ),
-                          ),
-                          value: isSelected,
-                          onChanged: (val) {
-                            setSheetState(() {
-                              if (val == true) {
-                                if (selectedFriends.length < 4) {
-                                  selectedFriends.add(f);
-                                } else {
+                        ),
+                        onPressed: selectedFriends.isEmpty
+                            ? null
+                            : () async {
+                                final squadName =
+                                    nameController.text.trim().isEmpty
+                                    ? 'Task Squad'
+                                    : nameController.text.trim();
+                                Navigator.pop(ctx);
+                                final ok = await taskMateProvider.createGroup(
+                                  name: squadName,
+                                  selectedFriends: selectedFriends,
+                                );
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
+                                      backgroundColor: ok
+                                          ? const Color(0xFF58CC02)
+                                          : Colors.redAccent,
+                                      behavior: SnackBarBehavior.floating,
                                       content: Text(
-                                        'Maximum 4 friends can be added (5 members total).',
+                                        ok
+                                            ? '🎉 Squad "$squadName" created!'
+                                            : 'Could not create squad. Max 3 groups allowed.',
                                       ),
-                                      duration: Duration(seconds: 2),
                                     ),
                                   );
                                 }
-                              } else {
-                                selectedFriends.removeWhere(
-                                  (sf) => sf.uid == f.uid,
-                                );
-                              }
-                            });
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1CB0F6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                              },
+                        child: const Text(
+                          'Create Squad',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
-                    onPressed: selectedFriends.isEmpty
-                        ? null
-                        : () async {
-                            final squadName = nameController.text.trim().isEmpty
-                                ? 'Task Squad'
-                                : nameController.text.trim();
-                            Navigator.pop(ctx);
-                            final ok = await taskMateProvider.createGroup(
-                              name: squadName,
-                              selectedFriends: selectedFriends,
-                            );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: ok
-                                      ? const Color(0xFF58CC02)
-                                      : Colors.redAccent,
-                                  behavior: SnackBarBehavior.floating,
-                                  content: Text(
-                                    ok
-                                        ? '🎉 Squad "$squadName" created!'
-                                        : 'Could not create squad. Max 3 groups allowed.',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                    child: const Text(
-                      'Create Squad',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         },
@@ -890,29 +964,171 @@ class _FriendsScreenState extends State<FriendsScreen>
                   ),
                   const SizedBox(height: 16),
 
-                  // Task Type Selector: One-Time vs Daily Recurrence
+                  // Task Type Selector: Single Task vs Daily Habit
                   Row(
                     children: [
-                      ChoiceChip(
-                        label: const Text('⚡ One-time Task'),
-                        selected: !isDaily,
-                        selectedColor: const Color(
-                          0xFF9B51E0,
-                        ).withValues(alpha: 0.25),
-                        onSelected: (val) {
-                          if (val) setSheetState(() => isDaily = false);
-                        },
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => setSheetState(() => isDaily = false),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: !isDaily
+                                  ? const Color(
+                                      0xFF9B51E0,
+                                    ).withValues(alpha: isDark ? 0.22 : 0.12)
+                                  : scheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: !isDaily
+                                    ? const Color(0xFF9B51E0)
+                                    : scheme.outlineVariant.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                width: !isDaily ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: !isDaily
+                                        ? const Color(0xFF9B51E0)
+                                        : scheme.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.task_alt_rounded,
+                                    size: 18,
+                                    color: !isDaily
+                                        ? Colors.white
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Single Task',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: !isDaily
+                                              ? (isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF6B21A8))
+                                              : (isDark
+                                                    ? Colors.white70
+                                                    : scheme.onSurface),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'One-time quest',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 10),
-                      ChoiceChip(
-                        label: const Text('🔄 Daily Recurring'),
-                        selected: isDaily,
-                        selectedColor: const Color(
-                          0xFF58CC02,
-                        ).withValues(alpha: 0.25),
-                        onSelected: (val) {
-                          if (val) setSheetState(() => isDaily = true);
-                        },
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => setSheetState(() => isDaily = true),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDaily
+                                  ? const Color(
+                                      0xFF10B981,
+                                    ).withValues(alpha: isDark ? 0.22 : 0.12)
+                                  : scheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDaily
+                                    ? const Color(0xFF10B981)
+                                    : scheme.outlineVariant.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                width: isDaily ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: isDaily
+                                        ? const Color(0xFF10B981)
+                                        : scheme.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.repeat_rounded,
+                                    size: 18,
+                                    color: isDaily
+                                        ? Colors.white
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Daily Habit',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: isDaily
+                                              ? (isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF047857))
+                                              : (isDark
+                                                    ? Colors.white70
+                                                    : scheme.onSurface),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Recurring daily',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -924,8 +1140,8 @@ class _FriendsScreenState extends State<FriendsScreen>
                     decoration: InputDecoration(
                       labelText: isDaily ? 'Daily Squad Habit' : 'Task Title',
                       hintText: isDaily
-                          ? 'e.g. Daily Coding, 30m Workout'
-                          : 'e.g. Finish Project Module, Study Biology',
+                          ? 'e.g. Daily Coding, Morning Run'
+                          : 'e.g. Complete Project Proposal, Math Chapter 4',
                       filled: true,
                       fillColor: scheme.surfaceContainerHigh,
                       border: OutlineInputBorder(
@@ -1156,36 +1372,100 @@ class _FriendsScreenState extends State<FriendsScreen>
                     onTap: () async {
                       final chosen = await showModalBottomSheet<int?>(
                         context: ctx,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                        ),
                         builder: (rCtx) => SafeArea(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const ListTile(
-                                title: Text(
-                                  'Choose Reminder Time',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                              for (final mins in <int?>[
-                                null,
-                                0,
-                                5,
-                                10,
-                                15,
-                                30,
-                                60,
-                              ])
-                                ListTile(
-                                  title: Text(reminderText(mins)),
-                                  trailing: selectedReminderMinutes == mins
-                                      ? const Icon(
-                                          Icons.check,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: MediaQuery.sizeOf(rCtx).height * 0.7,
+                            ),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      18,
+                                      20,
+                                      10,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.notifications_active_rounded,
                                           color: Color(0xFF9B51E0),
-                                        )
-                                      : null,
-                                  onTap: () => Navigator.pop(rCtx, mins),
-                                ),
-                            ],
+                                          size: 22,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'Choose Reminder Time',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: isDark
+                                                ? Colors.white
+                                                : scheme.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Divider(height: 1),
+                                  for (final mins in <int?>[
+                                    null,
+                                    0,
+                                    5,
+                                    10,
+                                    15,
+                                    30,
+                                    60,
+                                  ])
+                                    ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 22,
+                                            vertical: 4,
+                                          ),
+                                      title: Text(
+                                        reminderText(mins),
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight:
+                                              selectedReminderMinutes == mins
+                                              ? FontWeight.w900
+                                              : FontWeight.w700,
+                                          color: selectedReminderMinutes == mins
+                                              ? const Color(0xFF9B51E0)
+                                              : (isDark
+                                                    ? Colors.white
+                                                    : scheme.onSurface),
+                                        ),
+                                      ),
+                                      trailing: selectedReminderMinutes == mins
+                                          ? Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF9B51E0),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.check,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            )
+                                          : null,
+                                      onTap: () => Navigator.pop(rCtx, mins),
+                                    ),
+                                  const SizedBox(height: 12),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       );
@@ -1930,542 +2210,1038 @@ class _TaskMatesTab extends StatelessWidget {
 
         // Group Cards
         ...groups.map((group) {
+          final isCreator = group.isCreator(currentUid);
+          final activeCount = group.activeTasks.length;
+          final memberList = group.members.values.toList();
+
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: scheme.outlineVariant, width: 1.5),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Group Header (Name & Members)
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(7),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1CB0F6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: SvgPicture.asset(
-                        'assets/icon/group_icon.svg',
-                        width: 18,
-                        height: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            group.name,
-                            style: TextStyle(
-                              color: isDark ? Colors.white : scheme.onSurface,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 18,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${group.members.length} members',
-                            style: TextStyle(
-                              color: isDark
-                                  ? const Color(0xFF77878F)
-                                  : scheme.onSurfaceVariant,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_horiz_rounded,
-                        color: isDark
-                            ? const Color(0xFF77878F)
-                            : scheme.onSurfaceVariant,
-                      ),
-                      color: scheme.surfaceContainerHigh,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      onSelected: (action) {
-                        if (action == 'leave') {
-                          taskMateProvider.leaveOrDeleteGroup(
-                            groupId: group.id,
-                            isCreator: group.isCreator(currentUid),
-                          );
-                        }
-                      },
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem(
-                          value: 'leave',
-                          child: Text(
-                            group.isCreator(currentUid)
-                                ? 'Delete Squad'
-                                : 'Leave Squad',
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(24),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () => _showSquadDetailsSheet(
+                  context,
+                  group: group,
+                  isDark: isDark,
+                  currentUid: currentUid,
+                  taskMateProvider: taskMateProvider,
+                  onAssignTask: onAssignTask,
+                  onPickTime: onPickTime,
+                  onStartTask: onStartTask,
                 ),
-                const SizedBox(height: 14),
-
-                // Active Tasks Section (Up to 3 tasks)
-                if (group.activeTasks.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: scheme.outlineVariant),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 112),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 20,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDark
+                          ? [const Color(0xFF132840), const Color(0xFF181D29)]
+                          : [const Color(0xFFEBF5FF), const Color(0xFFF6FAFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'No Active Tasks',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : scheme.onSurface,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Upload up to 5 shared tasks/habits for the squad to conquer together!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: isDark
-                                ? const Color(0xFFAFBBC1)
-                                : scheme.onSurfaceVariant,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF1CB0F6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 10,
-                            ),
-                          ),
-                          onPressed: () => onAssignTask(group),
-                          child: const Text(
-                            'Upload Task (0/5)',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Squad Tasks (${group.activeTasks.length}/5)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: isDark
-                              ? const Color(0xFF77878F)
-                              : scheme.onSurfaceVariant,
-                        ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(
+                        alpha: isDark ? 0.35 : 0.6,
                       ),
-                      if (group.canAddMoreTasks)
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          onPressed: () => onAssignTask(group),
-                          child: const Text(
-                            'Add Task',
-                            style: TextStyle(
-                              color: Color(0xFF1CB0F6),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.25 : 0.04,
                         ),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  for (
-                    int taskIdx = 0;
-                    taskIdx < group.activeTasks.length;
-                    taskIdx++
-                  ) ...[
-                    Builder(
-                      builder: (context) {
-                        final task = group.activeTasks[taskIdx];
-                        final isCompleted = task.isCompletedBy(currentUid);
-                        final mySchedule = task.memberSchedules[currentUid];
-                        final myScheduledTime = task.scheduledTimeFor(
-                          currentUid,
-                        );
-                        final isAssigner =
-                            task.assignedByUid == currentUid ||
-                            group.isCreator(currentUid);
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerHigh,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: task.isHabit
-                                  ? const Color(
-                                      0xFF58CC02,
-                                    ).withValues(alpha: 0.5)
-                                  : const Color(
-                                      0xFF1CB0F6,
-                                    ).withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
+                  child: Row(
+                    children: [
+                      // Squad Icon Badge
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF1CB0F6,
+                          ).withValues(alpha: isDark ? 0.25 : 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: SvgPicture.asset(
+                          'assets/icon/group_icon.svg',
+                          width: 34,
+                          height: 34,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Squad Information
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    group.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.2,
+                                      color: isDark
+                                          ? Colors.white
+                                          : scheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                if (isCreator) ...[
+                                  const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                      horizontal: 6,
+                                      vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
                                       color: const Color(
-                                        0xFFFFB300,
-                                      ).withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(8),
+                                        0xFF1CB0F6,
+                                      ).withValues(alpha: 0.18),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Text(
-                                      '⚡ +200 EXP',
+                                      'Owner',
                                       style: TextStyle(
-                                        color: Color(0xFFFFB300),
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 11,
+                                        color: Color(0xFF1CB0F6),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                     ),
                                   ),
-                                  if (task.isHabit) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF58CC02,
-                                        ).withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        '🌱 Habit',
-                                        style: TextStyle(
-                                          color: Color(0xFF58CC02),
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                  if (isAssigner)
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.close_rounded,
-                                        size: 18,
-                                        color: Colors.redAccent,
-                                      ),
-                                      tooltip: 'Remove Task',
-                                      onPressed: () =>
-                                          taskMateProvider.removeTask(
-                                            group.id,
-                                            taskIndex: taskIdx,
-                                          ),
-                                    ),
                                 ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                task.title,
-                                style: TextStyle(
-                                  fontSize: 17.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: isDark
-                                      ? Colors.white
-                                      : scheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Uploaded by ${task.uploaderDisplay}',
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? const Color(0xFFAFBBC1)
-                                      : scheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Divider(height: 1),
-                              const SizedBox(height: 10),
-
-                              // Members Schedule & Completion Status
-                              ...group.members.values.map((member) {
-                                final sched = task.memberSchedules[member.uid];
-                                final hasDone = sched?.completed ?? false;
-                                final hasSched = sched?.scheduledTime != null;
-
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 5,
-                                  ),
-                                  child: Row(
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            // Member Avatars row & count
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width:
+                                      (memberList.length > 3
+                                              ? 3
+                                              : memberList.length) *
+                                          18.0 +
+                                      10,
+                                  height: 24,
+                                  child: Stack(
                                     children: [
-                                      CircleAvatar(
-                                        radius: 14,
-                                        backgroundColor: const Color(
-                                          0xFF58CC02,
-                                        ),
-                                        backgroundImage:
-                                            member.photoUrl != null &&
-                                                member.photoUrl!.isNotEmpty
-                                            ? NetworkImage(member.photoUrl!)
-                                            : null,
-                                        onBackgroundImageError:
-                                            member.photoUrl != null
-                                            ? (_, __) {}
-                                            : null,
-                                        child:
-                                            member.photoUrl == null ||
-                                                member.photoUrl!.isEmpty
-                                            ? Text(
-                                                member.displayName.isNotEmpty
-                                                    ? member.displayName[0]
-                                                          .toUpperCase()
-                                                    : 'M',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          member.uid == currentUid
-                                              ? 'You'
-                                              : member.displayName,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 15.5,
-                                            color: isDark
-                                                ? Colors.white
-                                                : scheme.onSurface,
-                                          ),
-                                        ),
-                                      ),
-                                      if (hasDone)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(
-                                              0xFF58CC02,
-                                            ).withValues(alpha: 0.18),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                      for (
+                                        int i = 0;
+                                        i <
+                                            (memberList.length > 3
+                                                ? 3
+                                                : memberList.length);
+                                        i++
+                                      )
+                                        Positioned(
+                                          left: i * 16.0,
+                                          child: CircleAvatar(
+                                            radius: 11,
+                                            backgroundColor: isDark
+                                                ? const Color(0xFF263843)
+                                                : Colors.white,
+                                            child: CircleAvatar(
+                                              radius: 9.5,
+                                              backgroundColor: const Color(
+                                                0xFF1CB0F6,
+                                              ),
+                                              backgroundImage:
+                                                  memberList[i].photoUrl !=
+                                                          null &&
+                                                      memberList[i]
+                                                          .photoUrl!
+                                                          .isNotEmpty
+                                                  ? NetworkImage(
+                                                      memberList[i].photoUrl!,
+                                                    )
+                                                  : null,
+                                              child:
+                                                  memberList[i].photoUrl ==
+                                                          null ||
+                                                      memberList[i]
+                                                          .photoUrl!
+                                                          .isEmpty
+                                                  ? Text(
+                                                      memberList[i]
+                                                              .displayName
+                                                              .isNotEmpty
+                                                          ? memberList[i]
+                                                                .displayName[0]
+                                                                .toUpperCase()
+                                                          : 'M',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 9,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    )
+                                                  : null,
                                             ),
-                                          ),
-                                          child: const Text(
-                                            'Done',
-                                            style: TextStyle(
-                                              color: Color(0xFF58CC02),
-                                              fontWeight: FontWeight.w800,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        )
-                                      else if (hasSched)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(
-                                              0xFF1CB0F6,
-                                            ).withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            DateFormat(
-                                              'h:mm a',
-                                            ).format(sched!.scheduledTime!),
-                                            style: const TextStyle(
-                                              color: Color(0xFF1CB0F6),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        )
-                                      else
-                                        Text(
-                                          'No timer set',
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? const Color(0xFF77878F)
-                                                : scheme.onSurfaceVariant,
-                                            fontSize: 12,
                                           ),
                                         ),
                                     ],
                                   ),
-                                );
-                              }),
-
-                              const SizedBox(height: 14),
-
-                              // Action Buttons for Current User
-                              if (isCompleted)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: mySchedule?.completedLate == true
-                                        ? const Color(
-                                            0xFFF59E0B,
-                                          ).withValues(alpha: 0.15)
-                                        : const Color(
-                                            0xFF58CC02,
-                                          ).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      mySchedule?.completedLate == true
-                                          ? '⚠️ Completed (Late)'
-                                          : '🎉 Completed',
-                                      style: TextStyle(
-                                        color: mySchedule?.completedLate == true
-                                            ? const Color(0xFFF59E0B)
-                                            : const Color(0xFF58CC02),
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        style: OutlinedButton.styleFrom(
-                                          side: BorderSide(
-                                            color: isDark
-                                                ? const Color(0xFF37464F)
-                                                : scheme.outlineVariant,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 11,
-                                          ),
-                                        ),
-                                        onPressed: () =>
-                                            onPickTime(group, taskIdx),
-                                        icon: const Icon(
-                                          Icons.schedule_rounded,
-                                          size: 16,
-                                          color: Color(0xFF1CB0F6),
-                                        ),
-                                        label: Text(
-                                          myScheduledTime != null
-                                              ? 'Change Timer'
-                                              : 'Set My Timer',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: FilledButton(
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFF58CC02,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 11,
-                                          ),
-                                        ),
-                                        onPressed: () =>
-                                            onStartTask(group, taskIdx),
-                                        child: const Text(
-                                          'Start Task',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${group.members.length} members',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? const Color(0xFF77878F)
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Active tasks badge chip
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: activeCount > 0
+                                    ? const Color(
+                                        0xFF58CC02,
+                                      ).withValues(alpha: 0.15)
+                                    : (isDark
+                                          ? const Color(0xFF263843)
+                                          : Colors.grey.withValues(
+                                              alpha: 0.15,
+                                            )),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    activeCount > 0
+                                        ? Icons.bolt_rounded
+                                        : Icons.hourglass_empty_rounded,
+                                    size: 13,
+                                    color: activeCount > 0
+                                        ? const Color(0xFF58CC02)
+                                        : (isDark
+                                              ? const Color(0xFF77878F)
+                                              : scheme.onSurfaceVariant),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    activeCount > 0
+                                        ? '$activeCount/3 Tasks Active (+200 EXP)'
+                                        : 'No Active Tasks (0/3)',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: activeCount > 0
+                                          ? const Color(0xFF58CC02)
+                                          : (isDark
+                                                ? const Color(0xFF77878F)
+                                                : scheme.onSurfaceVariant),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Chevron Arrow
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(
+                              alpha: isDark ? 0.3 : 0.5,
+                            ),
+                            width: 1,
                           ),
-                        );
-                      },
-                    ),
-                  ],
-                ],
-              ],
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: const Color(0xFF1CB0F6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           );
         }),
       ],
+    );
+  }
+
+  void _showSquadDetailsSheet(
+    BuildContext context, {
+    required TaskGroup group,
+    required bool isDark,
+    required String currentUid,
+    required TaskMateProvider taskMateProvider,
+    required void Function(TaskGroup) onAssignTask,
+    required void Function(TaskGroup, int) onPickTime,
+    required void Function(TaskGroup, int) onStartTask,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (sheetCtx) {
+        final scheme = Theme.of(sheetCtx).colorScheme;
+        final isCreator = group.isCreator(currentUid);
+
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(ctx).height * 0.88,
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF2B3D47)
+                          : scheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Sheet Header (Squad Name + Menu)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF1CB0F6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: SvgPicture.asset(
+                            'assets/icon/group_icon.svg',
+                            width: 20,
+                            height: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                group.name,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white
+                                      : scheme.onSurface,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 19,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${group.members.length} members • ${group.activeTasks.length}/3 Tasks',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? const Color(0xFF77878F)
+                                      : scheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: Icon(
+                            Icons.more_horiz_rounded,
+                            color: isDark
+                                ? const Color(0xFF77878F)
+                                : scheme.onSurfaceVariant,
+                          ),
+                          color: scheme.surfaceContainerHigh,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          onSelected: (action) {
+                            Navigator.pop(sheetCtx);
+                            if (action == 'delete') {
+                              taskMateProvider.leaveOrDeleteGroup(
+                                groupId: group.id,
+                                isCreator: true,
+                              );
+                            } else if (action == 'leave') {
+                              taskMateProvider.leaveOrDeleteGroup(
+                                groupId: group.id,
+                                isCreator: false,
+                              );
+                            }
+                          },
+                          itemBuilder: (popCtx) => [
+                            if (isCreator)
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text(
+                                  'Delete Squad',
+                                  style: TextStyle(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            const PopupMenuItem(
+                              value: 'leave',
+                              child: Text(
+                                'Leave Squad',
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+
+                  // Sheet Content: Tasks List & Details
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                      children: [
+                        // Members Row
+                        Text(
+                          'SQUAD MEMBERS',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? const Color(0xFF77878F)
+                                : scheme.onSurfaceVariant,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: group.members.values.map((member) {
+                              final isMe = member.uid == currentUid;
+                              return Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerHigh,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isMe
+                                        ? const Color(0xFF1CB0F6)
+                                        : scheme.outlineVariant,
+                                    width: isMe ? 1.5 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: const Color(0xFF1CB0F6),
+                                      backgroundImage:
+                                          member.photoUrl != null &&
+                                              member.photoUrl!.isNotEmpty
+                                          ? NetworkImage(member.photoUrl!)
+                                          : null,
+                                      child:
+                                          member.photoUrl == null ||
+                                              member.photoUrl!.isEmpty
+                                          ? Text(
+                                              member.displayName.isNotEmpty
+                                                  ? member.displayName[0]
+                                                        .toUpperCase()
+                                                  : 'M',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      isMe ? 'You' : member.displayName,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? Colors.white
+                                            : scheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Section Title & Add Task Button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'SHARED TASKS (${group.activeTasks.length}/3)',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: isDark
+                                    ? const Color(0xFF77878F)
+                                    : scheme.onSurfaceVariant,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            if (group.canAddMoreTasks)
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(sheetCtx);
+                                  onAssignTask(group);
+                                },
+                                icon: const Icon(Icons.add_rounded, size: 16),
+                                label: const Text(
+                                  'Add Task',
+                                  style: TextStyle(
+                                    color: Color(0xFF1CB0F6),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        if (group.activeTasks.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: scheme.outlineVariant),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.assignment_outlined,
+                                  size: 38,
+                                  color: Color(0xFF1CB0F6),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'No Active Tasks',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : scheme.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Upload up to 3 shared tasks/habits for the squad to conquer together and earn +200 EXP!',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? const Color(0xFFAFBBC1)
+                                        : scheme.onSurfaceVariant,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1CB0F6),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 10,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(sheetCtx);
+                                    onAssignTask(group);
+                                  },
+                                  icon: const Icon(Icons.add_rounded, size: 18),
+                                  label: const Text(
+                                    'Upload Task (0/3)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          for (
+                            int taskIdx = 0;
+                            taskIdx < group.activeTasks.length;
+                            taskIdx++
+                          ) ...[
+                            Builder(
+                              builder: (context) {
+                                final task = group.activeTasks[taskIdx];
+                                final isCompleted = task.isCompletedBy(
+                                  currentUid,
+                                );
+                                final mySchedule =
+                                    task.memberSchedules[currentUid];
+                                final myScheduledTime = task.scheduledTimeFor(
+                                  currentUid,
+                                );
+                                final isAssigner =
+                                    task.assignedByUid == currentUid ||
+                                    group.isCreator(currentUid);
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: scheme.surfaceContainerHigh,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: task.isHabit
+                                          ? const Color(
+                                              0xFF58CC02,
+                                            ).withValues(alpha: 0.5)
+                                          : const Color(
+                                              0xFF1CB0F6,
+                                            ).withValues(alpha: 0.5),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFFFFB300,
+                                              ).withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              '⚡ +200 EXP',
+                                              style: TextStyle(
+                                                color: Color(0xFFFFB300),
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ),
+                                          if (task.isHabit) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(
+                                                  0xFF58CC02,
+                                                ).withValues(alpha: 0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: const Text(
+                                                '🌱 Habit',
+                                                style: TextStyle(
+                                                  color: Color(0xFF58CC02),
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          const Spacer(),
+                                          if (isAssigner)
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 18,
+                                                color: Colors.redAccent,
+                                              ),
+                                              tooltip: 'Remove Task',
+                                              onPressed: () {
+                                                taskMateProvider.removeTask(
+                                                  group.id,
+                                                  taskIndex: taskIdx,
+                                                );
+                                                Navigator.pop(sheetCtx);
+                                              },
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        task.title,
+                                        style: TextStyle(
+                                          fontSize: 17.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: isDark
+                                              ? Colors.white
+                                              : scheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Uploaded by ${task.uploaderDisplay}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? const Color(0xFFAFBBC1)
+                                              : scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 10),
+
+                                      // Members Schedule & Completion Status
+                                      ...group.members.values.map((member) {
+                                        final sched =
+                                            task.memberSchedules[member.uid];
+                                        final hasDone =
+                                            sched?.completed ?? false;
+                                        final hasSched =
+                                            sched?.scheduledTime != null;
+
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 5,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 14,
+                                                backgroundColor: const Color(
+                                                  0xFF58CC02,
+                                                ),
+                                                backgroundImage:
+                                                    member.photoUrl != null &&
+                                                        member
+                                                            .photoUrl!
+                                                            .isNotEmpty
+                                                    ? NetworkImage(
+                                                        member.photoUrl!,
+                                                      )
+                                                    : null,
+                                                child:
+                                                    member.photoUrl == null ||
+                                                        member.photoUrl!.isEmpty
+                                                    ? Text(
+                                                        member
+                                                                .displayName
+                                                                .isNotEmpty
+                                                            ? member
+                                                                  .displayName[0]
+                                                                  .toUpperCase()
+                                                            : 'M',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      )
+                                                    : null,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  member.uid == currentUid
+                                                      ? 'You'
+                                                      : member.displayName,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 15,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : scheme.onSurface,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (hasDone)
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF58CC02,
+                                                    ).withValues(alpha: 0.18),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: const Text(
+                                                    'Done',
+                                                    style: TextStyle(
+                                                      color: Color(0xFF58CC02),
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                )
+                                              else if (hasSched)
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 3,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF1CB0F6,
+                                                    ).withValues(alpha: 0.15),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    DateFormat('h:mm a').format(
+                                                      sched!.scheduledTime!,
+                                                    ),
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF1CB0F6),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                )
+                                              else
+                                                Text(
+                                                  'No timer set',
+                                                  style: TextStyle(
+                                                    color: isDark
+                                                        ? const Color(
+                                                            0xFF77878F,
+                                                          )
+                                                        : scheme
+                                                              .onSurfaceVariant,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+
+                                      const SizedBox(height: 14),
+
+                                      // Action Buttons for Current User
+                                      if (isCompleted)
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                mySchedule?.completedLate ==
+                                                    true
+                                                ? const Color(
+                                                    0xFFF59E0B,
+                                                  ).withValues(alpha: 0.15)
+                                                : const Color(
+                                                    0xFF58CC02,
+                                                  ).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              mySchedule?.completedLate == true
+                                                  ? '⚠️ Completed (Late)'
+                                                  : '🎉 Completed',
+                                              style: TextStyle(
+                                                color:
+                                                    mySchedule?.completedLate ==
+                                                        true
+                                                    ? const Color(0xFFF59E0B)
+                                                    : const Color(0xFF58CC02),
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 13.5,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: OutlinedButton.icon(
+                                                style: OutlinedButton.styleFrom(
+                                                  side: BorderSide(
+                                                    color: isDark
+                                                        ? const Color(
+                                                            0xFF37464F,
+                                                          )
+                                                        : scheme.outlineVariant,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 11,
+                                                      ),
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.pop(sheetCtx);
+                                                  onPickTime(group, taskIdx);
+                                                },
+                                                icon: const Icon(
+                                                  Icons.schedule_rounded,
+                                                  size: 16,
+                                                  color: Color(0xFF1CB0F6),
+                                                ),
+                                                label: Text(
+                                                  myScheduledTime != null
+                                                      ? 'Change Timer'
+                                                      : 'Set My Timer',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: FilledButton(
+                                                style: FilledButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFF58CC02,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 11,
+                                                      ),
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.pop(sheetCtx);
+                                                  onStartTask(group, taskIdx);
+                                                },
+                                                child: const Text(
+                                                  'Start Task',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -2767,7 +3543,7 @@ class _PartnerQuestCard extends StatelessWidget {
                     size: 18,
                   ),
                   label: Text(
-                    canSendReminder ? 'Reminder' : 'Limit 3/3',
+                    canSendReminder ? 'Reminder' : 'Limit 5/5',
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
@@ -2814,6 +3590,7 @@ class _FriendsListTab extends StatelessWidget {
   final bool isFollowingTab;
   final bool isDark;
   final bool canSendReminder;
+  final bool canSendGift;
   final Function(FriendUser) onSendReminder;
   final Function(FriendUser) onSendExp;
   final Function(FriendUser)? onPairQuest;
@@ -2825,6 +3602,7 @@ class _FriendsListTab extends StatelessWidget {
     required this.isFollowingTab,
     required this.isDark,
     required this.canSendReminder,
+    this.canSendGift = true,
     required this.onSendReminder,
     required this.onSendExp,
     this.onPairQuest,
@@ -2918,39 +3696,46 @@ class _FriendsListTab extends StatelessWidget {
                         )
                       : null,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         friend.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: isDark ? Colors.white : scheme.onSurface,
                           fontWeight: FontWeight.w800,
-                          fontSize: 15,
+                          fontSize: 14.5,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Text(
-                            friend.handle,
-                            style: TextStyle(
-                              color: isDark
-                                  ? const Color(0xFF77878F)
-                                  : scheme.onSurfaceVariant,
-                              fontSize: 13,
+                          Flexible(
+                            child: Text(
+                              friend.handle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isDark
+                                    ? const Color(0xFF77878F)
+                                    : scheme.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                           if (friend.streakDays > 0) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Text(
                               '🔥 ${friend.streakDays}',
                               style: const TextStyle(
                                 color: Color(0xFFFF9600),
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -2959,119 +3744,153 @@ class _FriendsListTab extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (!isFollowingTab) ...[
-                  friend.isFollowing
-                      ? OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: isDark
-                                  ? const Color(0xFF37464F)
-                                  : scheme.outlineVariant,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                          ),
-                          onPressed: () => onUnfollow?.call(friend),
-                          child: const Text(
-                            'Following',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        )
-                      : FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF1CB0F6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                          ),
-                          onPressed: () => onFollowBack?.call(friend),
-                          child: const Text(
-                            'Follow Back',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                  const SizedBox(width: 4),
-                ],
-                // Nudge Reminder Button
-                IconButton(
-                  icon: const Icon(
-                    Icons.waving_hand_rounded,
-                    color: Color(0xFF1CB0F6),
-                    size: 20,
-                  ),
-                  tooltip: 'Send Task Reminder',
-                  onPressed: canSendReminder
-                      ? () => onSendReminder(friend)
-                      : null,
-                ),
-                // Gift 50 EXP Button
-                IconButton(
-                  icon: SvgPicture.asset(
-                    'assets/icon/gift_box_icon.svg',
-                    width: 20,
-                    height: 20,
-                  ),
-                  tooltip: 'Gift 50 EXP',
-                  onPressed: () => onSendExp(friend),
-                ),
-                // More Actions (Pair / Unfollow)
-                PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert_rounded,
-                    color: isDark
-                        ? const Color(0xFF77878F)
-                        : scheme.onSurfaceVariant,
-                  ),
-                  color: scheme.surfaceContainerHigh,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  onSelected: (action) {
-                    if (action == 'pair') onPairQuest?.call(friend);
-                    if (action == 'unfollow') onUnfollow?.call(friend);
-                    if (action == 'follow') onFollowBack?.call(friend);
-                  },
-                  itemBuilder: (ctx) => [
-                    PopupMenuItem(
-                      value: 'pair',
-                      child: Text(
-                        'Pair for Quest',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : scheme.onSurface,
-                        ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isFollowingTab) ...[
+                      SizedBox(
+                        height: 36,
+                        child: friend.isFollowing
+                            ? OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? const Color(0xFF37464F)
+                                        : scheme.outlineVariant,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 0,
+                                  ),
+                                ),
+                                onPressed: () => onUnfollow?.call(friend),
+                                child: const Text(
+                                  'Following',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              )
+                            : FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1CB0F6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 0,
+                                  ),
+                                ),
+                                onPressed: () => onFollowBack?.call(friend),
+                                child: const Text(
+                                  'Follow Back',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                       ),
+                      const SizedBox(width: 4),
+                    ],
+                    // Nudge and Gift buttons ONLY shown in Following tab
+                    if (isFollowingTab) ...[
+                      // Nudge Reminder Button (Enlarged & Clear)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.waving_hand_rounded,
+                          color: Color(0xFF1CB0F6),
+                          size: 22,
+                        ),
+                        tooltip: canSendReminder
+                            ? 'Send Task Reminder'
+                            : 'Daily limit of 5 reached',
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(
+                          minWidth: 38,
+                          minHeight: 38,
+                        ),
+                        onPressed: canSendReminder
+                            ? () => onSendReminder(friend)
+                            : null,
+                      ),
+                      const SizedBox(width: 2),
+                      // Gift 50 EXP Button (Enlarged & Clear)
+                      IconButton(
+                        icon: SvgPicture.asset(
+                          'assets/icon/gift_box_icon.svg',
+                          width: 22,
+                          height: 22,
+                        ),
+                        tooltip: canSendGift
+                            ? 'Gift 50 EXP'
+                            : 'Daily gift limit of 5 reached',
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(
+                          minWidth: 38,
+                          minHeight: 38,
+                        ),
+                        onPressed: canSendGift ? () => onSendExp(friend) : null,
+                      ),
+                      const SizedBox(width: 2),
+                    ],
+                    // More Actions (Pair / Unfollow)
+                    PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.more_vert_rounded,
+                        color: isDark
+                            ? const Color(0xFF77878F)
+                            : scheme.onSurfaceVariant,
+                        size: 22,
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      color: scheme.surfaceContainerHigh,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      onSelected: (action) {
+                        if (action == 'pair') onPairQuest?.call(friend);
+                        if (action == 'unfollow') onUnfollow?.call(friend);
+                        if (action == 'follow') onFollowBack?.call(friend);
+                      },
+                      itemBuilder: (ctx) => [
+                        PopupMenuItem(
+                          value: 'pair',
+                          child: Text(
+                            'Pair for Quest',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : scheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        if (isFollowingTab || friend.isFollowing)
+                          const PopupMenuItem(
+                            value: 'unfollow',
+                            child: Text(
+                              'Unfollow',
+                              style: TextStyle(color: Colors.redAccent),
+                            ),
+                          )
+                        else
+                          const PopupMenuItem(
+                            value: 'follow',
+                            child: Text(
+                              'Follow Back',
+                              style: TextStyle(color: Color(0xFF1CB0F6)),
+                            ),
+                          ),
+                      ],
                     ),
-                    if (isFollowingTab || friend.isFollowing)
-                      const PopupMenuItem(
-                        value: 'unfollow',
-                        child: Text(
-                          'Unfollow',
-                          style: TextStyle(color: Colors.redAccent),
-                        ),
-                      )
-                    else
-                      const PopupMenuItem(
-                        value: 'follow',
-                        child: Text(
-                          'Follow Back',
-                          style: TextStyle(color: Color(0xFF1CB0F6)),
-                        ),
-                      ),
                   ],
                 ),
               ],

@@ -14,6 +14,7 @@ import 'providers/habit_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'providers/cloud_sync_provider.dart';
 import 'providers/friends_provider.dart';
+import 'providers/notification_preferences_provider.dart';
 import 'providers/task_mate_provider.dart';
 import 'providers/streak_goal_provider.dart';
 import 'providers/task_provider.dart';
@@ -25,7 +26,6 @@ import 'router/app_router.dart';
 import 'services/account_lifecycle_service.dart';
 import 'services/friends_service.dart';
 import 'services/task_mate_service.dart';
-import 'services/android_installation_info_service.dart';
 import 'services/android_usage_stats_service.dart';
 import 'services/app_category_storage_service.dart';
 import 'services/app_limit_storage_service.dart';
@@ -269,12 +269,36 @@ Future<void> main() async {
     onboardingProvider: onboardingProvider,
   );
 
+  final notifPrefsProvider = NotificationPreferencesProvider();
+  await notifPrefsProvider.loadPreferences();
+
+  if (notifPrefsProvider.occasionalReminders) {
+    unawaited(
+      taskNotificationService.scheduleOccasionalReminder(
+        hour: notifPrefsProvider.occasionalTime.hour,
+        minute: notifPrefsProvider.occasionalTime.minute,
+      ),
+    );
+  }
+
+  // Schedule streak continuity reminder for current habit streak
+  if (userStatsProvider.syncedStreakDays > 0) {
+    unawaited(
+      habitNotificationService.scheduleStreakContinuationReminder(
+        streakDays: userStatsProvider.syncedStreakDays,
+        hour: 20, // 8:00 PM
+        minute: 30,
+      ),
+    );
+  }
+
   final friendsService = FriendsService();
   final friendsProvider = FriendsProvider(
     friendsService: friendsService,
     profileProvider: userProfileProvider,
     statsProvider: userStatsProvider,
     notificationService: taskNotificationService,
+    prefsProvider: notifPrefsProvider,
   );
   final taskMateService = TaskMateService();
   final taskMateProvider = TaskMateProvider(
@@ -282,6 +306,7 @@ Future<void> main() async {
     notificationService: taskNotificationService,
     statsProvider: userStatsProvider,
     profileProvider: userProfileProvider,
+    friendsService: friendsService,
     taskProvider: taskProvider,
     habitProvider: habitProvider,
   );
@@ -313,6 +338,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => themeProvider),
+        ChangeNotifierProvider.value(value: notifPrefsProvider),
         ChangeNotifierProvider.value(value: accountProvider),
         ChangeNotifierProvider.value(value: onboardingProvider),
         ChangeNotifierProvider.value(value: streakGoalProvider),

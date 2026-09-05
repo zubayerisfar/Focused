@@ -1,0 +1,12 @@
+{
+  "git.enabled": true,
+  "git.autofetch": true,
+  "git.autorefresh": true,
+  "git.autoStash": true,
+  "git.decorations.enabled": true,
+  "files.watcherExclude": {
+    "**/.git/**": true,
+    "**/focused/build/**": true,
+    "**/focused/.dart_tool/**": true
+  }
+}

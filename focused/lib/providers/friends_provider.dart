@@ -6,6 +6,7 @@ import '../models/friend_user.dart';
 import '../models/partner_quest.dart';
 import '../services/friends_service.dart';
 import '../services/task_notification_service.dart';
+import 'notification_preferences_provider.dart';
 import 'user_profile_provider.dart';
 import 'user_stats_provider.dart';
 
@@ -14,16 +15,19 @@ class FriendsProvider extends ChangeNotifier {
   final UserProfileProvider _profileProvider;
   final UserStatsProvider _statsProvider;
   final TaskNotificationService? _notificationService;
+  final NotificationPreferencesProvider? _prefsProvider;
 
   FriendsProvider({
     required FriendsService friendsService,
     required UserProfileProvider profileProvider,
     required UserStatsProvider statsProvider,
     TaskNotificationService? notificationService,
+    NotificationPreferencesProvider? prefsProvider,
   }) : _friendsService = friendsService,
        _profileProvider = profileProvider,
        _statsProvider = statsProvider,
-       _notificationService = notificationService;
+       _notificationService = notificationService,
+       _prefsProvider = prefsProvider;
 
   String _currentUid = '';
   String? _currentPhotoUrl;
@@ -37,9 +41,10 @@ class FriendsProvider extends ChangeNotifier {
   bool _isSearching = false;
   List<FriendUser> _searchResults = [];
 
-  // Daily reminder counter (max 3/day)
+  // Daily limits (max 5 reminders, max 5 gifts per day)
   int _remindersSentToday = 0;
-  String _lastReminderDate = '';
+  int _giftsSentToday = 0;
+  String _lastResetDate = '';
 
   StreamSubscription? _followingSub;
   StreamSubscription? _followersSub;
@@ -48,6 +53,8 @@ class FriendsProvider extends ChangeNotifier {
   StreamSubscription? _incomingRemindersSub;
   StreamSubscription? _groupNoticesSub;
   StreamSubscription? _groupNoticesListSub;
+  StreamSubscription? _followerNoticesSub;
+  StreamSubscription? _partnerCompletionsSub;
 
   List<FriendUser> get following => _following;
   List<FriendUser> get followers => _followers;
@@ -57,13 +64,21 @@ class FriendsProvider extends ChangeNotifier {
   bool get isSearching => _isSearching;
   List<FriendUser> get searchResults => _searchResults;
 
-  static const int maxDailyReminders = 3;
+  static const int maxDailyReminders = 5;
+  static const int maxDailyGifts = 5;
+
   int get remindersSentToday {
     _checkDailyReset();
     return _remindersSentToday;
   }
 
+  int get giftsSentToday {
+    _checkDailyReset();
+    return _giftsSentToday;
+  }
+
   bool get canSendReminder => remindersSentToday < maxDailyReminders;
+  bool get canSendGift => giftsSentToday < maxDailyGifts;
 
   /// Checks if a username is available (unique)
   Future<bool> checkUsernameAvailability(String username) async {
@@ -113,9 +128,10 @@ class FriendsProvider extends ChangeNotifier {
   }
 
   void _checkDailyReset() {
-    if (_lastReminderDate != _todayKey) {
+    if (_lastResetDate != _todayKey) {
       _remindersSentToday = 0;
-      _lastReminderDate = _todayKey;
+      _giftsSentToday = 0;
+      _lastResetDate = _todayKey;
     }
   }
 
@@ -177,19 +193,21 @@ class FriendsProvider extends ChangeNotifier {
     });
 
     // 4. Stream Unclaimed EXP Gifts
-    Set<String>? _knownGiftIds;
+    Set<String>? knownGiftIds;
     _giftsSub = _friendsService.streamUnclaimedExpGifts(uid).listen((gifts) {
-      if (_knownGiftIds != null) {
+      if (knownGiftIds != null) {
         for (final gift in gifts) {
-          if (!_knownGiftIds!.contains(gift.id)) {
-            _notificationService?.showExpGiftNotification(
-              fromName: gift.fromName,
-              amount: gift.amount,
-            );
+          if (!knownGiftIds!.contains(gift.id)) {
+            if (_prefsProvider?.friendNudgesAndGifts ?? true) {
+              _notificationService?.showExpGiftNotification(
+                fromName: gift.fromName,
+                amount: gift.amount,
+              );
+            }
           }
         }
       }
-      _knownGiftIds = gifts.map((g) => g.id).toSet();
+      knownGiftIds = gifts.map((g) => g.id).toSet();
       _unclaimedGifts = gifts;
       notifyListeners();
     });
@@ -206,21 +224,34 @@ class FriendsProvider extends ChangeNotifier {
     _incomingRemindersSub = _friendsService.listenForIncomingReminders(
       currentUid: uid,
       onReminderReceived: (fromName, message) {
-        _notificationService?.showFriendReminderNotification(
-          fromName: fromName,
-          message: message,
-        );
+        if (_prefsProvider?.friendNudgesAndGifts ?? true) {
+          _notificationService?.showFriendReminderNotification(
+            fromName: fromName,
+            message: message,
+          );
+        }
       },
     );
 
-    // 7. Listen for incoming squad creation notices
+    // 7. Listen for incoming squad creation and task assignment notices
     _groupNoticesSub = _friendsService.listenForIncomingGroupNotices(
       currentUid: uid,
       onGroupNoticeReceived: (groupName, creatorName) {
-        _notificationService?.showGroupCreationNotification(
-          groupName: groupName,
-          creatorName: creatorName,
-        );
+        if (_prefsProvider?.squadInvites ?? true) {
+          _notificationService?.showGroupCreationNotification(
+            groupName: groupName,
+            creatorName: creatorName,
+          );
+        }
+      },
+      onTaskAssignedReceived: (groupName, assignerName, taskTitle) {
+        if (_prefsProvider?.squadInvites ?? true) {
+          _notificationService?.showSquadTaskAssignedNotification(
+            groupName: groupName,
+            assignerName: assignerName,
+            taskTitle: taskTitle,
+          );
+        }
       },
     );
 
@@ -231,6 +262,33 @@ class FriendsProvider extends ChangeNotifier {
       _groupNotices = notices;
       notifyListeners();
     });
+
+    // 9. Listen for incoming follower notices
+    _followerNoticesSub = _friendsService.listenForIncomingFollowerNotices(
+      currentUid: uid,
+      onFollowerReceived: (followerName, photoUrl) {
+        if (_prefsProvider?.followerAlerts ?? true) {
+          _notificationService?.showFollowNotification(
+            followerName: followerName,
+            photoUrl: photoUrl,
+          );
+        }
+      },
+    );
+
+    // 10. Listen for partner task completions
+    _partnerCompletionsSub = _friendsService
+        .listenForIncomingPartnerCompletions(
+          currentUid: uid,
+          onCompletionReceived: (friendName, taskTitle) {
+            if (_prefsProvider?.partnerCompletions ?? true) {
+              _notificationService?.showPartnerTaskCompletionNotification(
+                friendName: friendName,
+                taskTitle: taskTitle,
+              );
+            }
+          },
+        );
   }
 
   // ===========================================================================
@@ -319,6 +377,25 @@ class FriendsProvider extends ChangeNotifier {
     if (_following.length >= maxFriends) return false;
 
     final profile = _profileProvider.profile;
+
+    // Optimistically update UI immediately before the network call
+    if (!_following.any((u) => u.uid == targetUser.uid)) {
+      _following = [..._following, targetUser.copyWith(isFollowing: true)];
+    }
+    final followerIdx = _followers.indexWhere((u) => u.uid == targetUser.uid);
+    if (followerIdx != -1) {
+      _followers[followerIdx] = _followers[followerIdx].copyWith(
+        isFollowing: true,
+      );
+    }
+    final searchIdx = _searchResults.indexWhere((u) => u.uid == targetUser.uid);
+    if (searchIdx != -1) {
+      _searchResults[searchIdx] = _searchResults[searchIdx].copyWith(
+        isFollowing: true,
+      );
+    }
+    notifyListeners();
+
     try {
       await _friendsService.followUser(
         currentUid: _currentUid,
@@ -328,31 +405,22 @@ class FriendsProvider extends ChangeNotifier {
         myStreakDays: _statsProvider.syncedStreakDays,
         myXpPoints: _statsProvider.xpPoints,
       );
-
-      // Optimistically update local following list
-      if (!_following.any((u) => u.uid == targetUser.uid)) {
-        _following = [..._following, targetUser.copyWith(isFollowing: true)];
-      }
-
-      // Optimistically update followers list isFollowing
-      final followerIdx = _followers.indexWhere((u) => u.uid == targetUser.uid);
-      if (followerIdx != -1) {
-        _followers[followerIdx] = _followers[followerIdx].copyWith(
-          isFollowing: true,
-        );
-      }
-
-      // Update in search results locally
-      final index = _searchResults.indexWhere((u) => u.uid == targetUser.uid);
-      if (index != -1) {
-        _searchResults[index] = _searchResults[index].copyWith(
-          isFollowing: true,
-        );
-      }
-      notifyListeners();
       return true;
     } catch (e) {
       debugPrint('Error following user: $e');
+      // Revert optimistic update on failure
+      _following = _following.where((u) => u.uid != targetUser.uid).toList();
+      if (followerIdx != -1) {
+        _followers[followerIdx] = _followers[followerIdx].copyWith(
+          isFollowing: false,
+        );
+      }
+      if (searchIdx != -1) {
+        _searchResults[searchIdx] = _searchResults[searchIdx].copyWith(
+          isFollowing: false,
+        );
+      }
+      notifyListeners();
       return false;
     }
   }
@@ -412,6 +480,8 @@ class FriendsProvider extends ChangeNotifier {
   // ===========================================================================
 
   Future<bool> send50Exp(String targetUid) async {
+    _checkDailyReset();
+    if (_giftsSentToday >= maxDailyGifts) return false;
     if (_statsProvider.xpPoints < 50) return false;
 
     // Deduct 50 EXP from sender
@@ -427,6 +497,8 @@ class FriendsProvider extends ChangeNotifier {
       amount: 50,
     );
 
+    _giftsSentToday++;
+    notifyListeners();
     return true;
   }
 
@@ -488,6 +560,8 @@ class FriendsProvider extends ChangeNotifier {
     _incomingRemindersSub?.cancel();
     _groupNoticesSub?.cancel();
     _groupNoticesListSub?.cancel();
+    _followerNoticesSub?.cancel();
+    _partnerCompletionsSub?.cancel();
   }
 
   @override

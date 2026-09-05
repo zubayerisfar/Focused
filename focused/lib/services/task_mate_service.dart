@@ -101,16 +101,26 @@ class TaskMateService {
     final docRef = _firestore.collection('task_groups').doc(groupId);
 
     try {
-      return await _firestore.runTransaction((transaction) async {
+      List<String> notifyMemberUids = [];
+      String groupName = 'Task Squad';
+
+      final success = await _firestore.runTransaction((transaction) async {
         final snap = await transaction.get(docRef);
         if (!snap.exists) return false;
 
         final data = snap.data();
         final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
-        if (rawActiveTasks.length >= 5) {
-          // Already has 5 active tasks!
+        if (rawActiveTasks.length >= 3) {
+          // Already has 3 active tasks!
           return false;
         }
+
+        groupName = data?['name']?.toString() ?? 'Task Squad';
+        final memberUids = (data?['memberUids'] as List<dynamic>?) ?? [];
+        notifyMemberUids = memberUids
+            .map((e) => e.toString())
+            .where((uid) => uid != assignerUid)
+            .toList();
 
         final cleanUsername = assignerUsername.replaceAll('@', '').trim();
         final newTask = {
@@ -135,6 +145,29 @@ class TaskMateService {
         });
         return true;
       });
+
+      if (success && notifyMemberUids.isNotEmpty) {
+        for (final memberUid in notifyMemberUids) {
+          try {
+            await _firestore
+                .collection('users')
+                .doc(memberUid)
+                .collection('group_notices')
+                .add({
+                  'groupId': groupId,
+                  'groupName': groupName,
+                  'creatorUid': assignerUid,
+                  'creatorName': assignerName,
+                  'taskTitle': title.trim(),
+                  'isTaskAssignment': true,
+                  'read': false,
+                  'createdAt': FieldValue.serverTimestamp(),
+                });
+          } catch (_) {}
+        }
+      }
+
+      return success;
     } catch (e) {
       debugPrint('Error assigning group task: $e');
       return false;

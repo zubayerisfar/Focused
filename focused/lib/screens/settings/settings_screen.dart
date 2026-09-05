@@ -11,8 +11,10 @@ import '../../providers/theme_provider.dart';
 import '../../providers/usage_provider.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../providers/friends_provider.dart';
+import '../../providers/notification_preferences_provider.dart';
 import '../../services/app_usage_summary_service.dart';
 import '../../services/notification_access_service.dart';
+import '../../services/task_notification_service.dart';
 import 'deactivate_account_sheet.dart';
 import 'delete_account_dialog.dart';
 
@@ -253,6 +255,232 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _openNotificationPreferencesDialog(BuildContext context) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return Consumer<NotificationPreferencesProvider>(
+          builder: (context, notifPrefs, _) {
+            final scheme = Theme.of(context).colorScheme;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: scheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.tune_rounded,
+                            color: scheme.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Notification Preferences',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                    ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Customize alerts for social events and reminders',
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Core task and habit reminders remain always active. You can customize the social and occasional notifications below:',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.userPlus,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Follower alerts',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Receive an alert with user icon when someone follows you',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.followerAlerts,
+                      onChanged: (val) => notifPrefs.setFollowerAlerts(val),
+                    ),
+                    const Divider(height: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(FontAwesomeIcons.users, size: 18),
+                      title: const Text(
+                        'Squad group invites',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Get notified when friends invite you to join a new Task Squad',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.squadInvites,
+                      onChanged: (val) => notifPrefs.setSquadInvites(val),
+                    ),
+                    const Divider(height: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.handPointRight,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Friend nudges & EXP gifts',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Alerts for task reminders and EXP boosts sent by your friends',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.friendNudgesAndGifts,
+                      onChanged: (val) =>
+                          notifPrefs.setFriendNudgesAndGifts(val),
+                    ),
+                    const Divider(height: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.flagCheckered,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Partner task completions',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        '"Your friend finished their task, now it\'s your turn!"',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.partnerCompletions,
+                      onChanged: (val) => notifPrefs.setPartnerCompletions(val),
+                    ),
+                    const Divider(height: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.solidClock,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Occasional daily check-in',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Gentle reflection reminder (${notifPrefs.occasionalTime.format(context)})',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.occasionalReminders,
+                      onChanged: (val) async {
+                        await notifPrefs.setOccasionalReminders(val);
+                        final taskNotif = TaskNotificationService();
+                        if (val) {
+                          await taskNotif.scheduleOccasionalReminder(
+                            hour: notifPrefs.occasionalTime.hour,
+                            minute: notifPrefs.occasionalTime.minute,
+                          );
+                        } else {
+                          await taskNotif.cancelOccasionalReminder();
+                        }
+                      },
+                    ),
+                    if (notifPrefs.occasionalReminders) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.access_time_rounded, size: 18),
+                        label: Text(
+                          'Change time: ${notifPrefs.occasionalTime.format(context)}',
+                        ),
+                        onPressed: () async {
+                          final selected = await showTimePicker(
+                            context: context,
+                            initialTime: notifPrefs.occasionalTime,
+                          );
+                          if (selected != null) {
+                            await notifPrefs.setOccasionalTime(selected);
+                            final taskNotif = TaskNotificationService();
+                            await taskNotif.scheduleOccasionalReminder(
+                              hour: selected.hour,
+                              minute: selected.minute,
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
@@ -262,9 +490,12 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Settings',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+          ),
         ),
       ),
       body: ListView(
@@ -298,6 +529,12 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Notification permission',
                 subtitle: 'Allow reminders and focus notifications',
                 onTap: () => _openAppNotificationSettings(context),
+              ),
+              _SettingsTile(
+                icon: FontAwesomeIcons.sliders,
+                title: 'Notification preferences',
+                subtitle: 'Social alerts, squad invites & occasional reminders',
+                onTap: () => _openNotificationPreferencesDialog(context),
               ),
               _SettingsTile(
                 icon: FontAwesomeIcons.clockRotateLeft,

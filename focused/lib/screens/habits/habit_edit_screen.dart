@@ -33,6 +33,8 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
   int _colorValue = const Color(0xFF4D7CFE).value;
   bool _reminderEnabled = false;
   int _reminderMinutesFromMidnight = 20 * 60;
+  bool _enableLateReminder = false;
+  int _lateReminderMinutes = 30;
   bool _initialized = false;
   bool _saving = false;
 
@@ -58,6 +60,8 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     _reminderEnabled = habit.reminderMinutesFromMidnight != null;
     _reminderMinutesFromMidnight =
         habit.reminderMinutesFromMidnight ?? _reminderMinutesFromMidnight;
+    _enableLateReminder = habit.lateReminderMinutesAfter != null;
+    _lateReminderMinutes = habit.lateReminderMinutesAfter ?? 30;
   }
 
   @override
@@ -230,6 +234,34 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
                       ),
                       onTap: _pickReminderTime,
                     ),
+                    Divider(height: 1, color: Theme.of(context).dividerColor),
+                    SwitchListTile.adaptive(
+                      value: _enableLateReminder,
+                      onChanged: (value) {
+                        setState(() => _enableLateReminder = value);
+                      },
+                      title: const Text(
+                        'Follow-up if delayed',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                        _enableLateReminder
+                            ? 'Remind $_lateReminderMinutes min later if not checked in'
+                            : 'No late notification',
+                      ),
+                    ),
+                    if (_enableLateReminder) ...[
+                      Divider(height: 1, color: Theme.of(context).dividerColor),
+                      ListTile(
+                        leading: const Icon(Icons.timer_outlined),
+                        title: const Text('Follow-up delay'),
+                        trailing: Text(
+                          '$_lateReminderMinutes min after',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        onTap: _pickLateDelay,
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -290,6 +322,39 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     });
   }
 
+  Future<void> _pickLateDelay() async {
+    final options = [15, 20, 30, 45, 60];
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Follow-up delay',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
+            ),
+            ...options.map((mins) {
+              return ListTile(
+                title: Text('$mins minutes after'),
+                trailing: _lateReminderMinutes == mins
+                    ? const Icon(Icons.check_rounded)
+                    : null,
+                onTap: () {
+                  setState(() => _lateReminderMinutes = mins);
+                  Navigator.pop(sheetContext);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -303,6 +368,9 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
       final unit = _goalType == HabitGoalType.checkIn
           ? 'done'
           : _unitController.text.trim();
+      final lateMins = (_reminderEnabled && _enableLateReminder)
+          ? _lateReminderMinutes
+          : null;
 
       if (widget.habitId == null) {
         await provider.createHabit(
@@ -316,6 +384,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
           reminderMinutesFromMidnight: _reminderEnabled
               ? _reminderMinutesFromMidnight
               : null,
+          lateReminderMinutesAfter: lateMins,
         );
       } else {
         final existing = provider.getHabitById(widget.habitId!);
@@ -334,6 +403,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
             reminderMinutesFromMidnight: _reminderEnabled
                 ? _reminderMinutesFromMidnight
                 : null,
+            lateReminderMinutesAfter: lateMins,
           ),
         );
       }

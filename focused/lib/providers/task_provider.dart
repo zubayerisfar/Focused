@@ -71,6 +71,7 @@ class TaskProvider extends ChangeNotifier {
     TaskRecurrence recurrence = TaskRecurrence.none,
     Set<int> customWeekdays = const {},
     int? reminderMinutesBefore,
+    int? lateReminderMinutesAfter,
     int guardWarningSeconds = 30,
     DateTime? createdAt,
     bool isSquadTask = false,
@@ -90,6 +91,7 @@ class TaskProvider extends ChangeNotifier {
       recurrence: recurrence,
       customWeekdays: Set<int>.from(customWeekdays),
       reminderMinutesBefore: reminderMinutesBefore,
+      lateReminderMinutesAfter: lateReminderMinutesAfter,
       guardWarningSeconds: guardWarningSeconds,
       createdAt: creationTime,
       isSquadTask: isSquadTask,
@@ -1073,6 +1075,10 @@ class TaskProvider extends ChangeNotifier {
   }
 
   Future<void> _scheduleReminderSafely(Task task) async {
+    // Squad tasks already receive dedicated Squad Task reminders with XP rewards
+    // via TaskNotificationService.scheduleTaskMateReminder(). Suppress duplicate generic task alarm.
+    if (task.isSquadTask) return;
+
     final service = _notificationService;
 
     if (service == null) {

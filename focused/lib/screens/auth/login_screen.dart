@@ -398,24 +398,54 @@ class _Brand extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     return Center(
-      child: Container(
-        width: 68,
-        height: 68,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: scheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: scheme.outlineVariant),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(21),
-          child: Image.asset('assets/icon/app_icon.png', fit: BoxFit.cover),
-        ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(21),
+              child: Image.asset(
+                'assets/app_icon/app_icon.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Focused',
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Your Lifestyle Manager',
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }

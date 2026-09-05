@@ -38,6 +38,7 @@ class Task {
   final TaskRecurrence recurrence;
   final Set<int> customWeekdays;
   final int? reminderMinutesBefore;
+  final int? lateReminderMinutesAfter;
   final int guardWarningSeconds;
   final bool isCompleted;
   final DateTime createdAt;
@@ -81,6 +82,7 @@ class Task {
     this.recurrence = TaskRecurrence.none,
     this.customWeekdays = const {},
     this.reminderMinutesBefore,
+    this.lateReminderMinutesAfter,
     this.guardWarningSeconds = 30,
     this.isCompleted = false,
     required this.createdAt,
@@ -150,6 +152,7 @@ class Task {
       recurrence: recurrence,
       customWeekdays: Set<int>.from(customWeekdays),
       reminderMinutesBefore: reminderMinutesBefore,
+      lateReminderMinutesAfter: lateReminderMinutesAfter,
       guardWarningSeconds: guardWarningSeconds,
       isCompleted: true,
       createdAt: createdAt,
@@ -173,6 +176,7 @@ class Task {
       recurrence: recurrence,
       customWeekdays: Set<int>.from(customWeekdays),
       reminderMinutesBefore: reminderMinutesBefore,
+      lateReminderMinutesAfter: lateReminderMinutesAfter,
       guardWarningSeconds: guardWarningSeconds,
       isCompleted: false,
       createdAt: createdAt,
@@ -196,6 +200,7 @@ class Task {
       'recurrence': recurrence.name,
       'customWeekdays': customWeekdays.toList()..sort(),
       'reminderMinutesBefore': reminderMinutesBefore,
+      'lateReminderMinutesAfter': lateReminderMinutesAfter,
       'guardWarningSeconds': guardWarningSeconds,
       'isCompleted': isCompleted,
       'createdAt': createdAt.toIso8601String(),
@@ -230,6 +235,9 @@ class Task {
       customWeekdays: _parseWeekdays(map['customWeekdays']),
       reminderMinutesBefore: map['reminderMinutesBefore'] is num
           ? (map['reminderMinutesBefore'] as num).toInt()
+          : null,
+      lateReminderMinutesAfter: map['lateReminderMinutesAfter'] is num
+          ? (map['lateReminderMinutesAfter'] as num).toInt()
           : null,
       guardWarningSeconds: map['guardWarningSeconds'] is num
           ? (map['guardWarningSeconds'] as num).toInt()

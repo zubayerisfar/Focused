@@ -15,6 +15,7 @@ import '../../providers/habit_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../services/task_execution_analyzer.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_banner_ad_widget.dart';
 
 enum PlannerCalendarMode { schedule, day, threeDays, week, month }
 
@@ -50,7 +51,7 @@ extension PlannerCalendarModeLabel on PlannerCalendarMode {
   }
 }
 
-enum _PlannerArea { tasks, habits }
+enum _PlannerArea { hub, tasks, reminders, habits }
 
 enum _PlannerMenuAction { backlog, completed }
 
@@ -62,7 +63,7 @@ class PlannerScreen extends StatefulWidget {
 }
 
 class _PlannerScreenState extends State<PlannerScreen> {
-  _PlannerArea _area = _PlannerArea.tasks;
+  _PlannerArea _area = _PlannerArea.hub;
   PlannerCalendarMode _calendarMode = PlannerCalendarMode.schedule;
   DateTime _selectedDate = _dateOnly(DateTime.now());
 
@@ -73,16 +74,21 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final taskAccent = isDark
         ? const Color(0xFF6F9AFF)
         : const Color(0xFF4169D8);
+    final reminderAccent = const Color(0xFFFF9600);
     final habitAccent = isDark
         ? const Color(0xFFC39BFF)
         : const Color(0xFF7B55C7);
-    final accent = _area == _PlannerArea.tasks ? taskAccent : habitAccent;
+    final accent = _area == _PlannerArea.tasks
+        ? taskAccent
+        : (_area == _PlannerArea.reminders ? reminderAccent : habitAccent);
     final selectedBackground = isDark
-        ? accent.withOpacity(0.30)
-        : accent.withOpacity(0.14);
-    final pageTint = isDark
-        ? accent.withOpacity(0.035)
-        : accent.withOpacity(0.045);
+        ? accent.withValues(alpha: 0.30)
+        : accent.withValues(alpha: 0.14);
+    final pageTint = _area == _PlannerArea.tasks
+        ? (isDark ? const Color(0xFF0F1A28) : const Color(0xFFF2F7FD))
+        : (isDark
+              ? accent.withValues(alpha: 0.035)
+              : accent.withValues(alpha: 0.045));
     final plannerTheme = baseTheme.copyWith(
       colorScheme: baseTheme.colorScheme.copyWith(
         primary: accent,
@@ -90,209 +96,117 @@ class _PlannerScreenState extends State<PlannerScreen> {
       ),
     );
 
-    return Theme(
-      data: plannerTheme,
-      child: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                _PlannerHeader(
-                  selectedDate: _selectedDate,
-                  area: _area,
-                  calendarMode: _calendarMode,
-                  onPickDate: _pickDate,
-                  onToday: () {
-                    setState(() {
-                      _selectedDate = _dateOnly(DateTime.now());
-                    });
-                  },
-                  onModeChanged: (mode) {
-                    setState(() {
-                      _calendarMode = mode;
-                    });
-                  },
-                  onSync: _syncPlanner,
-                  onMenuAction: _handleMenuAction,
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
-                  child: Container(
-                    height: 54,
-                    padding: const EdgeInsets.all(5),
+    return PopScope(
+      canPop: _area == _PlannerArea.hub,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          setState(() {
+            _area = _PlannerArea.hub;
+          });
+        }
+      },
+      child: Theme(
+        data: plannerTheme,
+        child: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  DecoratedBox(
                     decoration: BoxDecoration(
-                      color: baseTheme.colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: baseTheme.colorScheme.outlineVariant,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        // Tasks Toggle Tab
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              if (_area != _PlannerArea.tasks) {
-                                setState(() => _area = _PlannerArea.tasks);
-                              }
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeInOut,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: _area == _PlannerArea.tasks
-                                    ? (isDark
-                                          ? const Color(0xFF1CB0F6)
-                                          : taskAccent)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: _area == _PlannerArea.tasks
-                                    ? [
-                                        BoxShadow(
-                                          color:
-                                              (isDark
-                                                      ? const Color(0xFF1CB0F6)
-                                                      : taskAccent)
-                                                  .withOpacity(0.35),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 220),
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: _area == _PlannerArea.tasks
-                                      ? FontWeight.w900
-                                      : FontWeight.w700,
-                                  color: _area == _PlannerArea.tasks
-                                      ? Colors.white
-                                      : (isDark
-                                            ? const Color(0xFF77878F)
-                                            : baseTheme
-                                                  .colorScheme
-                                                  .onSurfaceVariant
-                                                  .withOpacity(0.6)),
-                                  letterSpacing: 0.2,
-                                ),
-                                child: const Text('Tasks'),
-                              ),
-                            ),
+                      color: isDark
+                          ? const Color(0xFF171A23)
+                          : baseTheme.colorScheme.surface,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.40 : 0.08,
                           ),
-                        ),
-                        // Habits Toggle Tab
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              if (_area != _PlannerArea.habits) {
-                                setState(() => _area = _PlannerArea.habits);
-                              }
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeInOut,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: _area == _PlannerArea.habits
-                                    ? (isDark
-                                          ? const Color(0xFFC39BFF)
-                                          : habitAccent)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: _area == _PlannerArea.habits
-                                    ? [
-                                        BoxShadow(
-                                          color:
-                                              (isDark
-                                                      ? const Color(0xFFC39BFF)
-                                                      : habitAccent)
-                                                  .withOpacity(0.35),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 220),
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: _area == _PlannerArea.habits
-                                      ? FontWeight.w900
-                                      : FontWeight.w700,
-                                  color: _area == _PlannerArea.habits
-                                      ? (isDark
-                                            ? const Color(0xFF101217)
-                                            : Colors.white)
-                                      : (isDark
-                                            ? const Color(0xFF77878F)
-                                            : baseTheme
-                                                  .colorScheme
-                                                  .onSurfaceVariant
-                                                  .withOpacity(0.6)),
-                                  letterSpacing: 0.2,
-                                ),
-                                child: const Text('Habits'),
-                              ),
-                            ),
-                          ),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
+                    child: _PlannerHeader(
+                      selectedDate: _selectedDate,
+                      area: _area,
+                      calendarMode: _calendarMode,
+                      onPickDate: _pickDate,
+                      onToday: () {
+                        setState(() {
+                          _selectedDate = _dateOnly(DateTime.now());
+                        });
+                      },
+                      onModeChanged: (mode) {
+                        setState(() {
+                          _calendarMode = mode;
+                        });
+                      },
+                      onSync: _syncPlanner,
+                      onMenuAction: _handleMenuAction,
+                      onBackToHub: () {
+                        setState(() {
+                          _area = _PlannerArea.hub;
+                        });
+                      },
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: ColoredBox(
-                    color: pageTint,
-                    child: _area == _PlannerArea.tasks
-                        ? _TaskCalendarBody(
-                            mode: _calendarMode,
-                            selectedDate: _selectedDate,
-                            onDateSelected: (date) {
-                              setState(() {
-                                _selectedDate = _dateOnly(date);
-                              });
-                            },
-                          )
-                        : _HabitPlannerBody(
-                            selectedDate: _selectedDate,
-                            onDateSelected: (date) {
-                              setState(() {
-                                _selectedDate = _dateOnly(date);
-                              });
-                            },
-                          ),
+                  Expanded(
+                    child: ColoredBox(color: pageTint, child: _buildAreaBody()),
                   ),
-                ),
-              ],
-            ),
-            Positioned(
-              right: 18,
-              bottom: 18,
-              child: FloatingActionButton.extended(
-                heroTag: 'planner-create',
-                backgroundColor: accent,
-                foregroundColor: Colors.white,
-                elevation: isDark ? 4 : 2,
-                onPressed: () => context.push(
-                  _area == _PlannerArea.tasks ? '/task/new' : '/habit/new',
-                ),
-                icon: const FaIcon(FontAwesomeIcons.plus, size: 14),
-                label: Text(
-                  _area == _PlannerArea.tasks ? 'New task' : 'New habit',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
+                  if (_area != _PlannerArea.tasks) const AppBannerAdWidget(),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildAreaBody() {
+    switch (_area) {
+      case _PlannerArea.hub:
+        return _PlannerHubBody(
+          selectedDate: _selectedDate,
+          onSelectArea: (area) {
+            setState(() {
+              _area = area;
+            });
+          },
+          onPickDate: _pickDate,
+        );
+      case _PlannerArea.tasks:
+        return _TaskCalendarBody(
+          mode: _calendarMode,
+          selectedDate: _selectedDate,
+          onDateSelected: (date) {
+            setState(() {
+              _selectedDate = _dateOnly(date);
+            });
+          },
+          onPickDate: _pickDate,
+        );
+      case _PlannerArea.reminders:
+        return _RemindersPlannerBody(
+          selectedDate: _selectedDate,
+          onDateSelected: (date) {
+            setState(() {
+              _selectedDate = _dateOnly(date);
+            });
+          },
+        );
+      case _PlannerArea.habits:
+        return _HabitPlannerBody(
+          selectedDate: _selectedDate,
+          onDateSelected: (date) {
+            setState(() {
+              _selectedDate = _dateOnly(date);
+            });
+          },
+        );
+    }
   }
 
   Future<void> _pickDate() async {
@@ -362,6 +276,7 @@ class _PlannerHeader extends StatelessWidget {
   final ValueChanged<PlannerCalendarMode> onModeChanged;
   final VoidCallback onSync;
   final ValueChanged<_PlannerMenuAction> onMenuAction;
+  final VoidCallback? onBackToHub;
 
   const _PlannerHeader({
     required this.selectedDate,
@@ -372,6 +287,7 @@ class _PlannerHeader extends StatelessWidget {
     required this.onModeChanged,
     required this.onSync,
     required this.onMenuAction,
+    this.onBackToHub,
   });
 
   @override
@@ -383,36 +299,29 @@ class _PlannerHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 8),
       child: Row(
         children: [
+          if (area != _PlannerArea.hub) ...[
+            IconButton(
+              tooltip: 'Back to Planner Hub',
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: onBackToHub,
+            ),
+            const SizedBox(width: 4),
+          ],
           Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: onPickDate,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 8,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          DateFormat('MMMM yyyy').format(selectedDate),
-                          maxLines: 1,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    const Icon(Icons.arrow_drop_down_rounded),
-                  ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Text(
+                area == _PlannerArea.hub
+                    ? 'Planner'
+                    : (area == _PlannerArea.tasks
+                          ? 'Tasks'
+                          : (area == _PlannerArea.reminders
+                                ? 'Reminders'
+                                : 'Habits')),
+                maxLines: 1,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
                 ),
               ),
             ),
@@ -545,11 +454,13 @@ class _TaskCalendarBody extends StatelessWidget {
   final PlannerCalendarMode mode;
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback onPickDate;
 
   const _TaskCalendarBody({
     required this.mode,
     required this.selectedDate,
     required this.onDateSelected,
+    required this.onPickDate,
   });
 
   @override
@@ -559,6 +470,7 @@ class _TaskCalendarBody extends StatelessWidget {
         return _ScheduleView(
           selectedDate: selectedDate,
           onDateSelected: onDateSelected,
+          onPickDate: onPickDate,
         );
       case PlannerCalendarMode.day:
         return _DayView(
@@ -589,10 +501,12 @@ class _TaskCalendarBody extends StatelessWidget {
 class _ScheduleView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback onPickDate;
 
   const _ScheduleView({
     required this.selectedDate,
     required this.onDateSelected,
+    required this.onPickDate,
   });
 
   @override
@@ -608,9 +522,24 @@ class _ScheduleView extends StatelessWidget {
       children: [
         _CalendarModeIntro(
           title: 'Create your plan',
-          subtitle:
-              'Plan your next seven days and stay on track with your goals.',
           selectedDate: selectedDate,
+          onPickDate: onPickDate,
+          action: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () => context.push('/task/new'),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'New task',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            ),
+          ),
         ),
         const SizedBox(height: 18),
         ...days.map((date) {
@@ -665,6 +594,22 @@ class _DayView extends StatelessWidget {
               : DateFormat('EEEE').format(selectedDate),
           subtitle: DateFormat('MMMM d, yyyy').format(selectedDate),
           selectedDate: selectedDate,
+          action: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () => context.push('/task/new'),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'New task',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            ),
+          ),
         ),
         const SizedBox(height: 18),
         if (anytime.isNotEmpty) ...[
@@ -716,6 +661,22 @@ class _MultiDayFlow extends StatelessWidget {
               ? '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}'
               : '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}',
           selectedDate: selectedDate,
+          action: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () => context.push('/task/new'),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'New task',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            ),
+          ),
         ),
         const SizedBox(height: 18),
         _MultiDayTimeGrid(
@@ -764,6 +725,22 @@ class _MonthView extends StatelessWidget {
           title: DateFormat('MMMM').format(selectedDate),
           subtitle: 'Tap any date to open its plan.',
           selectedDate: selectedDate,
+          action: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () => context.push('/task/new'),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'New task',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         Container(
@@ -856,35 +833,101 @@ class _MonthView extends StatelessWidget {
 
 class _CalendarModeIntro extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final DateTime selectedDate;
+  final VoidCallback? onPickDate;
+  final Widget? action;
 
   const _CalendarModeIntro({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.selectedDate,
+    this.onPickDate,
+    this.action,
   });
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 3),
               Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                title,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
+              if (onPickDate != null) ...[
+                const SizedBox(height: 6),
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: onPickDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(
+                        alpha: isDark ? 0.20 : 0.08,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: scheme.primary.withValues(
+                          alpha: isDark ? 0.35 : 0.20,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_month_rounded,
+                          size: 18,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('MMMM yyyy').format(selectedDate),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: scheme.primary,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_drop_down_rounded,
+                          size: 22,
+                          color: scheme.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              if (subtitle != null && subtitle!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  subtitle!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
+        if (action != null) ...[const SizedBox(width: 12), action!],
       ],
     );
   }
@@ -1131,22 +1174,22 @@ class _PlannerTimelineTask extends StatelessWidget {
                                   ),
                                   if (occurrence.isCompletedLate ||
                                       task.isCompletedLate) ...[
-                                    const SizedBox(width: 6),
+                                    const SizedBox(width: 4),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
+                                        horizontal: 5,
+                                        vertical: 1.5,
                                       ),
                                       decoration: BoxDecoration(
                                         color: const Color(
                                           0xFFEF4444,
                                         ).withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: const Text(
                                         '⚠️ Late',
                                         style: TextStyle(
-                                          fontSize: 10,
+                                          fontSize: 9.5,
                                           fontWeight: FontWeight.w800,
                                           color: Color(0xFFEF4444),
                                         ),
@@ -1154,22 +1197,22 @@ class _PlannerTimelineTask extends StatelessWidget {
                                     ),
                                   ],
                                   if (task.isSquadTask) ...[
-                                    const SizedBox(width: 6),
+                                    const SizedBox(width: 4),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
+                                        horizontal: 5,
+                                        vertical: 1.5,
                                       ),
                                       decoration: BoxDecoration(
                                         color: const Color(
                                           0xFF9B51E0,
                                         ).withValues(alpha: 0.18),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: const Text(
                                         '👥 Squad',
                                         style: TextStyle(
-                                          fontSize: 10,
+                                          fontSize: 9.5,
                                           fontWeight: FontWeight.w800,
                                           color: Color(0xFF9B51E0),
                                         ),
@@ -2236,6 +2279,7 @@ class _HabitPlannerBody extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Column(
@@ -2245,7 +2289,10 @@ class _HabitPlannerBody extends StatelessWidget {
                     _isToday(selectedDate)
                         ? 'Today’s habits'
                         : '${DateFormat('EEEE').format(selectedDate)} habits',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -2257,6 +2304,26 @@ class _HabitPlannerBody extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () => context.push('/habit/new'),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text(
+                'New habit',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
               ),
             ),
           ],
@@ -2543,6 +2610,437 @@ class _HabitEmptyState extends StatelessWidget {
   }
 }
 
+class _PlannerHubBody extends StatelessWidget {
+  final DateTime selectedDate;
+  final ValueChanged<_PlannerArea> onSelectArea;
+  final VoidCallback onPickDate;
+
+  const _PlannerHubBody({
+    required this.selectedDate,
+    required this.onSelectArea,
+    required this.onPickDate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 110),
+      children: [
+        // CARD 1: Tasks & Schedule
+        _BigPlannerCard(
+          title: 'Tasks & Schedule',
+          subtitle: 'Daily agenda, time blocks, and calendar timeline',
+          svgAsset: 'assets/planner_page_icons/planner_task_creation.svg',
+          fallbackIcon: Icons.calendar_today_rounded,
+          accentColor: const Color(0xFF1CB0F6),
+          gradientColors: isDark
+              ? [const Color(0xFF132840), const Color(0xFF181D29)]
+              : [const Color(0xFFEBF5FF), const Color(0xFFF6FAFF)],
+          onTap: () => onSelectArea(_PlannerArea.tasks),
+        ),
+
+        const SizedBox(height: 16),
+
+        // CARD 2: Reminders
+        _BigPlannerCard(
+          title: 'Reminders',
+          subtitle: 'Scheduled notifications, alerts, and time alarms',
+          svgAsset: 'assets/planner_page_icons/planner_reminder_icon.svg',
+          fallbackIcon: Icons.notifications_active_rounded,
+          accentColor: const Color(0xFFFF9600),
+          gradientColors: isDark
+              ? [const Color(0xFF382510), const Color(0xFF221A15)]
+              : [const Color(0xFFFFF6EB), const Color(0xFFFFFBF6)],
+          onTap: () => onSelectArea(_PlannerArea.reminders),
+        ),
+
+        const SizedBox(height: 16),
+
+        // CARD 3: Habits & Routines
+        _BigPlannerCard(
+          title: 'Habits & Routines',
+          subtitle: 'Daily streak building, recurring check-ins, and goals',
+          svgAsset: 'assets/planner_page_icons/planner_habit_icon.svg',
+          fallbackIcon: Icons.repeat_rounded,
+          accentColor: const Color(0xFF9B51E0),
+          gradientColors: isDark
+              ? [const Color(0xFF2E1A3D), const Color(0xFF1F1728)]
+              : [const Color(0xFFF7F0FF), const Color(0xFFFCF9FF)],
+          onTap: () => onSelectArea(_PlannerArea.habits),
+        ),
+      ],
+    );
+  }
+}
+
+class _BigPlannerCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String? svgAsset;
+  final IconData fallbackIcon;
+  final Color accentColor;
+  final List<Color> gradientColors;
+  final VoidCallback onTap;
+
+  const _BigPlannerCard({
+    required this.title,
+    required this.subtitle,
+    this.svgAsset,
+    this.fallbackIcon = Icons.star_rounded,
+    required this.accentColor,
+    required this.gradientColors,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 112),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(
+                alpha: isDark ? 0.35 : 0.6,
+              ),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: isDark ? 0.22 : 0.15),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: svgAsset != null
+                    ? SvgPicture.asset(
+                        svgAsset!,
+                        width: 38,
+                        height: 38,
+                        fit: BoxFit.contain,
+                        placeholderBuilder: (_) =>
+                            Icon(fallbackIcon, color: accentColor, size: 30),
+                      )
+                    : Icon(fallbackIcon, color: accentColor, size: 30),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: isDark ? 0.20 : 0.12),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: accentColor,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RemindersPlannerBody extends StatelessWidget {
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateSelected;
+
+  const _RemindersPlannerBody({
+    required this.selectedDate,
+    required this.onDateSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final taskProvider = context.watch<TaskProvider>();
+    final allReminders = taskProvider.tasks
+        .where((t) => t.reminderMinutesBefore != null)
+        .toList();
+
+    final dateReminders = allReminders.where((t) {
+      if (t.scheduledStart != null) {
+        return _sameDate(t.scheduledStart!, selectedDate);
+      }
+      if (t.plannedDate != null) {
+        return _sameDate(t.plannedDate!, selectedDate);
+      }
+      return false;
+    }).toList();
+
+    // If no reminders match this exact date, also show active reminders so user can see them
+    final displayedReminders = dateReminders.isNotEmpty
+        ? dateReminders
+        : allReminders.where((t) => !t.isCompleted).toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 110),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                'Reminders',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () => context.push('/reminder/new'),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text(
+                'New reminder',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        if (displayedReminders.isEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 34),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9600).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_active_rounded,
+                    color: Color(0xFFFF9600),
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Add your first reminder',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Set scheduled notifications, alerts, and time alarms to keep yourself prompt and focused throughout the day.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...displayedReminders.map(
+            (task) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ReminderItemCard(task: task, date: selectedDate),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReminderItemCard extends StatelessWidget {
+  final Task task;
+  final DateTime date;
+
+  const _ReminderItemCard({required this.task, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    const reminderColor = Color(0xFFFF9600);
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () =>
+            context.push('/reminder/edit/${Uri.encodeComponent(task.id)}'),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: reminderColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: reminderColor,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        decoration: task.isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Text(
+                          task.scheduledStart != null
+                              ? DateFormat(
+                                  'h:mm a',
+                                ).format(task.scheduledStart!)
+                              : (task.plannedDate != null
+                                    ? DateFormat(
+                                        'EEE, MMM d',
+                                      ).format(task.plannedDate!)
+                                    : 'No time'),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        if (task.recurrence != TaskRecurrence.none) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '• ${task.recurrence.label}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: task.isCompleted ? 'Undo' : 'Complete',
+                onPressed: () {
+                  final now = DateTime.now();
+                  context.read<TaskProvider>().setCompletedForDate(
+                    task.id,
+                    now,
+                    !task.isCompleted,
+                  );
+                },
+                icon: Icon(
+                  task.isCompleted
+                      ? Icons.check_circle_rounded
+                      : Icons.circle_outlined,
+                  color: task.isCompleted ? reminderColor : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> _showTaskCollectionSheet(
   BuildContext context, {
   required String title,
@@ -2581,7 +3079,7 @@ Future<void> _showTaskCollectionSheet(
                         )
                       : ListView.separated(
                           itemCount: tasks.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final task = tasks[index];
                             return ListTile(

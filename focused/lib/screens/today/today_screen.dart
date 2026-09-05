@@ -10,7 +10,6 @@ import '../../models/app_usage_app_entry.dart';
 import '../../models/habit.dart';
 import '../../models/task.dart';
 import '../../models/task_occurrence.dart';
-import '../../models/task_group.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/habit_provider.dart';
@@ -23,7 +22,6 @@ import '../../services/home_widget_service.dart';
 import '../../services/productivity_streak_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_icon.dart';
-import '../main/main_shell.dart';
 
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
@@ -150,6 +148,8 @@ class TodayScreen extends StatelessWidget {
                     usageConnected: usageProvider.hasUsageAccess,
                   ),
                   const SizedBox(height: 24),
+                  const _ProductivityInsightCard(),
+                  const SizedBox(height: 24),
                   _DailyPlanSection(
                     next: next,
                     date: now,
@@ -157,7 +157,7 @@ class TodayScreen extends StatelessWidget {
                     totalTasksCount: totalTodayTasks,
                   ),
                   const SizedBox(height: 24),
-                  const _ProductivityInsightCard(),
+                  _TodayRemindersSection(date: now),
                   const SizedBox(height: 32),
                   _HabitTrackerSection(habits: habits, date: now),
                 ]),
@@ -799,60 +799,71 @@ class _OverviewMetricCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    if (isClickable) ...[
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 16,
-                        color: accent.withValues(alpha: 0.8),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
+              if (isClickable) ...[
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: accent.withValues(alpha: 0.8),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
               if (customIcon != null)
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 42,
+                  height: 42,
+                  margin: const EdgeInsets.only(right: 10),
                   padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(13),
                   ),
                   child: Center(child: customIcon),
                 )
               else if (icon != null)
-                Icon(icon, size: 24, color: accent),
+                Container(
+                  margin: const EdgeInsets.only(right: 10),
+                  child: Icon(icon, size: 26, color: accent),
+                ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    if (trend != null) ...[
+                      const SizedBox(height: 4),
+                      _TrendText(value: trend, isHigherBetter: isHigherBetter),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-          ),
-          if (trend != null) ...[
-            const SizedBox(height: 6),
-            _TrendText(value: trend, isHigherBetter: isHigherBetter),
-          ],
         ],
       ),
     );
@@ -1089,12 +1100,6 @@ class _DailyPlanSection extends StatelessWidget {
                 ],
               ),
             ),
-            TextButton(
-              onPressed: () {
-                MainShell.switchToTab(context, 1);
-              },
-              child: const Text('View today'),
-            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -1117,7 +1122,9 @@ class _NextTaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final task = next.task;
-    final color = _priorityColor(task.priority);
+    final isSquad = task.isSquadTask;
+    const squadColor = Color(0xFF2563EB); // Calming royal oceanic blue
+    final color = isSquad ? squadColor : _priorityColor(task.priority);
 
     return Material(
       color: Theme.of(context).colorScheme.surface,
@@ -1146,14 +1153,52 @@ class _NextTaskCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      task.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            task.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (isSquad) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: squadColor.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.groups_rounded,
+                                  size: 13,
+                                  color: squadColor,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Squad',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: squadColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 5),
                     Text(
@@ -1317,12 +1362,12 @@ class _HabitTrackerCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: habit.color.withOpacity(0.13),
+                  color: habit.color.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(habit.icon, color: habit.color, size: 22),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1331,9 +1376,12 @@ class _HabitTrackerCard extends StatelessWidget {
                       habit.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
+                      style: TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
+                        decoration: complete
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -1444,6 +1492,181 @@ String _initials(String name) {
   return '${words.first[0]}${words.last[0]}'.toUpperCase();
 }
 
+bool _sameDate(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+class _TodayRemindersSection extends StatelessWidget {
+  final DateTime date;
+
+  const _TodayRemindersSection({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final taskProvider = context.watch<TaskProvider>();
+    final allReminders = taskProvider.tasks
+        .where((t) => t.reminderMinutesBefore != null)
+        .toList();
+
+    final dateReminders = allReminders.where((t) {
+      if (t.scheduledStart != null) {
+        return _sameDate(t.scheduledStart!, date);
+      }
+      if (t.plannedDate != null) {
+        return _sameDate(t.plannedDate!, date);
+      }
+      return false;
+    }).toList();
+
+    final activeReminders =
+        (dateReminders.isNotEmpty ? dateReminders : allReminders)
+            .where((t) => !t.isCompleted)
+            .take(3)
+            .toList();
+
+    const accent = Color(0xFFFF9600);
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.notifications_active_outlined,
+              size: 22,
+              color: accent,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Reminders',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (activeReminders.isNotEmpty)
+              Text(
+                '${activeReminders.length} active',
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (activeReminders.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.notifications_off_outlined,
+                  color: scheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'No active reminders for today.',
+                    style: TextStyle(color: scheme.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...activeReminders.map(
+            (reminder) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Material(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => context.push(
+                    '/reminder/edit/${Uri.encodeComponent(reminder.id)}',
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 13,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_active_rounded,
+                            color: accent,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                reminder.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                reminder.scheduledStart != null
+                                    ? DateFormat(
+                                        'h:mm a',
+                                      ).format(reminder.scheduledStart!)
+                                    : (reminder.plannedDate != null
+                                          ? DateFormat(
+                                              'EEE, MMM d',
+                                            ).format(reminder.plannedDate!)
+                                          : 'Today'),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Done',
+                          onPressed: () =>
+                              taskProvider.setCompleted(reminder.id, true),
+                          icon: const Icon(Icons.circle_outlined),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _TaskMatesSummaryCard extends StatelessWidget {
   const _TaskMatesSummaryCard();
 
@@ -1469,13 +1692,18 @@ class _TaskMatesSummaryCard extends StatelessWidget {
       (sum, g) => sum + g.activeTasks.length,
     );
 
+    // Eye-smoothing calm oceanic blue/indigo palette
+    const squadColor = Color(0xFF2563EB);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF9B51E0).withValues(alpha: isDark ? 0.12 : 0.08),
+        color: isDark ? const Color(0xFF132238) : const Color(0xFFEFF6FF),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: const Color(0xFF9B51E0).withValues(alpha: 0.35),
+          color: isDark
+              ? squadColor.withValues(alpha: 0.35)
+              : const Color(0xFFBFDBFE),
           width: 1.2,
         ),
       ),
@@ -1485,20 +1713,20 @@ class _TaskMatesSummaryCard extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
-              padding: const EdgeInsets.all(8),
+              width: 50,
+              height: 50,
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF9B51E0),
-                borderRadius: BorderRadius.circular(14),
+                color: isDark ? const Color(0xFF1E3A8A) : squadColor,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: SvgPicture.asset(
                 'assets/icon/group_task.svg',
-                width: 26,
-                height: 26,
+                width: 28,
+                height: 28,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1510,39 +1738,43 @@ class _TaskMatesSummaryCard extends StatelessWidget {
                         style: TextStyle(
                           color: isDark ? Colors.white : scheme.onSurface,
                           fontWeight: FontWeight.w800,
-                          fontSize: 15,
+                          fontSize: 16,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                          horizontal: 8,
+                          vertical: 2.5,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF9B51E0).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
+                          color: isDark
+                              ? squadColor.withValues(alpha: 0.35)
+                              : squadColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '$activeTaskCount active',
-                          style: const TextStyle(
-                            fontSize: 10.5,
+                          style: TextStyle(
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF9B51E0),
+                            color: isDark
+                                ? const Color(0xFF93C5FD)
+                                : squadColor,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     '${firstGroup.name}: "${firstGroup.activeTasks.first.title}"',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.5,
                       color: isDark
-                          ? const Color(0xFF77878F)
+                          ? const Color(0xFF94A3B8)
                           : scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1550,11 +1782,11 @@ class _TaskMatesSummaryCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 6),
-            const Icon(
+            const SizedBox(width: 8),
+            Icon(
               Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: Color(0xFF9B51E0),
+              size: 15,
+              color: isDark ? const Color(0xFF93C5FD) : squadColor,
             ),
           ],
         ),

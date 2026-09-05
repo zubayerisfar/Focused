@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:ui' show Color;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -46,7 +49,7 @@ class TaskNotificationService {
     }
 
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      android: AndroidInitializationSettings('@drawable/ic_notification'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -164,42 +167,28 @@ class TaskNotificationService {
           );
         }
 
-        // Schedule 30-minute late reminder if task has a scheduled start time
-        if (task.scheduledStart != null) {
-          final late30MinTime = task.scheduledStart!.add(
-            const Duration(minutes: 30),
+        // Optional late reminder: only scheduled if explicitly requested by user
+        if (task.lateReminderMinutesAfter != null &&
+            task.lateReminderMinutesAfter! > 0 &&
+            (task.scheduledEnd != null || task.scheduledStart != null)) {
+          final baseTime = task.scheduledEnd ?? task.scheduledStart!;
+          final lateReminderTime = baseTime.add(
+            Duration(minutes: task.lateReminderMinutesAfter!),
           );
-          if (late30MinTime.isAfter(now)) {
+          if (lateReminderTime.isAfter(now)) {
             const lateSlot = 8;
             await _notifications.zonedSchedule(
               _notificationId(task.id, lateSlot),
-              '👀 You\'re 30 minutes late',
-              'You haven\'t started "${task.title}" yet. Don\'t lose your streak!',
-              _toLocalTz(late30MinTime),
-              _details,
+              '⏳ Overdue: ${task.title}',
+              'You have a pending task: "${task.title}". Complete it to keep your momentum!',
+              _toLocalTz(lateReminderTime),
+              _lateDetails,
               androidScheduleMode: useExactScheduling
                   ? AndroidScheduleMode.exactAllowWhileIdle
                   : AndroidScheduleMode.inexactAllowWhileIdle,
-              payload: 'late30_${task.id}',
+              payload: 'late_${task.id}',
             );
           }
-        }
-
-        // Schedule deadline warning notification at scheduledEnd or deadline
-        final deadlineTime = task.scheduledEnd ?? task.deadline;
-        if (deadlineTime != null && deadlineTime.isAfter(now)) {
-          final deadlineSlot = 9; // Slot 9 dedicated to deadline missed alert
-          await _notifications.zonedSchedule(
-            _notificationId(task.id, deadlineSlot),
-            '🥺 Deadline reached',
-            'Time is up for "${task.title}". Complete it now to save your streak.',
-            _toLocalTz(deadlineTime),
-            _details,
-            androidScheduleMode: useExactScheduling
-                ? AndroidScheduleMode.exactAllowWhileIdle
-                : AndroidScheduleMode.inexactAllowWhileIdle,
-            payload: 'deadline_${task.id}',
-          );
         }
       }
 
@@ -570,6 +559,167 @@ class TaskNotificationService {
     );
   }
 
+  Future<String?> _downloadAvatarLocally(String url) async {
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+      if (response.statusCode == 200) {
+        final bytes = await consolidateHttpClientResponseBytes(response);
+        final tempDir = Directory.systemTemp;
+        final fileName = 'avatar_${url.hashCode.abs()}.png';
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        return file.path;
+      }
+    } catch (e) {
+      debugPrint('Could not download avatar for notification: $e');
+    } finally {
+      client?.close(force: true);
+    }
+    return null;
+  }
+
+  Future<void> showFollowNotification({
+    required String followerName,
+    String? photoUrl,
+  }) async {
+    AndroidBitmap<Object>? largeIcon;
+    if (photoUrl != null && photoUrl.trim().isNotEmpty) {
+      final localPath = await _downloadAvatarLocally(photoUrl);
+      if (localPath != null) {
+        largeIcon = FilePathAndroidBitmap(localPath);
+      }
+    }
+    largeIcon ??= const DrawableResourceAndroidBitmap('notif_friends');
+
+    final androidDetails = AndroidNotificationDetails(
+      'focused_followers_v1',
+      'Followers',
+      channelDescription: 'Notifications when someone starts following you.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: largeIcon,
+      color: const Color(0xFF4E25AA),
+      sound: const RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      '👋 New Follower: $followerName',
+      '$followerName started following your focus journey on Focused!',
+      notificationDetails,
+    );
+  }
+
+  Future<void> showPartnerTaskCompletionNotification({
+    required String friendName,
+    required String taskTitle,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'focused_partner_completions_v1',
+      'Partner Task Activity',
+      channelDescription:
+          'Notifications when your squad mates finish their tasks.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_group_reminder'),
+      color: Color(0xFF4E25AA),
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      '🎯 $friendName finished their task!',
+      '"$taskTitle" was completed by $friendName. Now it\'s your turn to shine!',
+      notificationDetails,
+    );
+  }
+
+  Future<void> scheduleOccasionalReminder({
+    required int hour,
+    required int minute,
+  }) async {
+    await init();
+    const reminderId = 889900;
+    await _notifications.cancel(reminderId);
+
+    const androidDetails = AndroidNotificationDetails(
+      'focused_occasional_v1',
+      'Occasional Reminders',
+      channelDescription:
+          'Gentle occasional reminders to stay on top of your habits.',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_occasional'),
+      color: Color(0xFF4E25AA),
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
+    );
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+
+    try {
+      await _notifications.zonedSchedule(
+        reminderId,
+        '✨ Time to check in with yourself',
+        'Reflect on your progress today and prepare tomorrow\'s focus goals.',
+        scheduled,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'occasional_reminder',
+      );
+    } catch (e) {
+      debugPrint('Could not schedule occasional reminder: $e');
+    }
+  }
+
+  Future<void> cancelOccasionalReminder() async {
+    const reminderId = 889900;
+    await _notifications.cancel(reminderId);
+  }
+
   Future<void> showFriendReminderNotification({
     required String fromName,
     required String message,
@@ -581,7 +731,9 @@ class TaskNotificationService {
           'Notifications sent by your friends to remind you to finish your tasks.',
       importance: Importance.max,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_friends'),
+      color: Color(0xFF4E25AA),
       sound: RawResourceAndroidNotificationSound('notification_sound'),
       playSound: true,
     );
@@ -625,7 +777,9 @@ class TaskNotificationService {
           'Notifications when friends send you EXP gifts to boost your level.',
       importance: Importance.max,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_friends'),
+      color: Color(0xFF4E25AA),
       sound: RawResourceAndroidNotificationSound('notification_sound'),
       playSound: true,
     );
@@ -656,7 +810,9 @@ class TaskNotificationService {
           'Notifications when friends invite you to join a new Task Squad.',
       importance: Importance.max,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_group_creation'),
+      color: Color(0xFF4E25AA),
       sound: RawResourceAndroidNotificationSound('notification_sound'),
       playSound: true,
     );
@@ -676,6 +832,40 @@ class TaskNotificationService {
     );
   }
 
+  Future<void> showSquadTaskAssignedNotification({
+    required String groupName,
+    required String assignerName,
+    required String taskTitle,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'focused_group_creations_v2',
+      'Squad Group Invites',
+      channelDescription:
+          'Notifications when friends invite you or assign tasks in a Task Squad.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_group_reminder'),
+      color: Color(0xFF4E25AA),
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      '⚡ New Squad Task: "$taskTitle"',
+      '$assignerName added a task to "$groupName". Open squad to set your time!',
+      notificationDetails,
+    );
+  }
+
   Future<void> scheduleTaskMateReminder({
     required String groupId,
     required String taskTitle,
@@ -691,7 +881,9 @@ class TaskNotificationService {
           'Scheduled reminders for your shared Task Mate goals.',
       importance: Importance.max,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_group_reminder'),
+      color: Color(0xFF4E25AA),
       sound: RawResourceAndroidNotificationSound('notification_sound'),
       playSound: true,
     );
@@ -822,6 +1014,8 @@ class TaskNotificationService {
       channelDescription: 'Birthday reminders from your Focused profile',
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      color: Color(0xFF4E25AA),
       playSound: true,
       enableVibration: true,
     ),
@@ -836,6 +1030,35 @@ class TaskNotificationService {
       channelDescription: 'Reminders for scheduled Focused tasks',
       importance: Importance.max,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_regular_reminder'),
+      color: Color(0xFF4E25AA),
+      playSound: true,
+      enableVibration: true,
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+    ),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+      sound: 'notification_sound.mp3',
+    ),
+    macOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+      sound: 'notification_sound.mp3',
+    ),
+  );
+
+  static const NotificationDetails _lateDetails = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'task_reminders_late_v1',
+      'Late task reminders',
+      channelDescription: 'Alerts when tasks are overdue or missed',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_late_task'),
+      color: Color(0xFF4E25AA),
       playSound: true,
       enableVibration: true,
       sound: RawResourceAndroidNotificationSound('notification_sound'),

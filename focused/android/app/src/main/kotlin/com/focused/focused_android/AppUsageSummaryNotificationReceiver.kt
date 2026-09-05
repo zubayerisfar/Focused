@@ -192,6 +192,8 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
 
         builder
             .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(context.getColor(R.color.notification_color))
             .setCustomContentView(compactViews)
             .setCustomBigContentView(bigViews)
             .setContentIntent(pendingIntent)
