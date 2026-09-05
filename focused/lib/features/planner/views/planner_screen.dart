@@ -72,21 +72,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
             children: [
               Column(
                 children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF171A23)
-                          : baseTheme.colorScheme.surface,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.40 : 0.08,
-                          ),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                  Material(
+                    elevation: isDark ? 4 : 2.5,
+                    shadowColor: Colors.black.withValues(
+                      alpha: isDark ? 0.50 : 0.14,
                     ),
+                    color: isDark
+                        ? const Color(0xFF171A23)
+                        : baseTheme.colorScheme.surface,
                     child: PlannerHeader(
                       selectedDate: _selectedDate,
                       area: _area,
@@ -112,7 +105,35 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     ),
                   ),
                   Expanded(
-                    child: ColoredBox(color: pageTint, child: _buildAreaBody()),
+                    child: Stack(
+                      children: [
+                        ColoredBox(
+                          color: pageTint,
+                          child: SizedBox.expand(child: _buildAreaBody()),
+                        ),
+                        // Drop shadow overlay from appbar onto the body
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 8,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(
+                                    alpha: isDark ? 0.32 : 0.08,
+                                  ),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   if (_area != PlannerArea.tasks) const AppBannerAdWidget(),
                 ],

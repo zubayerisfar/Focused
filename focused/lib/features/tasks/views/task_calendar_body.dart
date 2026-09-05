@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/task.dart';
+import '../models/task_group.dart';
 import '../models/task_occurrence.dart';
 import '../models/task_recurrence.dart';
 import '../../focus/providers/focus_provider.dart';
+import '../../friends/providers/task_mate_provider.dart';
 import '../providers/task_provider.dart';
 import '../services/task_execution_analyzer.dart';
 import '../../../core/theme/app_theme.dart';
@@ -19,7 +21,8 @@ class TaskCalendarBody extends StatelessWidget {
   final ValueChanged<DateTime> onDateSelected;
   final VoidCallback onPickDate;
 
-  const TaskCalendarBody({super.key, 
+  const TaskCalendarBody({
+    super.key,
     required this.mode,
     required this.selectedDate,
     required this.onDateSelected,
@@ -641,7 +644,11 @@ class _PlannerTimelineTask extends StatelessWidget {
           : const [],
     );
 
-    final effectiveColor = task.isSquadTask ? const Color(0xFF9B51E0) : color;
+    final taskMateProvider = context.watch<TaskMateProvider?>();
+    final groupColor = taskMateProvider != null
+        ? taskMateProvider.colorForGroupId(task.squadGroupId)
+        : getSquadGroupColor(task.squadGroupId);
+    final effectiveColor = task.isSquadTask ? groupColor : color;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return IntrinsicHeight(
@@ -692,20 +699,17 @@ class _PlannerTimelineTask extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   color: task.isSquadTask
-                      ? const Color(0xFF9B51E0).withValues(
+                      ? groupColor.withValues(
                           alpha: isDark ? 0.16 : 0.08,
                         )
                       : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(18),
                   border: task.isSquadTask
-                      ? Border.all(
-                          color: const Color(0xFF9B51E0),
-                          width: 1.5,
-                        )
+                      ? Border.all(color: groupColor, width: 1.5)
                       : Border.all(
-                          color: Theme.of(context).dividerColor.withValues(
-                            alpha: isDark ? 0.35 : 0.6,
-                          ),
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
                         ),
                   boxShadow: [
                     BoxShadow(
@@ -728,133 +732,155 @@ class _PlannerTimelineTask extends StatelessWidget {
                     onLongPress: () => context.push(
                       '/task/edit/${Uri.encodeComponent(task.id)}',
                     ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: effectiveColor,
-                            borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 11, 8, 11),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: effectiveColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        SvgPicture.asset(
-                          task.isSquadTask
-                              ? 'assets/icon/group_task.svg'
-                              : 'assets/icon/task_icon.svg',
-                          width: 22,
-                          height: 22,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      task.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        decoration: occurrence.isCompleted
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                      ),
-                                    ),
-                                  ),
-                                  if (occurrence.isCompletedLate ||
-                                      task.isCompletedLate) ...[
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 5,
-                                        vertical: 1.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFFEF4444,
-                                        ).withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const Text(
-                                        '⚠️ Late',
-                                        style: TextStyle(
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFFEF4444),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  if (task.isSquadTask) ...[
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 5,
-                                        vertical: 1.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF9B51E0,
-                                        ).withValues(alpha: 0.18),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const Text(
-                                        '👥 Squad',
-                                        style: TextStyle(
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFF9B51E0),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 3),
-                              if (inFocus)
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 3,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
+                          const SizedBox(width: 8),
+                          SvgPicture.asset(
+                            task.isSquadTask
+                                ? 'assets/icon/group_task.svg'
+                                : 'assets/icon/task_icon.svg',
+                            width: 22,
+                            height: 22,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Container(
-                                      width: 7,
-                                      height: 7,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        shape: BoxShape.circle,
+                                    Expanded(
+                                      child: Text(
+                                        task.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          decoration: occurrence.isCompleted
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                        ),
                                       ),
                                     ),
-                                    Text(
-                                      'IN FOCUS',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                    if (execution.actualStart != null)
-                                      Text(
-                                        _startTimingLabel(
-                                          execution.actualStart!,
-                                          execution.plannedStart,
+                                    if (occurrence.isCompletedLate ||
+                                        task.isCompletedLate) ...[
+                                      const SizedBox(width: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 1.5,
                                         ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFFEF4444,
+                                          ).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          '⚠️ Late',
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFFEF4444),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    if (task.isSquadTask) ...[
+                                      const SizedBox(width: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 1.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: groupColor.withValues(alpha: 0.18),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '👥 SQUAD',
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: groupColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                if (inFocus)
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 3,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      Container(
+                                        width: 7,
+                                        height: 7,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      Text(
+                                        'IN FOCUS',
                                         style: Theme.of(context)
                                             .textTheme
                                             .labelSmall
+                                            ?.copyWith(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                      if (execution.actualStart != null)
+                                        Text(
+                                          _startTimingLabel(
+                                            execution.actualStart!,
+                                            execution.plannedStart,
+                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                    ],
+                                  )
+                                else if (execution.hasStarted)
+                                  Wrap(
+                                    spacing: 7,
+                                    runSpacing: 2,
+                                    children: [
+                                      Text(
+                                        '${_shortDuration(execution.activeFocusDuration)} focused',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
                                             ?.copyWith(
                                               color: Theme.of(
                                                 context,
@@ -862,84 +888,67 @@ class _PlannerTimelineTask extends StatelessWidget {
                                               fontWeight: FontWeight.w700,
                                             ),
                                       ),
-                                  ],
-                                )
-                              else if (execution.hasStarted)
-                                Wrap(
-                                  spacing: 7,
-                                  runSpacing: 2,
-                                  children: [
-                                    Text(
-                                      '${_shortDuration(execution.activeFocusDuration)} focused',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w700,
+                                      if (execution.actualStart != null)
+                                        Text(
+                                          _startTimingLabel(
+                                            execution.actualStart!,
+                                            execution.plannedStart,
                                           ),
-                                    ),
-                                    if (execution.actualStart != null)
-                                      Text(
-                                        _startTimingLabel(
-                                          execution.actualStart!,
-                                          execution.plannedStart,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
                                         ),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
-                                            ),
-                                      ),
-                                  ],
-                                )
-                              else
-                                Text(
-                                  '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                            ],
+                                    ],
+                                  )
+                                else
+                                  Text(
+                                    '${DateFormat('h:mm a').format(occurrence.start)} – ${DateFormat('h:mm a').format(occurrence.end)}',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: occurrence.isCompleted ? 'Undo' : 'Complete',
-                          onPressed: canToggle
-                              ? () => context
-                                    .read<TaskProvider>()
-                                    .setCompletedForDate(
-                                      task.id,
-                                      occurrence.start,
-                                      !occurrence.isCompleted,
-                                    )
-                              : null,
-                          icon: Icon(
-                            occurrence.isCompleted
-                                ? Icons.check_circle_rounded
-                                : Icons.circle_outlined,
-                            color: occurrence.isCompleted
-                                ? AppTheme.success
+                          IconButton(
+                            tooltip: occurrence.isCompleted
+                                ? 'Undo'
+                                : 'Complete',
+                            onPressed: canToggle
+                                ? () => context
+                                      .read<TaskProvider>()
+                                      .setCompletedForDate(
+                                        task.id,
+                                        occurrence.start,
+                                        !occurrence.isCompleted,
+                                      )
                                 : null,
+                            icon: Icon(
+                              occurrence.isCompleted
+                                  ? Icons.check_circle_rounded
+                                  : Icons.circle_outlined,
+                              color: occurrence.isCompleted
+                                  ? AppTheme.success
+                                  : null,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }
@@ -956,30 +965,27 @@ class _AnytimePlannerTask extends StatelessWidget {
     final provider = context.watch<TaskProvider>();
     final complete = provider.isTaskCompletedForDate(task, date);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final taskMateProvider = context.watch<TaskMateProvider?>();
+    final groupColor = taskMateProvider != null
+        ? taskMateProvider.colorForGroupId(task.squadGroupId)
+        : getSquadGroupColor(task.squadGroupId);
 
     return Container(
       decoration: BoxDecoration(
         color: task.isSquadTask
-            ? const Color(0xFF9B51E0).withValues(
-                alpha: isDark ? 0.16 : 0.08,
-              )
+            ? groupColor.withValues(alpha: isDark ? 0.16 : 0.08)
             : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
         border: task.isSquadTask
-            ? Border.all(
-                color: const Color(0xFF9B51E0),
-                width: 1.5,
-              )
+            ? Border.all(color: groupColor, width: 1.5)
             : Border.all(
-                color: Theme.of(context).dividerColor.withValues(
-                  alpha: isDark ? 0.35 : 0.6,
-                ),
+                color: Theme.of(
+                  context,
+                ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
               ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: isDark ? 0.28 : 0.05,
-            ),
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1024,7 +1030,9 @@ class _AnytimePlannerTask extends StatelessWidget {
                       .read<TaskProvider>()
                       .setCompletedForDate(task.id, date, !complete),
                   icon: Icon(
-                    complete ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    complete
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
                     color: complete ? AppTheme.success : null,
                   ),
                 ),
@@ -1879,8 +1887,6 @@ class _EmptyDay extends StatelessWidget {
     );
   }
 }
-
-
 
 Color _priorityColor(TaskPriority priority) {
   switch (priority) {

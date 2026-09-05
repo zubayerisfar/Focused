@@ -61,6 +61,15 @@ class TaskMateProvider extends ChangeNotifier {
   static const int maxGroupFriends =
       4; // Up to 4 friends + creator = 5 members total
 
+  Color colorForGroupId(String? groupId) {
+    if (groupId == null || groupId.isEmpty) return squadGroupPalette[0];
+    final idx = _groups.indexWhere((g) => g.id == groupId);
+    if (idx != -1) {
+      return squadGroupPalette[idx % squadGroupPalette.length];
+    }
+    return getSquadGroupColor(groupId);
+  }
+
   void initForUser(String uid) {
     if (_currentUid == uid && _groupsSub != null) return;
     _currentUid = uid;
@@ -122,15 +131,16 @@ class TaskMateProvider extends ChangeNotifier {
     ];
 
     try {
+      final upperName = name.trim().isEmpty ? 'TASK SQUAD' : name.trim().toUpperCase();
       final newGroupId = await _service.createGroup(
-        name: name,
+        name: upperName,
         creatorUid: _currentUid,
         members: allMembers,
       );
 
       final newGroup = TaskGroup(
         id: newGroupId,
-        name: name.trim().isEmpty ? 'Task Squad' : name.trim(),
+        name: upperName,
         createdBy: _currentUid,
         memberUids: allMembers.map((m) => m.uid).toList(),
         members: {for (final m in allMembers) m.uid: m},

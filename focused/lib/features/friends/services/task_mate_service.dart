@@ -43,7 +43,7 @@ class TaskMateService {
     }
 
     final docRef = await _firestore.collection('task_groups').add({
-      'name': name.trim().isEmpty ? 'Task Squad' : name.trim(),
+      'name': name.trim().isEmpty ? 'TASK SQUAD' : name.trim().toUpperCase(),
       'createdBy': creatorUid,
       'memberUids': memberUids,
       'members': membersMap,

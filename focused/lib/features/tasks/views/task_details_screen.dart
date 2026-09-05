@@ -56,9 +56,13 @@ class TaskDetailsScreen extends StatelessWidget {
       (total, session) => total + session.actualFocusDuration,
     );
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Task'),
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
         actions: [
           TextButton(
             onPressed: () =>
@@ -371,15 +375,13 @@ class _DetailsCard extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(
-            alpha: isDark ? 0.35 : 0.6,
-          ),
+          color: Theme.of(
+            context,
+          ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: isDark ? 0.28 : 0.05,
-            ),
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -453,15 +455,13 @@ class _MetricCard extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(
-            alpha: isDark ? 0.35 : 0.6,
-          ),
+          color: Theme.of(
+            context,
+          ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: isDark ? 0.28 : 0.05,
-            ),
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),

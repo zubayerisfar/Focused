@@ -6,12 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../friends/providers/task_mate_provider.dart';
 import '../../tasks/models/task.dart';
+import '../../tasks/models/task_group.dart';
 import '../../tasks/providers/task_provider.dart';
-
-String _dateQuery(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}-'
-    '${value.month.toString().padLeft(2, '0')}-'
-    '${value.day.toString().padLeft(2, '0')}';
 
 class TaskMatesSection extends StatelessWidget {
   final DateTime date;
@@ -34,15 +30,15 @@ class TaskMatesSection extends StatelessWidget {
         .where((t) => !taskProvider.isTaskCompletedForDate(t, date))
         .toList();
 
-    // Also check task mate groups with active tasks
+    // Check task mate groups with active tasks
     final groups = taskMateProvider.groups;
     final activeGroups = groups.where((g) => g.activeTasks.isNotEmpty).toList();
-
-    const squadColor = Color(0xFF2563EB); // Royal oceanic blue accent
 
     final totalActiveCount = activeSquadTasks.isNotEmpty
         ? activeSquadTasks.length
         : activeGroups.fold<int>(0, (sum, g) => sum + g.activeTasks.length);
+
+    const sectionAccent = Color(0xFF2563EB);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,13 +50,13 @@ class TaskMatesSection extends StatelessWidget {
               height: 32,
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: squadColor.withValues(alpha: isDark ? 0.25 : 0.12),
+                color: sectionAccent.withValues(alpha: isDark ? 0.25 : 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: SvgPicture.asset(
                 'assets/icon/group_task.svg',
                 colorFilter: const ColorFilter.mode(
-                  squadColor,
+                  sectionAccent,
                   BlendMode.srcIn,
                 ),
               ),
@@ -77,12 +73,9 @@ class TaskMatesSection extends StatelessWidget {
             ),
             if (totalActiveCount > 0) ...[
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: squadColor.withValues(alpha: isDark ? 0.25 : 0.10),
+                  color: sectionAccent.withValues(alpha: isDark ? 0.25 : 0.10),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -90,22 +83,22 @@ class TaskMatesSection extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
-                    color: squadColor,
+                    color: sectionAccent,
                   ),
                 ),
               ),
               const SizedBox(width: 6),
             ],
             IconButton(
-              tooltip: 'View Squads',
+              tooltip: 'Open Squads',
               visualDensity: VisualDensity.compact,
-              onPressed: () => context.push('/friends?tab=squads'),
+              onPressed: () => context.go('/?tab=friends'),
               icon: const Icon(Icons.arrow_forward_rounded, size: 20),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        // No overlay coloring on the cards - clean surface styling with shadow
+        // Clean surface card - no colored overlay background, soft shadow
         if (activeSquadTasks.isEmpty && activeGroups.isEmpty)
           Container(
             width: double.infinity,
@@ -114,9 +107,9 @@ class TaskMatesSection extends StatelessWidget {
               color: scheme.surface,
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
-                color: Theme.of(context).dividerColor.withValues(
-                  alpha: isDark ? 0.35 : 0.6,
-                ),
+                color: Theme.of(
+                  context,
+                ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
               ),
               boxShadow: [
                 BoxShadow(
@@ -158,7 +151,7 @@ class TaskMatesSection extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/friends?tab=squads'),
+                  onPressed: () => context.go('/?tab=friends'),
                   child: const Text('Squads'),
                 ),
               ],
@@ -166,18 +159,15 @@ class TaskMatesSection extends StatelessWidget {
           )
         else if (activeSquadTasks.isNotEmpty)
           ...activeSquadTasks.map(
-            (task) => _SquadTaskCard(
+            (task) => _SquadTaskTile(
               task: task,
               date: date,
-              squadColor: squadColor,
             ),
           )
         else
-          // If active groups exist but not yet saved in task provider
           ...activeGroups.map(
-            (group) => _GroupActiveSummaryCard(
+            (group) => _GroupActiveSummaryTile(
               group: group,
-              squadColor: squadColor,
             ),
           ),
       ],
@@ -185,45 +175,57 @@ class TaskMatesSection extends StatelessWidget {
   }
 }
 
-class _SquadTaskCard extends StatelessWidget {
+class _SquadTaskTile extends StatelessWidget {
   final Task task;
   final DateTime date;
-  final Color squadColor;
 
-  const _SquadTaskCard({
+  const _SquadTaskTile({
     required this.task,
     required this.date,
-    required this.squadColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final taskProvider = context.read<TaskProvider>();
-    final taskMateProvider = context.read<TaskMateProvider>();
+    final taskMateProvider = context.watch<TaskMateProvider>();
 
-    // Find group name if squadGroupId is present
-    String groupName = 'Task Mate Squad';
+    // Dynamic group coloring: each group has its own distinct color
+    final groupColor = taskMateProvider.colorForGroupId(task.squadGroupId);
+
+    // Group name in all capital letters
+    String groupName = 'TASK SQUAD';
     if (task.squadGroupId != null) {
       final matching = taskMateProvider.groups.where(
         (g) => g.id == task.squadGroupId,
       );
       if (matching.isNotEmpty) {
-        groupName = matching.first.name;
+        groupName = matching.first.name.toUpperCase();
       }
+    }
+
+    // Task description or time
+    String taskDescription = '';
+    if (task.description.trim().isNotEmpty &&
+        task.description.trim() != '👥 Squad Quest') {
+      taskDescription = task.description.trim();
+    } else if (task.scheduledStart != null && task.scheduledEnd != null) {
+      taskDescription =
+          '${DateFormat('h:mm a').format(task.scheduledStart!)} – ${DateFormat('h:mm a').format(task.scheduledEnd!)}';
+    } else {
+      taskDescription = 'Anytime today';
     }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         decoration: BoxDecoration(
-          color: scheme.surface, // Clean surface - no overlay coloring
+          color: scheme.surface, // Clean surface - no overlay coloring on home
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(
-              alpha: isDark ? 0.35 : 0.6,
-            ),
+            color: Theme.of(
+              context,
+            ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
           ),
           boxShadow: [
             BoxShadow(
@@ -238,18 +240,18 @@ class _SquadTaskCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: () => context.push(
-              '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(date)}',
-            ),
+            // Simply clicking on them takes to that group and opens that group
+            onTap: () => context.go('/?tab=friends'),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
+                  // Group-specific left color indicator bar
                   Container(
-                    width: 4,
-                    height: 48,
+                    width: 4.5,
+                    height: 52,
                     decoration: BoxDecoration(
-                      color: squadColor,
+                      color: groupColor,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -259,13 +261,13 @@ class _SquadTaskCard extends StatelessWidget {
                     height: 44,
                     padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: squadColor.withValues(alpha: isDark ? 0.25 : 0.12),
+                      color: groupColor.withValues(alpha: isDark ? 0.25 : 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: SvgPicture.asset(
                       'assets/icon/group_task.svg',
                       colorFilter: ColorFilter.mode(
-                        squadColor,
+                        groupColor,
                         BlendMode.srcIn,
                       ),
                     ),
@@ -275,19 +277,34 @@ class _SquadTaskCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Group badge with group name in CAPITAL LETTERS & group coloring
                         Row(
                           children: [
-                            Text(
-                              groupName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: squadColor,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: groupColor.withValues(
+                                  alpha: isDark ? 0.25 : 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                groupName,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: groupColor,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
+                        // Task title
                         Text(
                           task.title,
                           maxLines: 1,
@@ -297,11 +314,12 @@ class _SquadTaskCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 2),
+                        // Task description / schedule
                         Text(
-                          task.scheduledStart != null && task.scheduledEnd != null
-                              ? '${DateFormat('h:mm a').format(task.scheduledStart!)} – ${DateFormat('h:mm a').format(task.scheduledEnd!)}'
-                              : 'Anytime today',
+                          taskDescription,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant,
                             fontWeight: FontWeight.w400,
@@ -310,27 +328,11 @@ class _SquadTaskCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Start focus',
-                    onPressed: () => context.push(
-                      '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(date)}',
-                    ),
-                    icon: SvgPicture.asset(
-                      'assets/icon/focus_icon.svg',
-                      width: 22,
-                      height: 22,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Mark done',
-                    onPressed: () {
-                      final isDone = taskProvider.isTaskCompletedForDate(task, date);
-                      taskProvider.setCompletedForDate(task.id, date, !isDone);
-                    },
-                    icon: const Icon(
-                      Icons.check_circle_outline_rounded,
-                      size: 24,
-                    ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 15,
+                    color: groupColor,
                   ),
                 ],
               ),
@@ -342,19 +344,30 @@ class _SquadTaskCard extends StatelessWidget {
   }
 }
 
-class _GroupActiveSummaryCard extends StatelessWidget {
-  final dynamic group;
-  final Color squadColor;
+class _GroupActiveSummaryTile extends StatelessWidget {
+  final TaskGroup group;
 
-  const _GroupActiveSummaryCard({
+  const _GroupActiveSummaryTile({
     required this.group,
-    required this.squadColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final taskMateProvider = context.watch<TaskMateProvider>();
+
+    // Each group gets its own coloring
+    final groupColor = taskMateProvider.colorForGroupId(group.id);
+    final groupNameUpper = group.name.toUpperCase();
+
+    final taskTitle = group.activeTasks.isNotEmpty
+        ? group.activeTasks.first.title
+        : 'ACTIVE SQUAD';
+    final taskCategory = group.activeTasks.isNotEmpty &&
+            group.activeTasks.first.category != null
+        ? group.activeTasks.first.category!
+        : 'Squad Quest';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -363,9 +376,9 @@ class _GroupActiveSummaryCard extends StatelessWidget {
           color: scheme.surface, // Clean surface - no overlay coloring
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(
-              alpha: isDark ? 0.35 : 0.6,
-            ),
+            color: Theme.of(
+              context,
+            ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
           ),
           boxShadow: [
             BoxShadow(
@@ -380,23 +393,32 @@ class _GroupActiveSummaryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: () => context.push('/friends?tab=squads'),
+            onTap: () => context.go('/?tab=friends'),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   Container(
+                    width: 4.5,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: groupColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Container(
                     width: 44,
                     height: 44,
                     padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: squadColor.withValues(alpha: isDark ? 0.25 : 0.12),
+                      color: groupColor.withValues(alpha: isDark ? 0.25 : 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: SvgPicture.asset(
                       'assets/icon/group_task.svg',
                       colorFilter: ColorFilter.mode(
-                        squadColor,
+                        groupColor,
                         BlendMode.srcIn,
                       ),
                     ),
@@ -406,24 +428,43 @@ class _GroupActiveSummaryCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${group.name}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: squadColor,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: groupColor.withValues(
+                              alpha: isDark ? 0.25 : 0.12,
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            groupNameUpper,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                              color: groupColor,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                         Text(
-                          group.activeTasks.isNotEmpty
-                              ? group.activeTasks.first.title
-                              : 'Squad active',
+                          taskTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          taskCategory,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
@@ -432,8 +473,8 @@ class _GroupActiveSummaryCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Icon(
                     Icons.arrow_forward_ios_rounded,
-                    size: 14,
-                    color: scheme.onSurfaceVariant,
+                    size: 15,
+                    color: groupColor,
                   ),
                 ],
               ),

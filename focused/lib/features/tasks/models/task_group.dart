@@ -1,4 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+
+const List<Color> squadGroupPalette = [
+  Color(0xFF9333EA), // Royal Purple
+  Color(0xFF0284C7), // Ocean Blue
+  Color(0xFF10B981), // Emerald Green
+  Color(0xFFF59E0B), // Warm Amber
+  Color(0xFFF43F5E), // Rose
+  Color(0xFF6366F1), // Indigo
+];
+
+Color getSquadGroupColor(String? groupId, [int? index]) {
+  if (index != null && index >= 0) {
+    return squadGroupPalette[index % squadGroupPalette.length];
+  }
+  if (groupId == null || groupId.trim().isEmpty) {
+    return squadGroupPalette[0];
+  }
+  final hash = groupId.codeUnits.fold<int>(0, (sum, c) => sum + c);
+  return squadGroupPalette[hash.abs() % squadGroupPalette.length];
+}
 
 class MemberTaskSchedule {
   final DateTime? scheduledTime;
@@ -179,7 +200,7 @@ class TaskGroup {
 
   TaskGroup({
     required this.id,
-    required this.name,
+    required String name,
     required this.createdBy,
     required this.memberUids,
     required this.members,
@@ -187,7 +208,8 @@ class TaskGroup {
     GroupActiveTask? activeTask,
     required this.createdAt,
     required this.updatedAt,
-  }) : activeTasks =
+  }) : name = name.trim().toUpperCase(),
+       activeTasks =
            activeTasks ?? (activeTask != null ? [activeTask] : const []);
 
   factory TaskGroup.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -216,7 +238,7 @@ class TaskGroup {
 
     return TaskGroup(
       id: doc.id,
-      name: data['name']?.toString() ?? 'Task Squad',
+      name: (data['name']?.toString() ?? 'TASK SQUAD').trim().toUpperCase(),
       createdBy: data['createdBy']?.toString() ?? '',
       memberUids:
           (data['memberUids'] as List<dynamic>?)
