@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/task_provider.dart';
-import '../../../providers/usage_provider.dart';
+import '../../tasks/providers/task_provider.dart';
+import '../../wellbeing/providers/usage_provider.dart';
 import '../../focus/views/focus_screen.dart';
 import '../../friends/views/friends_screen.dart';
 import '../../planner/views/planner_screen.dart';

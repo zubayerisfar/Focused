@@ -3,9 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task_group.dart';
-import '../../../providers/account_provider.dart';
-import '../../../providers/task_mate_provider.dart';
+import '../../tasks/models/task_group.dart';
+import '../../auth/providers/account_provider.dart';
+import '../providers/task_mate_provider.dart';
 
 class TaskMatesTab extends StatelessWidget {
   final bool isDark;

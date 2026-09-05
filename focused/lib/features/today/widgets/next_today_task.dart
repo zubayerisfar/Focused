@@ -1,6 +1,6 @@
-import '../../../models/task.dart';
-import '../../../models/task_occurrence.dart';
-import '../../../providers/task_provider.dart';
+import '../../tasks/models/task.dart';
+import '../../tasks/models/task_occurrence.dart';
+import '../../tasks/providers/task_provider.dart';
 
 class NextTodayTask {
   final Task task;

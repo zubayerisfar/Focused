@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/friends_provider.dart';
+import '../providers/friends_provider.dart';
 
 class FriendNotificationHubSheet extends StatelessWidget {
   const FriendNotificationHubSheet({super.key});

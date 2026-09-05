@@ -2,8 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/account_provider.dart';
-import '../../../providers/user_profile_provider.dart';
+import '../providers/account_provider.dart';
+import '../../profile/providers/user_profile_provider.dart';
 
 enum _AuthMode { register, login }
 

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:focused/models/app_limit.dart';
-import 'package:focused/providers/app_limit_provider.dart';
-import 'package:focused/services/app_limit_storage_service.dart';
+import 'package:focused/features/wellbeing/models/app_limit.dart';
+import 'package:focused/features/wellbeing/providers/app_limit_provider.dart';
+import 'package:focused/features/wellbeing/services/app_limit_storage_service.dart';
 
 class InMemoryAppLimitStore implements AppLimitStore {
   final Map<String, AppLimit> _storage = {};

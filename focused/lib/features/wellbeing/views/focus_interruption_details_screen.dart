@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/focus_analysis_result.dart';
-import '../../../models/focus_interruption.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../services/ad_service.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icon.dart';
+import '../../focus/models/focus_analysis_result.dart';
+import '../../focus/models/focus_interruption.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/services/ad_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon.dart';
 import 'advanced_focus_analysis_screen.dart';
 
 class FocusInterruptionDetailsScreen extends StatelessWidget {

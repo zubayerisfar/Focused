@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:focused/models/focus_block.dart';
-import 'package:focused/models/focus_guard_event.dart';
-import 'package:focused/models/focus_guard_status.dart';
-import 'package:focused/models/task.dart';
-import 'package:focused/providers/focus_provider.dart';
-import 'package:focused/services/focus_guard_service.dart';
+import 'package:focused/features/focus/models/focus_block.dart';
+import 'package:focused/features/focus/models/focus_guard_event.dart';
+import 'package:focused/features/focus/models/focus_guard_status.dart';
+import 'package:focused/features/tasks/models/task.dart';
+import 'package:focused/features/focus/providers/focus_provider.dart';
+import 'package:focused/features/focus/services/focus_guard_service.dart';
 
 class MockFocusGuardController implements FocusGuardController {
   int? lastWarningThresholdSeconds;

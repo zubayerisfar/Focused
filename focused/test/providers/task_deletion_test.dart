@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:focused/models/task.dart';
-import 'package:focused/models/task_occurrence_completion.dart';
-import 'package:focused/models/task_recurrence.dart';
-import 'package:focused/providers/task_provider.dart';
-import 'package:focused/services/task_occurrence_completion_storage_service.dart';
-import 'package:focused/services/task_storage_service.dart';
+import 'package:focused/features/tasks/models/task.dart';
+import 'package:focused/features/tasks/models/task_occurrence_completion.dart';
+import 'package:focused/features/tasks/models/task_recurrence.dart';
+import 'package:focused/features/tasks/providers/task_provider.dart';
+import 'package:focused/features/tasks/services/task_occurrence_completion_storage_service.dart';
+import 'package:focused/features/tasks/services/task_storage_service.dart';
 
 class InMemoryTaskStorageService implements TaskStorageService {
   final Map<String, Task> _store = {};

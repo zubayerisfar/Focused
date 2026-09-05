@@ -3,15 +3,15 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task.dart';
-import '../../../providers/cloud_sync_provider.dart';
-import '../../../providers/task_provider.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_banner_ad_widget.dart';
+import '../../tasks/models/task.dart';
+import '../../settings/providers/cloud_sync_provider.dart';
+import '../../tasks/providers/task_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_banner_ad_widget.dart';
 import '../../habits/views/habit_planner_body.dart';
 import '../../reminders/views/reminders_planner_body.dart';
-import '../../planner/views/planner_hub_body.dart';
-import '../../planner/widgets/planner_header.dart';
+import 'planner_hub_body.dart';
+import '../widgets/planner_header.dart';
 import '../../tasks/views/task_calendar_body.dart';
 
 class PlannerScreen extends StatefulWidget {

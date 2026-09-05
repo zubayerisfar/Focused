@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task.dart';
-import '../../../models/task_recurrence.dart';
-import '../../../providers/task_provider.dart';
+import '../../tasks/models/task.dart';
+import '../../tasks/models/task_recurrence.dart';
+import '../../tasks/providers/task_provider.dart';
 
 class ReminderEditScreen extends StatefulWidget {
   final String? reminderId;

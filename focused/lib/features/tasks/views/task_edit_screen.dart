@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task.dart';
-import '../../../models/task_recurrence.dart';
-import '../../../models/task_reminder_result.dart';
-import '../../../models/task_schedule_conflict.dart';
-import '../../../providers/task_provider.dart';
-import '../../../theme/app_theme.dart';
+import '../models/task.dart';
+import '../models/task_recurrence.dart';
+import '../models/task_reminder_result.dart';
+import '../models/task_schedule_conflict.dart';
+import '../providers/task_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
 class TaskEditScreen extends StatefulWidget {
   final String? taskId;

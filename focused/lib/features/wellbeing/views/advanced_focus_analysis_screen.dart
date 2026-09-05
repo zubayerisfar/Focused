@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/focus_analysis_result.dart';
-import '../../../models/focus_interruption.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icon.dart';
+import '../../focus/models/focus_analysis_result.dart';
+import '../../focus/models/focus_interruption.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon.dart';
 
 class AdvancedFocusAnalysisScreen extends StatelessWidget {
   final FocusAnalysisResult result;

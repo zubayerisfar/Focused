@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/user_stats_provider.dart';
-import '../../../services/ad_service.dart';
+import '../../streak/providers/user_stats_provider.dart';
+import '../../../core/services/ad_service.dart';
 
 class XpScreen extends StatefulWidget {
   const XpScreen({super.key});

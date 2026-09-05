@@ -3,8 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../models/task.dart';
-import '../../../theme/app_theme.dart';
+import '../../tasks/models/task.dart';
+import '../../../core/theme/app_theme.dart';
 import 'next_today_task.dart';
 import 'task_mates_summary_card.dart';
 

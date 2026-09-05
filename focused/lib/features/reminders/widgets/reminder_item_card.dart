@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task.dart';
-import '../../../models/task_recurrence.dart';
-import '../../../providers/task_provider.dart';
+import '../../tasks/models/task.dart';
+import '../../tasks/models/task_recurrence.dart';
+import '../../tasks/providers/task_provider.dart';
 
 class ReminderItemCard extends StatelessWidget {
   final Task task;

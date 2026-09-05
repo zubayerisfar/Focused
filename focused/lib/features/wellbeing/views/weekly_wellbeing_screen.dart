@@ -4,18 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/daily_usage_metrics.dart';
-import '../../../models/focus_analysis_coverage.dart';
-import '../../../models/focus_session.dart';
-import '../../../models/habit_period_summary.dart';
-import '../../../models/task_execution_period_summary.dart';
-import '../../../models/usage_data_coverage.dart';
-import '../../../models/usage_data_provenance.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/habit_provider.dart';
-import '../../../providers/task_provider.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../services/task_execution_analyzer.dart';
+import '../models/daily_usage_metrics.dart';
+import '../../focus/models/focus_analysis_coverage.dart';
+import '../../focus/models/focus_session.dart';
+import '../../habits/models/habit_period_summary.dart';
+import '../../tasks/models/task_execution_period_summary.dart';
+import '../models/usage_data_coverage.dart';
+import '../models/usage_data_provenance.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../../habits/providers/habit_provider.dart';
+import '../../tasks/providers/task_provider.dart';
+import '../providers/usage_provider.dart';
+import '../../tasks/services/task_execution_analyzer.dart';
 
 class WeeklyWellbeingScreen extends StatefulWidget {
   const WeeklyWellbeingScreen({super.key});

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/habit.dart';
-import '../../../providers/habit_provider.dart';
-import '../../../theme/app_theme.dart';
+import '../../habits/models/habit.dart';
+import '../../habits/providers/habit_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
 class HabitTrackerSection extends StatelessWidget {
   final List<Habit> habits;

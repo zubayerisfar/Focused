@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/onboarding_provider.dart';
+import '../providers/onboarding_provider.dart';
 
 class IntroSequenceScreen extends StatefulWidget {
   const IntroSequenceScreen({super.key});

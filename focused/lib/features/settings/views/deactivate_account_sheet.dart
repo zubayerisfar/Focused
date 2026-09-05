@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/account_provider.dart';
-import '../../../theme/app_theme.dart';
+import '../../auth/providers/account_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
 class DeactivateAccountSheet extends StatefulWidget {
   const DeactivateAccountSheet({super.key});

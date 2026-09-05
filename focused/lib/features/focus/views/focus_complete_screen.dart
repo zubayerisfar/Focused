@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/focus_session.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/task_provider.dart';
-import '../../../theme/app_theme.dart';
+import '../models/focus_session.dart';
+import '../providers/focus_provider.dart';
+import '../../tasks/providers/task_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
-import '../../../models/focus_analysis_result.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../services/ad_service.dart';
-import '../../../widgets/app_icon.dart';
+import '../models/focus_analysis_result.dart';
+import '../../wellbeing/providers/usage_provider.dart';
+import '../../../core/services/ad_service.dart';
+import '../../../core/widgets/app_icon.dart';
 
 class FocusCompleteScreen extends StatefulWidget {
   const FocusCompleteScreen({super.key});

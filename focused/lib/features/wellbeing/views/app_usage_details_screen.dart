@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/app_category.dart';
-import '../../../models/daily_usage_metrics.dart';
-import '../../../models/hourly_usage_summary.dart';
-import '../../../models/usage_access_status.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icon.dart';
+import '../models/app_category.dart';
+import '../models/daily_usage_metrics.dart';
+import '../models/hourly_usage_summary.dart';
+import '../models/usage_access_status.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon.dart';
 
 enum _UsageViewMode { daily, hourly }
 

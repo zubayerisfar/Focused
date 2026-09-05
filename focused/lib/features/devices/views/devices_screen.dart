@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/cloud_sync_provider.dart';
-import '../../../services/cloud_sync_service.dart';
-import '../../../theme/app_theme.dart';
+import '../../settings/providers/cloud_sync_provider.dart';
+import '../../settings/services/cloud_sync_service.dart';
+import '../../../core/theme/app_theme.dart';
 import 'device_summary_screen.dart';
 
 class DevicesScreen extends StatefulWidget {

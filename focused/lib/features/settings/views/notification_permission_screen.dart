@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/task_provider.dart';
-import '../../../services/notification_access_service.dart';
+import '../../tasks/providers/task_provider.dart';
+import '../../../core/services/notification_access_service.dart';
 
 class NotificationPermissionScreen extends StatefulWidget {
   const NotificationPermissionScreen({super.key});

@@ -3,10 +3,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/app_usage_app_entry.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icon.dart';
+import '../../wellbeing/models/app_usage_app_entry.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon.dart';
 
 String _formatDuration(Duration duration) {
   final hours = duration.inHours;

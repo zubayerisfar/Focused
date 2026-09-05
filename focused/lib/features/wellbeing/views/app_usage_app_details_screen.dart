@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/app_category.dart';
-import '../../../models/app_open_event.dart';
-import '../../../models/notification_event.dart';
-import '../../../models/app_usage_history_point.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../services/notification_access_service.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icon.dart';
+import '../models/app_category.dart';
+import '../models/app_open_event.dart';
+import '../../settings/models/notification_event.dart';
+import '../models/app_usage_history_point.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/services/notification_access_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon.dart';
 
 class AppUsageAppDetailsScreen extends StatefulWidget {
   final String appId;

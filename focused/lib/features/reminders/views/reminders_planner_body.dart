@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/task_provider.dart';
+import '../../tasks/providers/task_provider.dart';
 import '../widgets/reminder_item_card.dart';
 
 bool _sameDate(DateTime first, DateTime second) =>

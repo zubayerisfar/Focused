@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:focused/models/user_cloud_stats.dart';
-import 'package:focused/services/achievement_service.dart';
-import 'package:focused/services/network_connectivity_service.dart';
+import 'package:focused/features/profile/models/user_cloud_stats.dart';
+import 'package:focused/features/streak/services/achievement_service.dart';
+import 'package:focused/core/network/network_connectivity_service.dart';
 
 void main() {
   group('UserCloudStats & AchievementService with Streak & Badge sync', () {

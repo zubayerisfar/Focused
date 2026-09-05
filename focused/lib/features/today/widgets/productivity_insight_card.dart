@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../services/ad_service.dart';
+import '../../../core/services/ad_service.dart';
 
 class ProductivityInsightCard extends StatefulWidget {
   const ProductivityInsightCard({super.key});

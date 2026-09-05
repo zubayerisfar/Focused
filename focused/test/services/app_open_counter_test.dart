@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:focused/services/app_open_counter.dart';
-import 'package:focused/services/usage_event_normalizer.dart';
+import 'package:focused/features/wellbeing/services/app_open_counter.dart';
+import 'package:focused/features/wellbeing/services/usage_event_normalizer.dart';
 
 void main() {
   const counter = AppOpenCounter();

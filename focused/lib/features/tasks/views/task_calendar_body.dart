@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task.dart';
-import '../../../models/task_occurrence.dart';
-import '../../../models/task_recurrence.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/task_provider.dart';
-import '../../../services/task_execution_analyzer.dart';
-import '../../../theme/app_theme.dart';
+import '../models/task.dart';
+import '../models/task_occurrence.dart';
+import '../models/task_recurrence.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../providers/task_provider.dart';
+import '../services/task_execution_analyzer.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../planner/widgets/planner_header.dart';
 
 class TaskCalendarBody extends StatelessWidget {

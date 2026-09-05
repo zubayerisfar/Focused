@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/usage_access_status.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../theme/app_theme.dart';
+import '../models/usage_access_status.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
 class UsagePermissionScreen extends StatelessWidget {
   const UsagePermissionScreen({super.key});

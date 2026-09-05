@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/habit.dart';
-import '../../../models/habit_analytics_summary.dart';
-import '../../../providers/habit_provider.dart';
+import '../models/habit.dart';
+import '../models/habit_analytics_summary.dart';
+import '../providers/habit_provider.dart';
 
 class HabitDetailsScreen extends StatelessWidget {
   final String habitId;

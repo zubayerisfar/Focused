@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/cloud_sync_provider.dart';
-import '../../../services/cloud_sync_service.dart';
+import '../providers/cloud_sync_provider.dart';
+import '../services/cloud_sync_service.dart';
 
 class CloudSyncScreen extends StatelessWidget {
   const CloudSyncScreen({super.key});

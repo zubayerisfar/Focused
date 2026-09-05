@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/account_provider.dart';
-import '../../../providers/onboarding_provider.dart';
+import '../../auth/providers/account_provider.dart';
+import '../../onboarding/providers/onboarding_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

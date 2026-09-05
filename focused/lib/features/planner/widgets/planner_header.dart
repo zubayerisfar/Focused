@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/cloud_sync_provider.dart';
+import '../../settings/providers/cloud_sync_provider.dart';
 import '../views/planner_hub_body.dart';
 
 enum PlannerCalendarMode { schedule, day, threeDays, week, month }

@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
-import '../models/friend_user.dart';
-import '../providers/account_provider.dart';
-import '../providers/onboarding_provider.dart';
+import '../features/friends/models/friend_user.dart';
+import '../features/auth/providers/account_provider.dart';
+import '../features/onboarding/providers/onboarding_provider.dart';
 import '../features/auth/views/login_screen.dart';
 import '../features/devices/views/devices_screen.dart';
 import '../features/focus/views/focus_complete_screen.dart';

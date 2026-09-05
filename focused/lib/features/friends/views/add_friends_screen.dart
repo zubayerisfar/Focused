@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/friend_user.dart';
-import '../../../providers/friends_provider.dart';
+import '../models/friend_user.dart';
+import '../providers/friends_provider.dart';
 
 class AddFriendsScreen extends StatefulWidget {
   const AddFriendsScreen({super.key});

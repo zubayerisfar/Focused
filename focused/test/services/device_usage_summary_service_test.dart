@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:focused/models/app_usage_record.dart';
-import 'package:focused/models/focus_session.dart';
-import 'package:focused/services/device_usage_summary_service.dart';
-import 'package:focused/services/focus_session_storage_service.dart';
-import 'package:focused/services/usage_record_storage_service.dart';
+import 'package:focused/features/wellbeing/models/app_usage_record.dart';
+import 'package:focused/features/focus/models/focus_session.dart';
+import 'package:focused/features/wellbeing/services/device_usage_summary_service.dart';
+import 'package:focused/features/focus/services/focus_session_storage_service.dart';
+import 'package:focused/features/wellbeing/services/usage_record_storage_service.dart';
 
 class InMemoryFocusSessionStorageService implements FocusSessionStorageService {
   final List<FocusSession> _sessions = [];

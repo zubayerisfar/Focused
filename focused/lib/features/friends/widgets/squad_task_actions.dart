@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task_group.dart';
-import '../../../providers/task_mate_provider.dart';
-import '../../../services/ad_service.dart';
+import '../../tasks/models/task_group.dart';
+import '../providers/task_mate_provider.dart';
+import '../../../core/services/ad_service.dart';
 
 class SquadTaskActions {
   static Future<void> pickScheduleTime(

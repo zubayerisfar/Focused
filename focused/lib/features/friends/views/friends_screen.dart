@@ -3,13 +3,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/friend_user.dart';
-import '../../../models/task_group.dart';
-import '../../../providers/account_provider.dart';
-import '../../../providers/friends_provider.dart';
-import '../../../providers/task_mate_provider.dart';
-import '../../../providers/user_stats_provider.dart';
-import '../../../widgets/profile_streak_xp_bar.dart';
+import '../models/friend_user.dart';
+import '../../tasks/models/task_group.dart';
+import '../../auth/providers/account_provider.dart';
+import '../providers/friends_provider.dart';
+import '../providers/task_mate_provider.dart';
+import '../../streak/providers/user_stats_provider.dart';
+import '../../../core/widgets/profile_streak_xp_bar.dart';
 
 import '../tabs/task_mates_tab.dart';
 import '../tabs/friends_list_tab.dart';

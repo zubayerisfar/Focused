@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import '../../../models/friend_user.dart';
+import '../models/friend_user.dart';
 
 class FriendsListTab extends StatelessWidget {
   final List<FriendUser> friends;

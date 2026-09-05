@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../../models/partner_quest.dart';
+import '../models/partner_quest.dart';
 
 class PartnerQuestCard extends StatelessWidget {
   final PartnerQuest quest;

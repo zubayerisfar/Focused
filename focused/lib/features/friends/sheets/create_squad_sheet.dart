@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/friend_user.dart';
-import '../../../providers/account_provider.dart';
-import '../../../providers/friends_provider.dart';
-import '../../../providers/task_mate_provider.dart';
+import '../models/friend_user.dart';
+import '../../auth/providers/account_provider.dart';
+import '../providers/friends_provider.dart';
+import '../providers/task_mate_provider.dart';
 
 void showCreateGroupDialog(BuildContext context) {
     final friendsProvider = context.read<FriendsProvider>();

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/app_category.dart';
-import '../../../models/focus_analysis_result.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../theme/app_theme.dart';
+import '../models/app_category.dart';
+import '../../focus/models/focus_analysis_result.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
 class WellbeingSummaryScreen extends StatelessWidget {
   const WellbeingSummaryScreen({super.key});

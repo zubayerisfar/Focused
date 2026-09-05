@@ -5,18 +5,18 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/achievement_badge.dart';
-import '../../../providers/account_provider.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/friends_provider.dart';
-import '../../../providers/habit_provider.dart';
-import '../../../providers/task_provider.dart';
-import '../../../providers/user_profile_provider.dart';
-import '../../../providers/user_stats_provider.dart';
-import '../../../services/achievement_service.dart';
-import '../../../services/productivity_streak_service.dart';
-import '../../../widgets/achievement_badge_art.dart';
-import '../../../models/friend_user.dart';
+import '../../streak/models/achievement_badge.dart';
+import '../../auth/providers/account_provider.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../../friends/providers/friends_provider.dart';
+import '../../habits/providers/habit_provider.dart';
+import '../../tasks/providers/task_provider.dart';
+import '../providers/user_profile_provider.dart';
+import '../../streak/providers/user_stats_provider.dart';
+import '../../streak/services/achievement_service.dart';
+import '../../streak/services/productivity_streak_service.dart';
+import '../../streak/widgets/achievement_badge_art.dart';
+import '../../friends/models/friend_user.dart';
 import '../../settings/views/settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {

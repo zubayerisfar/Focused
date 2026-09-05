@@ -4,17 +4,17 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/usage_access_status.dart';
-import '../../../providers/account_provider.dart';
-import '../../../providers/cloud_sync_provider.dart';
-import '../../../providers/theme_provider.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../providers/user_profile_provider.dart';
-import '../../../providers/friends_provider.dart';
-import '../../../providers/notification_preferences_provider.dart';
-import '../../../services/app_usage_summary_service.dart';
-import '../../../services/notification_access_service.dart';
-import '../../../services/task_notification_service.dart';
+import '../../wellbeing/models/usage_access_status.dart';
+import '../../auth/providers/account_provider.dart';
+import '../providers/cloud_sync_provider.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../wellbeing/providers/usage_provider.dart';
+import '../../profile/providers/user_profile_provider.dart';
+import '../../friends/providers/friends_provider.dart';
+import '../providers/notification_preferences_provider.dart';
+import '../../wellbeing/services/app_usage_summary_service.dart';
+import '../../../core/services/notification_access_service.dart';
+import '../../tasks/services/task_notification_service.dart';
 import 'deactivate_account_sheet.dart';
 import 'delete_account_dialog.dart';
 

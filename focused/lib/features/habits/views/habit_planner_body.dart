@@ -4,8 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/habit_provider.dart';
-import '../../../theme/app_theme.dart';
+import '../providers/habit_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../widgets/habit_planner_card.dart';
 
 bool _sameDate(DateTime first, DateTime second) =>

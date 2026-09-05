@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../providers/task_mate_provider.dart';
+import '../../friends/providers/task_mate_provider.dart';
 
 class TaskMatesSummaryCard extends StatelessWidget {
   const TaskMatesSummaryCard({super.key});

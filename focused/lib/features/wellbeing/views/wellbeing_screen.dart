@@ -6,14 +6,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/app_usage_app_entry.dart';
-import '../../../models/daily_usage_metrics.dart';
-import '../../../models/focus_analysis_result.dart';
-import '../../../models/usage_access_status.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icon.dart';
+import '../models/app_usage_app_entry.dart';
+import '../models/daily_usage_metrics.dart';
+import '../../focus/models/focus_analysis_result.dart';
+import '../models/usage_access_status.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon.dart';
 
 class WellbeingScreen extends StatelessWidget {
   const WellbeingScreen({super.key});

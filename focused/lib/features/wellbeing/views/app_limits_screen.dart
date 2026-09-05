@@ -3,12 +3,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/app_limit.dart';
-import '../../../models/app_usage_app_entry.dart';
-import '../../../providers/app_limit_provider.dart';
-import '../../../providers/usage_provider.dart';
-import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icon.dart';
+import '../models/app_limit.dart';
+import '../providers/app_limit_provider.dart';
+import '../providers/usage_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon.dart';
 
 class AppLimitsScreen extends StatelessWidget {
   const AppLimitsScreen({super.key});

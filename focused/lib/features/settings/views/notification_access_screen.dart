@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../services/notification_access_service.dart';
+import '../../../core/services/notification_access_service.dart';
 
 class NotificationAccessScreen extends StatefulWidget {
   const NotificationAccessScreen({super.key});

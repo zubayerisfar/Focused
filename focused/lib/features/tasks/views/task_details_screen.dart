@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/task.dart';
-import '../../../models/task_recurrence.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/task_provider.dart';
-import '../../../providers/user_stats_provider.dart';
-import '../../../services/ad_service.dart';
-import '../../../theme/app_theme.dart';
+import '../models/task.dart';
+import '../models/task_recurrence.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../providers/task_provider.dart';
+import '../../streak/providers/user_stats_provider.dart';
+import '../../../core/services/ad_service.dart';
+import '../../../core/theme/app_theme.dart';
 
 class TaskDetailsScreen extends StatelessWidget {
   final String taskId;

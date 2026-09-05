@@ -5,15 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../models/achievement_badge.dart';
-import '../../../providers/focus_provider.dart';
-import '../../../providers/habit_provider.dart';
-import '../../../providers/streak_goal_provider.dart';
-import '../../../providers/task_provider.dart';
-import '../../../providers/user_stats_provider.dart';
-import '../../../services/achievement_service.dart';
-import '../../../services/productivity_streak_service.dart';
-import '../../../widgets/achievement_badge_art.dart';
+import '../models/achievement_badge.dart';
+import '../../focus/providers/focus_provider.dart';
+import '../../habits/providers/habit_provider.dart';
+import '../providers/streak_goal_provider.dart';
+import '../../tasks/providers/task_provider.dart';
+import '../providers/user_stats_provider.dart';
+import '../services/achievement_service.dart';
+import '../services/productivity_streak_service.dart';
+import '../widgets/achievement_badge_art.dart';
 
 class StreakScreen extends StatefulWidget {
   const StreakScreen({super.key});
