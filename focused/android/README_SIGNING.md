@@ -11,10 +11,6 @@ The previous project signed `release` with the local debug keystore. That is uns
 5. Add each development machine's DEBUG SHA-1/SHA-256 too if debug builds need Google Sign-In.
 6. Download a fresh `google-services.json` after changing Firebase Android/OAuth configuration and replace `android/app/google-services.json`.
 
-The currently bundled `google-services.json` contains one Android OAuth certificate SHA-1:
-
-`CE:EE:4E:0D:BD:B1:CA:5A:62:9F:22:20:18:B8:36:98:77:7E:3F:4F`
-
 It also contains a Web OAuth client (`client_type: 3`), which the Google Sign-In plugin can use as the server client configuration.
 
 ## Important
