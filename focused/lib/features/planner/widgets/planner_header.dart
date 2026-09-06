@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../settings/providers/cloud_sync_provider.dart';
+import '../../../core/widgets/profile_streak_xp_bar.dart';
 import '../views/planner_hub_body.dart';
 
 enum PlannerCalendarMode { schedule, day, threeDays, week, month }
@@ -46,7 +47,7 @@ class PlannerHeader extends StatelessWidget {
   final PlannerArea area;
   final PlannerCalendarMode calendarMode;
   final VoidCallback onPickDate;
-  final VoidCallback onToday;
+  final VoidCallback? onToday;
   final ValueChanged<PlannerCalendarMode> onModeChanged;
   final VoidCallback onSync;
   final ValueChanged<PlannerMenuAction> onMenuAction;
@@ -58,7 +59,7 @@ class PlannerHeader extends StatelessWidget {
     required this.area,
     required this.calendarMode,
     required this.onPickDate,
-    required this.onToday,
+    this.onToday,
     required this.onModeChanged,
     required this.onSync,
     required this.onMenuAction,
@@ -70,57 +71,36 @@ class PlannerHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final sync = context.watch<CloudSyncProvider>();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 8, 8),
+    return SizedBox(
+      height: 54,
       child: Row(
         children: [
+          const SizedBox(width: 18),
           if (area != PlannerArea.hub) ...[
             IconButton(
               tooltip: 'Back to Planner Hub',
               icon: const Icon(Icons.arrow_back_rounded),
               onPressed: onBackToHub,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
           ],
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Text(
-                area == PlannerArea.hub
-                    ? 'Planner'
-                    : (area == PlannerArea.tasks
-                          ? 'Tasks'
-                          : (area == PlannerArea.reminders
-                                ? 'Reminders'
-                                : 'Habits')),
-                maxLines: 1,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.4,
-                ),
-              ),
+          Text(
+            area == PlannerArea.hub
+                ? 'Planner'
+                : (area == PlannerArea.tasks
+                      ? 'Tasks'
+                      : (area == PlannerArea.reminders
+                            ? 'Reminders'
+                            : 'Habits')),
+            maxLines: 1,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
             ),
           ),
-          _PlannerHeaderIconButton(
-            tooltip: 'Today',
-            onPressed: onToday,
-            child: Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border.all(color: scheme.outlineVariant),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Text(
-                '${DateTime.now().day}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
+          const SizedBox(width: 6),
           _PlannerHeaderIconButton(
             tooltip: sync.isSyncing ? 'Syncing…' : 'Sync planner',
             onPressed: sync.canSync ? onSync : null,
@@ -132,7 +112,8 @@ class PlannerHeader extends StatelessWidget {
                   )
                 : const FaIcon(FontAwesomeIcons.arrowsRotate, size: 16),
           ),
-          if (area == PlannerArea.tasks)
+          const Spacer(),
+          if (area == PlannerArea.tasks) ...[
             PopupMenuButton<PlannerCalendarMode>(
               tooltip: 'Calendar view: ${calendarMode.label}',
               initialValue: calendarMode,
@@ -161,16 +142,20 @@ class PlannerHeader extends StatelessWidget {
                 }).toList();
               },
               child: Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: scheme.primaryContainer.withOpacity(0.55),
+                  color: scheme.primaryContainer.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(calendarMode.icon, size: 20),
               ),
             ),
+            const SizedBox(width: 4),
+          ],
+          const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          const SizedBox(width: 18),
         ],
       ),
     );

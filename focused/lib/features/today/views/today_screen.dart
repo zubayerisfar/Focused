@@ -3,18 +3,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../auth/providers/account_provider.dart';
 import '../../focus/providers/focus_provider.dart';
 import '../../habits/providers/habit_provider.dart';
 import '../../tasks/providers/task_provider.dart';
 import '../../wellbeing/providers/usage_provider.dart';
 import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/services/home_widget_service.dart';
+import '../../../core/widgets/profile_streak_xp_bar.dart';
 import '../../streak/services/productivity_streak_service.dart';
 import '../widgets/daily_overview_card.dart';
 import '../widgets/daily_plan_section.dart';
 import '../widgets/habit_tracker_section.dart';
-import '../widgets/home_header.dart';
 import '../widgets/next_today_task.dart';
 import '../widgets/productivity_insight_card.dart';
 import '../widgets/task_mates_section.dart';
@@ -32,7 +31,6 @@ class TodayScreen extends StatelessWidget {
     final usageProvider = context.watch<UsageProvider>();
     final habitProvider = context.watch<HabitProvider>();
     final userStats = context.watch<UserStatsProvider>();
-    final account = context.watch<AccountProvider>();
 
     final now = DateTime.now();
     final schedule = taskProvider.scheduledOccurrencesForDate(now);
@@ -117,23 +115,32 @@ class TodayScreen extends StatelessWidget {
       focusComparisonPercent = 100.0;
     }
 
-    return SafeArea(
-      bottom: false,
-      child: RefreshIndicator(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 54,
+        titleSpacing: 18,
+        title: Text(
+          'Home',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+          ),
+        ),
+        actions: const [
+          ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          SizedBox(width: 18),
+        ],
+      ),
+      body: RefreshIndicator(
         onRefresh: () => usageProvider.refreshPermissionAndUsage(force: true),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverToBoxAdapter(
-              child: HomeHeader(
-                streak: streak,
-                photoUrl: account.photoUrl,
-                displayName: account.displayName,
-                xpPoints: userStats.xpPoints,
-              ),
-            ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 110),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   DailyOverviewCard(

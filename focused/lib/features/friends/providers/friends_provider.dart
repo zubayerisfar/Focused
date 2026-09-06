@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import '../models/exp_gift.dart';
 import '../models/friend_user.dart';
 import '../models/partner_quest.dart';
+import '../models/best_friend.dart';
+import '../../../core/services/ad_service.dart';
 import '../services/friends_service.dart';
 import '../../tasks/services/task_notification_service.dart';
 import '../../settings/providers/notification_preferences_provider.dart';
@@ -34,6 +36,7 @@ class FriendsProvider extends ChangeNotifier {
   String? _currentPhotoUrl;
   List<FriendUser> _following = [];
   List<FriendUser> _followers = [];
+  List<BestFriend> _bestFriends = [];
   List<ExpGift> _unclaimedGifts = [];
   List<Map<String, dynamic>> _groupNotices = [];
   PartnerQuest? _partnerQuest;
@@ -45,10 +48,13 @@ class FriendsProvider extends ChangeNotifier {
   // Daily limits (max 5 reminders, max 5 gifts per day)
   int _remindersSentToday = 0;
   int _giftsSentToday = 0;
+  final Set<String> _nudgedFriendUidsToday = {};
+  final Set<String> _giftedFriendUidsToday = {};
   String _lastResetDate = '';
 
   StreamSubscription? _followingSub;
   StreamSubscription? _followersSub;
+  StreamSubscription? _bestFriendsSub;
   StreamSubscription? _giftsSub;
   StreamSubscription? _questSub;
   StreamSubscription? _incomingRemindersSub;
@@ -59,6 +65,7 @@ class FriendsProvider extends ChangeNotifier {
 
   List<FriendUser> get following => _following;
   List<FriendUser> get followers => _followers;
+  List<BestFriend> get bestFriends => _bestFriends;
   List<ExpGift> get unclaimedGifts => _unclaimedGifts;
   List<Map<String, dynamic>> get groupNotices => _groupNotices;
   PartnerQuest? get partnerQuest => _partnerQuest;
@@ -80,6 +87,28 @@ class FriendsProvider extends ChangeNotifier {
 
   bool get canSendReminder => remindersSentToday < maxDailyReminders;
   bool get canSendGift => giftsSentToday < maxDailyGifts;
+
+  /// Checks if the user has already nudged/reminded a specific friend today
+  bool hasNudgedToday(String friendUid) {
+    _checkDailyReset();
+    return _nudgedFriendUidsToday.contains(friendUid);
+  }
+
+  /// Checks if the user has already sent a gift to a specific friend today
+  bool hasGiftedToday(String friendUid) {
+    _checkDailyReset();
+    return _giftedFriendUidsToday.contains(friendUid);
+  }
+
+  /// Can nudge a specific friend (under daily quota & haven't sent to them today)
+  bool canNudgeFriend(String friendUid) {
+    return canSendReminder && !hasNudgedToday(friendUid);
+  }
+
+  /// Can gift a specific friend (under daily quota & haven't sent to them today)
+  bool canGiftFriend(String friendUid) {
+    return canSendGift && !hasGiftedToday(friendUid);
+  }
 
   /// Checks if a username is available (unique)
   Future<bool> checkUsernameAvailability(String username) async {
@@ -132,6 +161,8 @@ class FriendsProvider extends ChangeNotifier {
     if (_lastResetDate != _todayKey) {
       _remindersSentToday = 0;
       _giftsSentToday = 0;
+      _nudgedFriendUidsToday.clear();
+      _giftedFriendUidsToday.clear();
       _lastResetDate = _todayKey;
     }
   }
@@ -218,7 +249,19 @@ class FriendsProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    // 4. Stream Unclaimed EXP Gifts
+    // 4. Stream Best Friends (up to 5)
+    _bestFriendsSub = _friendsService.streamBestFriends(uid).listen((list) {
+      _bestFriends = list;
+      // Auto-cleanup expired best friends if 30h passed
+      for (final bf in list) {
+        if (bf.isExpired) {
+          removeBestFriend(bf.uid);
+        }
+      }
+      notifyListeners();
+    });
+
+    // 5. Stream Unclaimed EXP Gifts
     Set<String>? knownGiftIds;
     _giftsSub = _friendsService.streamUnclaimedExpGifts(uid).listen((gifts) {
       if (knownGiftIds != null) {
@@ -246,16 +289,11 @@ class FriendsProvider extends ChangeNotifier {
       }
     });
 
-    // 6. Listen for incoming reminders (nudges)
+    // 6. Listen for incoming reminders (nudges) - mark read so they don't linger
     _incomingRemindersSub = _friendsService.listenForIncomingReminders(
       currentUid: uid,
       onReminderReceived: (fromName, message) {
-        if (_prefsProvider?.friendNudgesAndGifts ?? true) {
-          _notificationService?.showFriendReminderNotification(
-            fromName: fromName,
-            message: message,
-          );
-        }
+        // Handled directly by FCM push notifications
       },
     );
 
@@ -263,21 +301,10 @@ class FriendsProvider extends ChangeNotifier {
     _groupNoticesSub = _friendsService.listenForIncomingGroupNotices(
       currentUid: uid,
       onGroupNoticeReceived: (groupName, creatorName) {
-        if (_prefsProvider?.squadInvites ?? true) {
-          _notificationService?.showGroupCreationNotification(
-            groupName: groupName,
-            creatorName: creatorName,
-          );
-        }
+        // Handled directly by FCM push notifications
       },
       onTaskAssignedReceived: (groupName, assignerName, taskTitle) {
-        if (_prefsProvider?.squadInvites ?? true) {
-          _notificationService?.showSquadTaskAssignedNotification(
-            groupName: groupName,
-            assignerName: assignerName,
-            taskTitle: taskTitle,
-          );
-        }
+        // Handled directly by FCM push notifications
       },
     );
 
@@ -293,12 +320,7 @@ class FriendsProvider extends ChangeNotifier {
     _followerNoticesSub = _friendsService.listenForIncomingFollowerNotices(
       currentUid: uid,
       onFollowerReceived: (followerName, photoUrl) {
-        if (_prefsProvider?.followerAlerts ?? true) {
-          _notificationService?.showFollowNotification(
-            followerName: followerName,
-            photoUrl: photoUrl,
-          );
-        }
+        // Handled directly by FCM push notifications
       },
     );
 
@@ -307,12 +329,7 @@ class FriendsProvider extends ChangeNotifier {
         .listenForIncomingPartnerCompletions(
           currentUid: uid,
           onCompletionReceived: (friendName, taskTitle) {
-            if (_prefsProvider?.partnerCompletions ?? true) {
-              _notificationService?.showPartnerTaskCompletionNotification(
-                friendName: friendName,
-                taskTitle: taskTitle,
-              );
-            }
+            // Handled directly by FCM push notifications
           },
         );
   }
@@ -486,7 +503,10 @@ class FriendsProvider extends ChangeNotifier {
 
   Future<bool> sendReminder(String targetUid) async {
     _checkDailyReset();
-    if (_remindersSentToday >= maxDailyReminders) return false;
+    if (_remindersSentToday >= maxDailyReminders ||
+        _nudgedFriendUidsToday.contains(targetUid)) {
+      return false;
+    }
 
     final profile = _profileProvider.profile;
     await _friendsService.sendFriendReminder(
@@ -497,6 +517,7 @@ class FriendsProvider extends ChangeNotifier {
     );
 
     _remindersSentToday++;
+    _nudgedFriendUidsToday.add(targetUid);
     notifyListeners();
     return true;
   }
@@ -507,7 +528,10 @@ class FriendsProvider extends ChangeNotifier {
 
   Future<bool> send50Exp(String targetUid) async {
     _checkDailyReset();
-    if (_giftsSentToday >= maxDailyGifts) return false;
+    if (_giftsSentToday >= maxDailyGifts ||
+        _giftedFriendUidsToday.contains(targetUid)) {
+      return false;
+    }
     if (_statsProvider.xpPoints < 50) return false;
 
     // Deduct 50 EXP from sender
@@ -524,6 +548,7 @@ class FriendsProvider extends ChangeNotifier {
     );
 
     _giftsSentToday++;
+    _giftedFriendUidsToday.add(targetUid);
     notifyListeners();
     return true;
   }
@@ -578,9 +603,158 @@ class FriendsProvider extends ChangeNotifier {
     );
   }
 
+  // ===========================================================================
+  // BEST FRIENDS ACTIONS
+  // ===========================================================================
+
+  /// Adds a friend from following as a Best Friend (up to 5 slots)
+  Future<bool> addBestFriend(FriendUser friend) async {
+    if (_currentUid.isEmpty) return false;
+    if (_bestFriends.length >= 5) return false;
+    if (_bestFriends.any((bf) => bf.uid == friend.uid)) return false;
+
+    final now = DateTime.now().toUtc();
+    final optimisticRecord = BestFriend(
+      uid: friend.uid,
+      displayName: friend.displayName,
+      username: friend.username,
+      photoUrl: friend.photoUrl,
+      streakDays: 1,
+      streakStartedAt: now,
+      currentCycleStartedAt: now,
+      lastInteractedAt: now,
+      isRestoredViaAd: false,
+    );
+
+    _bestFriends = [..._bestFriends, optimisticRecord];
+    notifyListeners();
+
+    try {
+      final profile = _profileProvider.profile;
+      await _friendsService.addBestFriend(
+        currentUid: _currentUid,
+        myProfile: profile,
+        myPhotoUrl: _currentPhotoUrl,
+        friend: friend,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error adding best friend: $e');
+      _bestFriends = _bestFriends.where((bf) => bf.uid != friend.uid).toList();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Removes best friend permanently and resets friendship streak forever
+  Future<void> removeBestFriend(String friendUid) async {
+    if (_currentUid.isEmpty) return;
+    try {
+      await _friendsService.removeBestFriend(
+        currentUid: _currentUid,
+        friendUid: friendUid,
+      );
+      _bestFriends.removeWhere((bf) => bf.uid == friendUid);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error removing best friend: $e');
+    }
+  }
+
+  /// Nudge best friend: shows 5-second interstitial ad, then registers interaction and sends nudge
+  Future<bool> nudgeBestFriend(BestFriend friend) async {
+    if (_currentUid.isEmpty) return false;
+    _checkDailyReset();
+    if (_remindersSentToday >= maxDailyReminders ||
+        _nudgedFriendUidsToday.contains(friend.uid)) {
+      return false;
+    }
+
+    // Show 5-second interstitial ad
+    AdService.instance.showInterstitialAd();
+
+    final profile = _profileProvider.profile;
+    await _friendsService.sendFriendReminder(
+      currentUid: _currentUid,
+      fromName: profile.displayName,
+      fromUsername: profile.handle,
+      targetUid: friend.uid,
+    );
+
+    // Record interaction for streak increment
+    await _friendsService.recordBestFriendInteraction(
+      currentUid: _currentUid,
+      friendUid: friend.uid,
+    );
+
+    _remindersSentToday++;
+    _nudgedFriendUidsToday.add(friend.uid);
+    notifyListeners();
+    return true;
+  }
+
+  /// Sends 25 EXP gift to Best Friend:
+  /// Requires 25 EXP from sender's balance, shows 5s ad, records interaction
+  Future<bool> send25ExpToBestFriend(BestFriend friend) async {
+    if (_currentUid.isEmpty) return false;
+    _checkDailyReset();
+    if (_giftsSentToday >= maxDailyGifts ||
+        _giftedFriendUidsToday.contains(friend.uid)) {
+      return false;
+    }
+    if (_statsProvider.xpPoints < 25) return false;
+
+    // Deduct 25 EXP from sender
+    final success = await _statsProvider.spendXp(25);
+    if (!success) return false;
+
+    // Show 5-second interstitial ad
+    AdService.instance.showInterstitialAd();
+
+    final profile = _profileProvider.profile;
+    await _friendsService.sendExpGift(
+      currentUid: _currentUid,
+      fromName: profile.displayName,
+      fromUsername: profile.handle,
+      targetUid: friend.uid,
+      amount: 25,
+    );
+
+    // Record interaction for streak increment
+    await _friendsService.recordBestFriendInteraction(
+      currentUid: _currentUid,
+      friendUid: friend.uid,
+    );
+
+    _giftsSentToday++;
+    _giftedFriendUidsToday.add(friend.uid);
+    notifyListeners();
+    return true;
+  }
+
+  /// Restores at-risk or broken best friend streak using a Rewarded Ad
+  Future<bool> restoreBestFriendStreakWithAd(BestFriend friend) async {
+    final completer = Completer<bool>();
+    AdService.instance.showRewardedAd(
+      onUserEarnedReward: (reward) async {
+        await _friendsService.restoreBestFriendStreak(
+          currentUid: _currentUid,
+          friendUid: friend.uid,
+        );
+        notifyListeners();
+        completer.complete(true);
+      },
+      onAdDismissed: () {
+        if (!completer.isCompleted) completer.complete(false);
+      },
+    );
+    return completer.future;
+  }
+
   void _cancelSubs() {
     _followingSub?.cancel();
     _followersSub?.cancel();
+    _bestFriendsSub?.cancel();
     _giftsSub?.cancel();
     _questSub?.cancel();
     _incomingRemindersSub?.cancel();

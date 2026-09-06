@@ -15,6 +15,7 @@ import '../../friends/providers/friends_provider.dart';
 import '../providers/notification_preferences_provider.dart';
 import '../../wellbeing/services/app_usage_summary_service.dart';
 import '../../../core/services/notification_access_service.dart';
+import '../../../core/widgets/profile_streak_xp_bar.dart';
 import '../../tasks/services/task_notification_service.dart';
 import 'deactivate_account_sheet.dart';
 import 'delete_account_dialog.dart';
@@ -490,7 +491,12 @@ class SettingsScreen extends StatelessWidget {
     final profile = context.watch<UserProfileProvider>().profile;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 54,
+        titleSpacing: 18,
         title: Text(
           'Settings',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -498,22 +504,19 @@ class SettingsScreen extends StatelessWidget {
             letterSpacing: -0.4,
           ),
         ),
+        actions: const [
+          ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          SizedBox(width: 18),
+        ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 4, 14, 110),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 110),
         children: [
-          _ProfileHeader(
-            name: account.displayName,
-            email: account.email,
-            photoUrl: account.photoUrl,
-            onTap: () => context.push('/profile'),
-          ),
-          const SizedBox(height: 14),
           _SettingsSection(
             title: 'Permissions & access',
             subtitle: 'Usage access and notifications',
             icon: const FaIcon(FontAwesomeIcons.shieldHalved, size: 18),
-            initiallyExpanded: true,
+            initiallyExpanded: false,
             children: [
               _SettingsTile(
                 icon: FontAwesomeIcons.chartSimple,
@@ -1018,80 +1021,6 @@ class _SettingsSection extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    required this.name,
-    required this.email,
-    required this.photoUrl,
-    required this.onTap,
-  });
-
-  final String name;
-  final String email;
-  final String? photoUrl;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surface,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 25,
-                backgroundImage: photoUrl == null
-                    ? null
-                    : NetworkImage(photoUrl!),
-                child: photoUrl == null
-                    ? Text(
-                        _initials(name),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SettingsTile extends StatelessWidget {
   const _SettingsTile({
     required this.icon,
@@ -1170,15 +1099,4 @@ class _AppearanceTile extends StatelessWidget {
       ),
     );
   }
-}
-
-String _initials(String name) {
-  final words = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .toList();
-  if (words.isEmpty) return 'F';
-  if (words.length == 1) return words.first[0].toUpperCase();
-  return '${words.first[0]}${words.last[0]}'.toUpperCase();
 }

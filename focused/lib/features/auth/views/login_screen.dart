@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/account_provider.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../profile/models/user_profile.dart';
 import '../../profile/providers/user_profile_provider.dart';
 
@@ -392,6 +393,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (mounted) {
       await context.read<UserProfileProvider>().syncFromFirestore(user.uid);
+      await PushNotificationService.syncUserToken(user.uid);
     }
   }
 }

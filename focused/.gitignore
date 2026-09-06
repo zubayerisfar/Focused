@@ -1,4 +1,4 @@
-# Miscellaneous
+﻿# Miscellaneous
 *.class
 *.log
 *.pyc
@@ -21,10 +21,8 @@ migrate_working_dir/
 /lib_backup2/
 /android_backup/
 lib/firebase_options.dart
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+lib/firebase_options example.dart
+.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -36,18 +34,19 @@ lib/firebase_options.dart
 /build/
 /coverage/
 /android/.kotlin/sessions/
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
 
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-firestore.rules
+# Keystores and private configs
 focused-upload-keystore.jks
 android/key.properties
 android/*.jks
+
+# Firebase CLI configs and functions
+firebase.json
+.firebaserc
+firestore.rules
+functions/

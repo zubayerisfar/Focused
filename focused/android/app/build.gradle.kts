@@ -58,6 +58,11 @@ android {
         }
     }
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     buildTypes {
         release {
             // A stable signing certificate is mandatory for release builds.

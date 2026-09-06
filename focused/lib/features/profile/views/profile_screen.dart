@@ -70,6 +70,20 @@ class ProfileScreen extends StatelessWidget {
               ? localTotalFocus
               : userStats.syncedFocusDuration);
 
+    int longestFriendStreak = 0;
+    if (!isFriend) {
+      for (final bf in friendsProvider.bestFriends) {
+        if (bf.streakDays > longestFriendStreak) {
+          longestFriendStreak = bf.streakDays;
+        }
+      }
+      for (final f in friendsProvider.following) {
+        if (f.streakDays > longestFriendStreak) {
+          longestFriendStreak = f.streakDays;
+        }
+      }
+    }
+
     final badges = _achievementService.buildBadges(
       longestStreak: isFriend
           ? friendUser!.streakDays
@@ -78,6 +92,7 @@ class ProfileScreen extends StatelessWidget {
           ? Duration.zero
           : focus.longestLinkedTaskSessionFocusDuration,
       totalFocus: effectiveTotalFocus,
+      longestFriendStreak: longestFriendStreak,
       unlockedBadgeIds: isFriend ? const {} : userStats.unlockedBadgeIds,
     );
     final earned = badges
@@ -843,10 +858,34 @@ class _FriendStreaksStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final friends = friendsProvider.following;
+    final bestFriends = friendsProvider.bestFriends;
+    final following = friendsProvider.following;
     final scheme = Theme.of(context).colorScheme;
 
-    if (friends.isEmpty) {
+    // Combine best friends and following (avoiding duplicates)
+    final bestFriendUids = bestFriends.map((bf) => bf.uid).toSet();
+    final items = <_FriendStreakItem>[
+      ...bestFriends.map(
+        (bf) => _FriendStreakItem(
+          displayName: bf.displayName,
+          photoUrl: bf.photoUrl,
+          streakDays: bf.streakDays,
+          isBestFriend: true,
+        ),
+      ),
+      ...following
+          .where((f) => !bestFriendUids.contains(f.uid))
+          .map(
+            (f) => _FriendStreakItem(
+              displayName: f.displayName,
+              photoUrl: f.photoUrl,
+              streakDays: f.streakDays,
+              isBestFriend: false,
+            ),
+          ),
+    ];
+
+    if (items.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
@@ -891,27 +930,38 @@ class _FriendStreaksStrip extends StatelessWidget {
       height: 90,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: friends.length,
+        itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, i) {
-          final friend = friends[i];
+          final item = items[i];
           return Column(
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: const Color(0xFF58CC02),
-                backgroundImage: friend.photoUrl != null
-                    ? NetworkImage(friend.photoUrl!)
-                    : null,
-                child: friend.photoUrl == null
-                    ? Text(
-                        _initials(friend.displayName),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: const Color(0xFF58CC02),
+                    backgroundImage: item.photoUrl != null
+                        ? NetworkImage(item.photoUrl!)
+                        : null,
+                    child: item.photoUrl == null
+                        ? Text(
+                            _initials(item.displayName),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                  ),
+                  if (item.isBestFriend)
+                    Positioned(
+                      right: -3,
+                      bottom: -3,
+                      child: _buildFriendshipBadge(item.streakDays),
+                    ),
+                ],
               ),
               const SizedBox(height: 4),
               Row(
@@ -920,7 +970,7 @@ class _FriendStreaksStrip extends StatelessWidget {
                   const Text('🔥', style: TextStyle(fontSize: 11)),
                   const SizedBox(width: 2),
                   Text(
-                    '${friend.streakDays}',
+                    '${item.streakDays}',
                     style: const TextStyle(
                       color: Color(0xFFFF9600),
                       fontSize: 12,
@@ -935,6 +985,47 @@ class _FriendStreaksStrip extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildFriendshipBadge(int streakDays) {
+    if (streakDays >= 365) {
+      return Image.asset(
+        'assets/badges/365_days_friendship_badge.png',
+        width: 18,
+        height: 18,
+      );
+    } else if (streakDays >= 100) {
+      return Image.asset(
+        'assets/badges/100_days_friendship_badge.png',
+        width: 18,
+        height: 18,
+      );
+    } else if (streakDays >= 30) {
+      return Image.asset(
+        'assets/badges/30_days_friendship_badge.png',
+        width: 18,
+        height: 18,
+      );
+    }
+    return SvgPicture.asset(
+      'assets/badges/friendship_badge.svg',
+      width: 16,
+      height: 16,
+    );
+  }
+}
+
+class _FriendStreakItem {
+  final String displayName;
+  final String? photoUrl;
+  final int streakDays;
+  final bool isBestFriend;
+
+  const _FriendStreakItem({
+    required this.displayName,
+    this.photoUrl,
+    required this.streakDays,
+    required this.isBestFriend,
+  });
 }
 
 // ── Badges Row ──
@@ -946,7 +1037,14 @@ class _DuolingoBadgeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayBadges = badges.take(4).toList();
+    // Show unlocked badges first, then in-progress badges
+    final sortedBadges = List<AchievementBadge>.from(badges)
+      ..sort((a, b) {
+        if (a.achieved && !b.achieved) return -1;
+        if (!a.achieved && b.achieved) return 1;
+        return 0;
+      });
+    final displayBadges = sortedBadges.take(4).toList();
     final scheme = Theme.of(context).colorScheme;
 
     return Row(

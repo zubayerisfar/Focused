@@ -8,22 +8,23 @@ class FriendsListTab extends StatelessWidget {
   final bool isFollowingTab;
   final bool isDark;
   final bool canSendReminder;
+  final bool Function(FriendUser)? canSendReminderTo;
   final bool canSendGift;
   final Function(FriendUser) onSendReminder;
-  final Function(FriendUser) onSendExp;
-  final Function(FriendUser)? onPairQuest;
+  final Function(FriendUser)? onSendExp;
   final Function(FriendUser)? onUnfollow;
   final Function(FriendUser)? onFollowBack;
 
-  const FriendsListTab({super.key, 
+  const FriendsListTab({
+    super.key,
     required this.friends,
     required this.isFollowingTab,
     required this.isDark,
     required this.canSendReminder,
+    this.canSendReminderTo,
     this.canSendGift = true,
     required this.onSendReminder,
-    required this.onSendExp,
-    this.onPairQuest,
+    this.onSendExp,
     this.onUnfollow,
     this.onFollowBack,
   });
@@ -76,6 +77,7 @@ class FriendsListTab extends StatelessWidget {
     }
 
     return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       itemCount: friends.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
@@ -217,98 +219,73 @@ class FriendsListTab extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                     ],
-                    // Nudge and Gift buttons ONLY shown in Following tab
+                    // Nudge reminder button ONLY shown in Following tab
                     if (isFollowingTab) ...[
-                      // Nudge Reminder Button (Enlarged & Clear)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.waving_hand_rounded,
-                          color: Color(0xFF1CB0F6),
-                          size: 22,
-                        ),
-                        tooltip: canSendReminder
-                            ? 'Send Task Reminder'
-                            : 'Daily limit of 5 reached',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(
-                          minWidth: 38,
-                          minHeight: 38,
-                        ),
-                        onPressed: canSendReminder
-                            ? () => onSendReminder(friend)
-                            : null,
-                      ),
-                      const SizedBox(width: 2),
-                      // Gift 50 EXP Button (Enlarged & Clear)
-                      IconButton(
-                        icon: SvgPicture.asset(
-                          'assets/icon/gift_box_icon.svg',
-                          width: 22,
-                          height: 22,
-                        ),
-                        tooltip: canSendGift
-                            ? 'Gift 50 EXP'
-                            : 'Daily gift limit of 5 reached',
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(
-                          minWidth: 38,
-                          minHeight: 38,
-                        ),
-                        onPressed: canSendGift ? () => onSendExp(friend) : null,
+                      // Nudge Reminder Button (Custom Svg & Enlarged)
+                      Builder(
+                        builder: (context) {
+                          final canSend = canSendReminderTo != null
+                              ? canSendReminderTo!(friend)
+                              : canSendReminder;
+                          return IconButton(
+                            icon: Opacity(
+                              opacity: canSend ? 1.0 : 0.35,
+                              child: SvgPicture.asset(
+                                'assets/icon/hand_wave.svg',
+                                width: 26,
+                                height: 26,
+                              ),
+                            ),
+                            tooltip: canSend
+                                ? 'Send Task Reminder'
+                                : (canSendReminder
+                                      ? 'Already nudged today (resets at midnight)'
+                                      : 'Daily limit of 5 reached'),
+                            padding: const EdgeInsets.all(6),
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                            ),
+                            onPressed: canSend
+                                ? () => onSendReminder(friend)
+                                : null,
+                          );
+                        },
                       ),
                       const SizedBox(width: 2),
                     ],
-                    // More Actions (Pair / Unfollow)
-                    PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_vert_rounded,
-                        color: isDark
-                            ? const Color(0xFF77878F)
-                            : scheme.onSurfaceVariant,
-                        size: 22,
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
-                      ),
-                      color: scheme.surfaceContainerHigh,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      onSelected: (action) {
-                        if (action == 'pair') onPairQuest?.call(friend);
-                        if (action == 'unfollow') onUnfollow?.call(friend);
-                        if (action == 'follow') onFollowBack?.call(friend);
-                      },
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem(
-                          value: 'pair',
-                          child: Text(
-                            'Pair for Quest',
-                            style: TextStyle(
-                              color: isDark ? Colors.white : scheme.onSurface,
-                            ),
-                          ),
+                    // More Actions (Only on Following tab - removed from Followers tab)
+                    if (isFollowingTab)
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          color: isDark
+                              ? const Color(0xFF77878F)
+                              : scheme.onSurfaceVariant,
+                          size: 22,
                         ),
-                        if (isFollowingTab || friend.isFollowing)
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        color: scheme.surfaceContainerHigh,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        onSelected: (action) {
+                          if (action == 'unfollow') onUnfollow?.call(friend);
+                        },
+                        itemBuilder: (ctx) => [
                           const PopupMenuItem(
                             value: 'unfollow',
                             child: Text(
                               'Unfollow',
                               style: TextStyle(color: Colors.redAccent),
                             ),
-                          )
-                        else
-                          const PopupMenuItem(
-                            value: 'follow',
-                            child: Text(
-                              'Follow Back',
-                              style: TextStyle(color: Color(0xFF1CB0F6)),
-                            ),
                           ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ],
                 ),
               ],
@@ -319,4 +296,3 @@ class FriendsListTab extends StatelessWidget {
     );
   }
 }
-

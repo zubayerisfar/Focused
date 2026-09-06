@@ -1,1 +1,13 @@
-focused/android/app/google-services.json
+﻿# Root gitignore
+.vscode/
+focused/firebase.json
+focused/.firebaserc
+focused/firestore.rules
+focused/functions/
+focused/lib/firebase_options.dart
+focused/lib/firebase_options example.dart
+focused/build/
+focused/.dart_tool/
+focused/android/key.properties
+focused/focused-upload-keystore.jks
+focused/android/*.jks

@@ -11,6 +11,7 @@ import '../../streak/providers/user_stats_provider.dart';
 import '../../streak/services/achievement_service.dart';
 import '../../streak/services/productivity_streak_service.dart';
 import '../../streak/widgets/achievement_badge_art.dart';
+import '../../friends/providers/friends_provider.dart';
 
 class BadgesScreen extends StatelessWidget {
   const BadgesScreen({super.key});
@@ -24,6 +25,7 @@ class BadgesScreen extends StatelessWidget {
     final focus = context.watch<FocusProvider>();
     final habits = context.watch<HabitProvider>();
     final userStats = context.watch<UserStatsProvider>();
+    final friendsProvider = context.watch<FriendsProvider>();
 
     final activityDates = <DateTime>{
       ...tasks.completionActivityDates(),
@@ -44,10 +46,23 @@ class BadgesScreen extends StatelessWidget {
         ? localTotalFocus
         : userStats.syncedFocusDuration;
 
+    int longestFriendStreak = 0;
+    for (final bf in friendsProvider.bestFriends) {
+      if (bf.streakDays > longestFriendStreak) {
+        longestFriendStreak = bf.streakDays;
+      }
+    }
+    for (final f in friendsProvider.following) {
+      if (f.streakDays > longestFriendStreak) {
+        longestFriendStreak = f.streakDays;
+      }
+    }
+
     final badges = _achievementService.buildBadges(
       longestStreak: effectiveLongestStreak,
       longestLinkedTaskSession: focus.longestLinkedTaskSessionFocusDuration,
       totalFocus: effectiveTotalFocus,
+      longestFriendStreak: longestFriendStreak,
       unlockedBadgeIds: userStats.unlockedBadgeIds,
     );
     final earned = badges.where((badge) => badge.achieved).length;
@@ -98,6 +113,16 @@ class BadgesScreen extends StatelessWidget {
             badges: badges
                 .where(
                   (badge) => badge.category == AchievementBadgeCategory.streak,
+                )
+                .toList(growable: false),
+          ),
+          const SizedBox(height: 28),
+          _BadgeSection(
+            title: 'Friendship badges',
+            badges: badges
+                .where(
+                  (badge) =>
+                      badge.category == AchievementBadgeCategory.friendship,
                 )
                 .toList(growable: false),
           ),

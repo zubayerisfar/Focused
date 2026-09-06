@@ -5,6 +5,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../../core/services/notification_action_handler.dart';
 import '../models/habit.dart';
 import '../models/habit_reminder_result.dart';
 import 'habit_reminder_planner.dart';
@@ -61,7 +62,13 @@ class HabitNotificationService implements HabitReminderScheduler {
       ),
     );
 
-    await _notifications.initialize(settings);
+    await _notifications.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (response) {
+        NotificationActionHandler.handleAction(response, isBackground: false);
+      },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
     _initialized = true;
   }
 
@@ -302,7 +309,7 @@ class HabitNotificationService implements HabitReminderScheduler {
 
   static const NotificationDetails _details = NotificationDetails(
     android: AndroidNotificationDetails(
-      'habit_reminders_v1',
+      'habit_reminders_v2',
       'Habit reminders',
       channelDescription: 'Reminders for repeating Focused habits',
       importance: Importance.high,
@@ -312,8 +319,20 @@ class HabitNotificationService implements HabitReminderScheduler {
       icon: '@drawable/ic_notification',
       largeIcon: DrawableResourceAndroidBitmap('notif_habit_reminder'),
       color: Color(0xFF4E25AA),
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          NotificationActionHandler.actionMarkDoneHabit,
+          'Mark as Done',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+      ],
     ),
-    iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+      categoryIdentifier: 'habit_category',
+    ),
     macOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
   );
 

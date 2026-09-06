@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -95,7 +96,12 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF351778), Color(0xFF325E9E)],
+            colors: [
+              Color(0xFF080D1A), // Deep dark midnight blue
+              Color(0xFF0E1A33), // Rich dark navy blue
+              Color(0xFF13284C), // Midnight cyan/blue accent
+            ],
+            stops: [0.0, 0.55, 1.0],
           ),
         ),
         child: SafeArea(
@@ -111,24 +117,26 @@ class _SplashScreenState extends State<SplashScreen>
                       child: ScaleTransition(
                         scale: _scaleAnimation,
                         child: Container(
-                          width: 90,
-                          height: 90,
+                          width: 105,
+                          height: 105,
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(26),
+                            shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.22),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
+                                color: const Color(
+                                  0xFF1CB0F6,
+                                ).withValues(alpha: 0.18),
+                                blurRadius: 40,
+                                spreadRadius: 4,
                               ),
                             ],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(26),
-                            child: Image.asset(
-                              'assets/app_icon/app_icon.png',
-                              fit: BoxFit.cover,
-                            ),
+                          child: Image.asset(
+                            'assets/app_icon/app_icon_transparent.png',
+                            width: 95,
+                            height: 95,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),

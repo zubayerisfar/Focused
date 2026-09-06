@@ -9,11 +9,13 @@ import '../widgets/habit_planner_card.dart';
 class HabitPlannerBody extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onBack;
 
   const HabitPlannerBody({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
+    this.onBack,
   });
 
   @override
@@ -30,27 +32,37 @@ class HabitPlannerBody extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (onBack != null) ...[
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onBack,
+              ),
+              const SizedBox(width: 10),
+            ],
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Habits',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    habits.isEmpty
-                        ? 'No routines are scheduled for today.'
-                        : '$completed of ${habits.length} complete today',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Habits',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                habits.isEmpty
+                    ? 'No routines are scheduled for today.'
+                    : '$completed of ${habits.length} complete today',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
             const SizedBox(width: 12),

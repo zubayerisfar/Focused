@@ -105,7 +105,11 @@ class AppLimitProvider extends ChangeNotifier {
       final limit = entry.value;
       if (!limit.isEnabled) continue;
 
-      final used = todayUsageByPackage[limit.packageId] ?? Duration.zero;
+      // Lookup by packageId first, then by appName
+      final used =
+          todayUsageByPackage[limit.packageId] ??
+          todayUsageByPackage[limit.appName] ??
+          Duration.zero;
       final limitDuration = Duration(minutes: limit.dailyLimitMinutes);
 
       if (used >= limitDuration) {
@@ -136,13 +140,16 @@ class AppLimitProvider extends ChangeNotifier {
     required int usedMinutes,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'focused_app_limits',
+      'focused_app_limits_v2',
       'App Daily Limits',
       channelDescription: 'Alerts when daily app usage limit is reached',
-      importance: Importance.high,
+      importance: Importance.max,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
-      color: Color(0xFF4E25AA),
+      largeIcon: DrawableResourceAndroidBitmap('notif_overtime_warning'),
+      color: Color(0xFFEF4444),
+      playSound: true,
+      enableVibration: true,
     );
 
     const details = NotificationDetails(

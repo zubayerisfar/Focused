@@ -675,9 +675,56 @@ class UsageProvider extends ChangeNotifier {
   }
 
   void _dispatchUsageUpdate() {
-    final summary = _todaySummary;
-    if (summary == null || onUsageUpdated == null) return;
-    onUsageUpdated!(summary.appUsage);
+    if (onUsageUpdated == null) return;
+    final packageUsage = getTodayUsageByPackage();
+    onUsageUpdated!(packageUsage);
+  }
+
+  /// Calculates today's usage for each application, mapping both appId (package name)
+  /// and appName (display name) to the exact usage Duration.
+  Map<String, Duration> getTodayUsageByPackage() {
+    if (_todayRecords.isEmpty || _todaySummary == null) {
+      return const <String, Duration>{};
+    }
+
+    final byId = <String, List<AppUsageRecord>>{};
+    final names = <String, String>{};
+
+    for (final record in _todayRecords) {
+      byId.putIfAbsent(record.appId, () => []).add(record);
+      names[record.appId] = record.appName;
+    }
+
+    final usageMap = <String, Duration>{};
+    for (final entry in byId.entries) {
+      final summary = _usageAnalyzer.buildDailySummary(
+        _todaySummary!.date,
+        entry.value,
+      );
+      final duration = summary.totalUsage;
+      usageMap[entry.key] = duration; // by packageId
+      final name = names[entry.key];
+      if (name != null && name.isNotEmpty) {
+        usageMap[name] = duration; // by appName
+      }
+      final resolvedName = resolveDisplayName(
+        entry.key,
+        fallback: name ?? entry.key,
+      );
+      if (resolvedName.isNotEmpty) {
+        usageMap[resolvedName] = duration;
+      }
+    }
+
+    // Also include dailyAppUsage entries from summary
+    final summaryUsage = _todaySummary?.appUsage;
+    if (summaryUsage != null) {
+      for (final entry in summaryUsage.entries) {
+        usageMap.putIfAbsent(entry.key, () => entry.value);
+      }
+    }
+
+    return usageMap;
   }
 
   Future<void> analyzeCompletedFocusSession(FocusSession session) async {

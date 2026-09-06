@@ -17,7 +17,7 @@ String _dateQuery(DateTime value) =>
 void _openSquads(BuildContext context) {
   final switched = MainShell.switchToTab(context, 3);
   if (!switched) {
-    context.push('/friends');
+    context.push('/groups');
   }
 }
 
@@ -42,13 +42,49 @@ class TaskMatesSection extends StatelessWidget {
         .where((t) => !taskProvider.isTaskCompletedForDate(t, date))
         .toList();
 
-    // Check task mate groups with active tasks
+    // Check task mate groups with active tasks that have NOT been completed by current user
+    final currentUid = taskMateProvider.currentUid;
     final groups = taskMateProvider.groups;
-    final activeGroups = groups.where((g) => g.activeTasks.isNotEmpty).toList();
+    final activeGroups = groups.where((g) {
+      return g.activeTasks.any((task) {
+        // Must not be completed in Firestore for this member
+        if (task.isCompletedBy(currentUid)) return false;
+        // Also check if matching squad task in taskProvider is marked completed for this date
+        final matching = taskProvider.tasks.where(
+          (t) =>
+              (t.isSquadTask && t.squadGroupId == g.id) ||
+              t.title.trim().toLowerCase() == task.title.trim().toLowerCase(),
+        );
+        if (matching.isNotEmpty &&
+            taskProvider.isTaskCompletedForDate(matching.first, date)) {
+          return false;
+        }
+        return true;
+      });
+    }).toList();
 
     final totalActiveCount = activeSquadTasks.isNotEmpty
         ? activeSquadTasks.length
-        : activeGroups.fold<int>(0, (sum, g) => sum + g.activeTasks.length);
+        : activeGroups.fold<int>(0, (sum, g) {
+            return sum +
+                g.activeTasks.where((task) {
+                  if (task.isCompletedBy(currentUid)) return false;
+                  final matching = taskProvider.tasks.where(
+                    (t) =>
+                        (t.isSquadTask && t.squadGroupId == g.id) ||
+                        t.title.trim().toLowerCase() ==
+                            task.title.trim().toLowerCase(),
+                  );
+                  if (matching.isNotEmpty &&
+                      taskProvider.isTaskCompletedForDate(
+                        matching.first,
+                        date,
+                      )) {
+                    return false;
+                  }
+                  return true;
+                }).length;
+          });
 
     const sectionAccent = Color(0xFF2563EB);
 
@@ -393,19 +429,37 @@ class _GroupActiveSummaryTile extends StatelessWidget {
     // Each group gets its own coloring
     final groupColor = taskMateProvider.colorForGroupId(group.id);
     final groupNameUpper = group.name.toUpperCase();
+    final currentUid = taskMateProvider.currentUid;
 
-    final taskTitle = group.activeTasks.isNotEmpty
-        ? group.activeTasks.first.title
-        : 'ACTIVE SQUAD';
-    final taskCategory =
-        group.activeTasks.isNotEmpty && group.activeTasks.first.category != null
-        ? group.activeTasks.first.category!
-        : 'Squad Quest';
+    final uncompletedTasks = group.activeTasks.where((t) {
+      if (t.isCompletedBy(currentUid)) return false;
+      final matching = taskProvider.tasks.where(
+        (mt) =>
+            (mt.isSquadTask && mt.squadGroupId == group.id) ||
+            mt.title.trim().toLowerCase() == t.title.trim().toLowerCase(),
+      );
+      if (matching.isNotEmpty &&
+          taskProvider.isTaskCompletedForDate(matching.first, date)) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    final targetTask = uncompletedTasks.isNotEmpty
+        ? uncompletedTasks.first
+        : (group.activeTasks.isNotEmpty ? group.activeTasks.first : null);
+
+    final taskTitle = targetTask?.title ?? 'ACTIVE SQUAD';
+    final taskCategory = targetTask?.category ?? 'Squad Quest';
 
     void onTilePressed() {
       // Find matching task in taskProvider if synced
       final matching = taskProvider.tasks.where(
-        (t) => (t.isSquadTask && t.squadGroupId == group.id),
+        (t) =>
+            (t.isSquadTask && t.squadGroupId == group.id) ||
+            (targetTask != null &&
+                t.title.trim().toLowerCase() ==
+                    targetTask.title.trim().toLowerCase()),
       );
       if (matching.isNotEmpty) {
         context.push(
@@ -413,7 +467,14 @@ class _GroupActiveSummaryTile extends StatelessWidget {
         );
       } else {
         // Jump into Focus Mode or complete
-        SquadTaskActions.startTask(context, group);
+        final taskIndex = targetTask != null
+            ? group.activeTasks.indexOf(targetTask)
+            : 0;
+        SquadTaskActions.startTask(
+          context,
+          group,
+          taskIndex: taskIndex >= 0 ? taskIndex : 0,
+        );
       }
     }
 

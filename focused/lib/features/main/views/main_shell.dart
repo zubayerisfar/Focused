@@ -7,6 +7,7 @@ import '../../tasks/providers/task_provider.dart';
 import '../../wellbeing/providers/usage_provider.dart';
 import '../../focus/views/focus_screen.dart';
 import '../../friends/views/friends_screen.dart';
+import '../../groups/views/group_screen.dart';
 import '../../planner/views/planner_hub_body.dart';
 import '../../planner/views/planner_screen.dart';
 import '../../settings/views/settings_screen.dart';
@@ -33,6 +34,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late int _currentIndex;
+  final _plannerKey = GlobalKey<PlannerScreenState>();
   late final List<Widget> _screens;
 
   void setIndex(int index) {
@@ -48,9 +50,10 @@ class _MainShellState extends State<MainShell> {
     _screens = [
       const PrimaryScrollController.none(child: TodayScreen()),
       PrimaryScrollController.none(
-        child: PlannerScreen(initialArea: widget.plannerArea),
+        child: PlannerScreen(key: _plannerKey, initialArea: widget.plannerArea),
       ),
       const PrimaryScrollController.none(child: FocusScreen()),
+      const PrimaryScrollController.none(child: GroupScreen()),
       const PrimaryScrollController.none(child: FriendsScreen()),
       const PrimaryScrollController.none(child: SettingsScreen(embedded: true)),
     ];
@@ -101,13 +104,20 @@ class _MainShellState extends State<MainShell> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: PopScope(
-        canPop: _currentIndex == 0,
+        canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) {
+          if (didPop) return;
+          if (_currentIndex == 1) {
+            final handled = _plannerKey.currentState?.handleBack() ?? false;
+            if (handled) return;
+          }
+          if (_currentIndex != 0) {
             setState(() {
               _currentIndex = 0;
             });
+            return;
           }
+          SystemNavigator.pop();
         },
         child: Scaffold(
           body: IndexedStack(index: _currentIndex, children: _screens),
@@ -132,14 +142,14 @@ class _MainShellState extends State<MainShell> {
               data: NavigationBarThemeData(
                 indicatorColor: Colors.transparent,
                 overlayColor: WidgetStateProperty.all(Colors.transparent),
-                height: 68,
+                height: 78,
                 labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
                   states,
                 ) {
                   final isSelected = states.contains(WidgetState.selected);
                   return TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 11.5,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                     letterSpacing: -0.1,
                     color: isSelected
                         ? (isDark ? Colors.white : const Color(0xFF1E293B))
@@ -151,7 +161,7 @@ class _MainShellState extends State<MainShell> {
               ),
               child: NavigationBar(
                 selectedIndex: _currentIndex,
-                height: 68,
+                height: 78,
                 elevation: 0,
                 shadowColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
@@ -170,14 +180,14 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.home_outlined,
                       color: Color(0xFFFF8228), // Orange
                       isSelected: false,
-                      size: 24,
+                      size: 28,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_home.svg',
                       fallbackIcon: Icons.home_rounded,
                       color: Color(0xFFFF8228), // Orange
                       isSelected: true,
-                      size: 24,
+                      size: 28,
                     ),
                     label: 'Home',
                   ),
@@ -187,14 +197,14 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.view_timeline_outlined,
                       color: Color(0xFF58CC02), // Green
                       isSelected: false,
-                      size: 24,
+                      size: 28,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_planner.svg',
                       fallbackIcon: Icons.view_timeline_rounded,
                       color: Color(0xFF58CC02), // Green
                       isSelected: true,
-                      size: 24,
+                      size: 28,
                     ),
                     label: 'Planner',
                   ),
@@ -204,16 +214,35 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.center_focus_strong_outlined,
                       color: Color(0xFFFF5252), // Red
                       isSelected: false,
-                      size: 24,
+                      size: 28,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_focus.svg',
                       fallbackIcon: Icons.center_focus_strong_rounded,
                       color: Color(0xFFFF5252), // Red
                       isSelected: true,
-                      size: 24,
+                      size: 28,
                     ),
                     label: 'Focus',
+                  ),
+                  NavigationDestination(
+                    icon: _NavIcon(
+                      assetName: 'group_icon.svg',
+                      alternateAssetName: 'group_icon.svg',
+                      fallbackIcon: Icons.groups_outlined,
+                      color: Color(0xFF1CB0F6), // Blue
+                      isSelected: false,
+                      size: 28,
+                    ),
+                    selectedIcon: _NavIcon(
+                      assetName: 'group_icon.svg',
+                      alternateAssetName: 'group_icon.svg',
+                      fallbackIcon: Icons.groups_rounded,
+                      color: Color(0xFF1CB0F6), // Blue
+                      isSelected: true,
+                      size: 28,
+                    ),
+                    label: 'Groups',
                   ),
                   NavigationDestination(
                     icon: _NavIcon(
@@ -222,7 +251,7 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.people_alt_outlined,
                       color: Color(0xFF9B51E0), // Purple
                       isSelected: false,
-                      size: 24,
+                      size: 28,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_friends.svg',
@@ -230,7 +259,7 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.people_alt_rounded,
                       color: Color(0xFF9B51E0), // Purple
                       isSelected: true,
-                      size: 24,
+                      size: 28,
                     ),
                     label: 'Friends',
                   ),
@@ -240,14 +269,14 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.settings_outlined,
                       color: Color(0xFF0EA5E9), // Bluish
                       isSelected: false,
-                      size: 24,
+                      size: 28,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_settings.svg',
                       fallbackIcon: Icons.settings_rounded,
                       color: Color(0xFF0EA5E9), // Bluish
                       isSelected: true,
-                      size: 24,
+                      size: 28,
                     ),
                     label: 'Settings',
                   ),
@@ -360,4 +389,4 @@ class _NavIcon extends StatelessWidget {
   }
 }
 
-int _safeIndex(int value) => value.clamp(0, 4).toInt();
+int _safeIndex(int value) => value.clamp(0, 5).toInt();

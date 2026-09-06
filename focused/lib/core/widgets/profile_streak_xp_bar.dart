@@ -11,6 +11,17 @@ import '../../features/tasks/providers/task_provider.dart';
 import '../../features/streak/providers/user_stats_provider.dart';
 import '../../features/streak/services/productivity_streak_service.dart';
 
+String _initials(String name) {
+  final words = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList();
+  if (words.isEmpty) return 'F';
+  if (words.length == 1) return words.first[0].toUpperCase();
+  return (words.first[0] + words.last[0]).toUpperCase();
+}
+
 /// Reusable top-bar component that displays XP chip, Streak chip, and profile avatar
 class ProfileStreakXpBar extends StatelessWidget {
   final bool showProfile;
@@ -62,7 +73,7 @@ class ProfileStreakXpBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(19),
           onTap: () => context.push('/xp'),
           child: Container(
-            height: 36,
+            height: 38,
             padding: chipPadding,
             decoration: BoxDecoration(
               color: const Color(
@@ -80,10 +91,10 @@ class ProfileStreakXpBar extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.bolt_rounded,
-                  size: 18,
+                  size: 20,
                   color: Color(0xFF1CB0F6),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 Text(
                   '$xpPoints',
                   style: const TextStyle(
@@ -96,6 +107,7 @@ class ProfileStreakXpBar extends StatelessWidget {
             ),
           ),
         ),
+
         SizedBox(width: chipGap),
 
         // Streak chip
@@ -103,7 +115,7 @@ class ProfileStreakXpBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(19),
           onTap: () => context.push('/streak'),
           child: Container(
-            height: 36,
+            height: 38,
             padding: chipPadding,
             decoration: BoxDecoration(
               color: const Color(
@@ -119,8 +131,8 @@ class ProfileStreakXpBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text('🔥', style: TextStyle(fontSize: 15, height: 1.0)),
-                const SizedBox(width: 4),
+                const Text('🔥', style: TextStyle(fontSize: 16, height: 1.0)),
+                const SizedBox(width: 5),
                 Text(
                   '$streak',
                   style: const TextStyle(
@@ -147,12 +159,10 @@ class ProfileStreakXpBar extends StatelessWidget {
                   : NetworkImage(account.photoUrl!),
               child: account.photoUrl == null
                   ? Text(
-                      account.displayName.trim().isEmpty
-                          ? '?'
-                          : account.displayName.trim()[0].toUpperCase(),
+                      _initials(account.displayName),
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: avatarRadius * 0.75,
+                        fontWeight: FontWeight.w700,
+                        fontSize: avatarRadius * 0.65,
                       ),
                     )
                   : null,

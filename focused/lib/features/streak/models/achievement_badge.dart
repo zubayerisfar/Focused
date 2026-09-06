@@ -25,8 +25,4 @@ class AchievementBadge {
   }
 }
 
-enum AchievementBadgeCategory {
-  streak,
-  focusSession,
-  totalFocus,
-}
+enum AchievementBadgeCategory { streak, focusSession, totalFocus, friendship }

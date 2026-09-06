@@ -13,6 +13,7 @@ import '../features/focus/views/focus_session_screen.dart';
 import '../features/focus/views/focus_setup_screen.dart';
 import '../features/friends/views/add_friends_screen.dart';
 import '../features/friends/views/friends_screen.dart';
+import '../features/groups/views/group_screen.dart';
 import '../features/habits/views/habit_details_screen.dart';
 import '../features/habits/views/habit_edit_screen.dart';
 import '../features/main/views/main_shell.dart';
@@ -159,6 +160,10 @@ GoRouter createAppRouter({
         builder: (context, state) => const BadgesScreen(),
       ),
       GoRoute(
+        path: '/groups',
+        builder: (context, state) => const GroupScreen(),
+      ),
+      GoRoute(
         path: '/friends',
         builder: (context, state) {
           final tab = state.uri.queryParameters['tab'];
@@ -167,7 +172,6 @@ GoRouter createAppRouter({
               : tab == 'following'
               ? 1
               : 0;
-          return FriendsScreen(initialTabIndex: initialIndex);
           return FriendsScreen(
             key: ValueKey('friends_tab_$initialIndex'),
             initialTabIndex: initialIndex,
@@ -332,10 +336,15 @@ int _mainTabIndex(String? raw) {
       return 1;
     case 'focus':
       return 2;
-    case 'friends':
+    case 'groups':
+    case 'group':
+    case 'squads':
+    case 'squad':
       return 3;
-    case 'settings':
+    case 'friends':
       return 4;
+    case 'settings':
+      return 5;
     case 'home':
     default:
       return 0;

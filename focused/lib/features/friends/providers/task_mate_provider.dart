@@ -6,6 +6,7 @@ import '../models/friend_user.dart';
 import '../../habits/models/habit.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/models/task_group.dart';
+import '../../tasks/models/group_task_history.dart';
 import '../../tasks/models/task_recurrence.dart';
 import '../services/friends_service.dart';
 import '../services/task_mate_service.dart';
@@ -26,8 +27,10 @@ class TaskMateProvider extends ChangeNotifier {
 
   String _currentUid = '';
   List<TaskGroup> _groups = [];
+  List<GroupTaskHistory> _history = [];
   bool _isLoading = false;
   StreamSubscription<List<TaskGroup>>? _groupsSub;
+  StreamSubscription<List<GroupTaskHistory>>? _historySub;
 
   TaskMateProvider({
     required TaskMateService service,
@@ -54,6 +57,7 @@ class TaskMateProvider extends ChangeNotifier {
   }
 
   List<TaskGroup> get groups => _groups;
+  List<GroupTaskHistory> get history => _history;
   bool get isLoading => _isLoading;
   bool get canCreateGroup => _groups.length < 3;
   String get currentUid => _currentUid;
@@ -74,9 +78,11 @@ class TaskMateProvider extends ChangeNotifier {
     if (_currentUid == uid && _groupsSub != null) return;
     _currentUid = uid;
     _groupsSub?.cancel();
+    _historySub?.cancel();
 
     if (uid.isEmpty) {
       _groups = [];
+      _history = [];
       notifyListeners();
       return;
     }
@@ -91,6 +97,7 @@ class TaskMateProvider extends ChangeNotifier {
             _groups = list;
             _isLoading = false;
             notifyListeners();
+            _refreshHistorySubscription();
           },
           onError: (e) {
             debugPrint('Error streaming task groups: $e');
@@ -98,6 +105,41 @@ class TaskMateProvider extends ChangeNotifier {
             notifyListeners();
           },
         );
+  }
+
+  void _refreshHistorySubscription() {
+    _historySub?.cancel();
+    final groupIds = _groups.map((g) => g.id).toList();
+    if (groupIds.isEmpty) {
+      _history = [];
+      notifyListeners();
+      return;
+    }
+
+    _historySub = _service
+        .streamGroupsHistory(groupIds)
+        .listen(
+          (items) {
+            _history = items;
+            notifyListeners();
+          },
+          onError: (e) {
+            debugPrint('Error streaming squad task history: $e');
+          },
+        );
+  }
+
+  /// Deletes selected history entries
+  Future<void> deleteHistoryItems(List<GroupTaskHistory> itemsToDelete) async {
+    final idsToDelete = itemsToDelete.map((i) => i.id).toSet();
+    _history.removeWhere((item) => idsToDelete.contains(item.id));
+    notifyListeners();
+
+    try {
+      await _service.deleteHistoryItems(itemsToDelete);
+    } catch (e) {
+      debugPrint('Error deleting history items: $e');
+    }
   }
 
   /// Creates a new squad with chosen friends (up to 4 friends, max 5 members).
@@ -446,6 +488,7 @@ class TaskMateProvider extends ChangeNotifier {
   @override
   void dispose() {
     _groupsSub?.cancel();
+    _historySub?.cancel();
     super.dispose();
   }
 }

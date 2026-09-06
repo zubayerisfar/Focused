@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/exp_gift.dart';
 import '../models/friend_user.dart';
 import '../models/partner_quest.dart';
+import '../models/best_friend.dart';
 import '../../profile/models/user_profile.dart';
 
 class FriendsService {
@@ -653,6 +654,7 @@ class FriendsService {
   }) {
     if (currentUid.isEmpty) return null;
 
+    var isInitialSnapshot = true;
     return _firestore
         .collection('users')
         .doc(currentUid)
@@ -660,15 +662,25 @@ class FriendsService {
         .where('read', isEqualTo: false)
         .snapshots()
         .listen((snap) {
-          for (final doc in snap.docs) {
-            final data = doc.data();
-            final followerName = data['fromName']?.toString() ?? 'A Friend';
-            final photoUrl = data['photoUrl']?.toString();
+          if (isInitialSnapshot) {
+            isInitialSnapshot = false;
+            // Mark existing unread notices as read without re-popping the notification
+            for (final doc in snap.docs) {
+              doc.reference.update({'read': true});
+            }
+            return;
+          }
 
-            onFollowerReceived(followerName, photoUrl);
+          for (final change in snap.docChanges) {
+            if (change.type == DocumentChangeType.added) {
+              final doc = change.doc;
+              final data = doc.data() ?? {};
+              final followerName = data['fromName']?.toString() ?? 'A Friend';
+              final photoUrl = data['photoUrl']?.toString();
 
-            // Mark as read
-            doc.reference.update({'read': true});
+              onFollowerReceived(followerName, photoUrl);
+              doc.reference.update({'read': true});
+            }
           }
         });
   }
@@ -759,6 +771,7 @@ class FriendsService {
   }) {
     if (currentUid.isEmpty) return null;
 
+    var isInitialSnapshot = true;
     return _firestore
         .collection('users')
         .doc(currentUid)
@@ -766,17 +779,26 @@ class FriendsService {
         .where('read', isEqualTo: false)
         .snapshots()
         .listen((snap) {
-          for (final doc in snap.docs) {
-            final data = doc.data();
-            final fromName = data['fromName']?.toString() ?? 'A Friend';
-            final message =
-                data['message']?.toString() ??
-                '$fromName is reminding you to finish your task!';
+          if (isInitialSnapshot) {
+            isInitialSnapshot = false;
+            for (final doc in snap.docs) {
+              doc.reference.update({'read': true});
+            }
+            return;
+          }
 
-            onReminderReceived(fromName, message);
+          for (final change in snap.docChanges) {
+            if (change.type == DocumentChangeType.added) {
+              final doc = change.doc;
+              final data = doc.data() ?? {};
+              final fromName = data['fromName']?.toString() ?? 'A Friend';
+              final message =
+                  data['message']?.toString() ??
+                  '$fromName is reminding you to finish your task!';
 
-            // Mark as read so it doesn't trigger repeatedly
-            doc.reference.update({'read': true});
+              onReminderReceived(fromName, message);
+              doc.reference.update({'read': true});
+            }
           }
         });
   }
@@ -792,6 +814,7 @@ class FriendsService {
   }) {
     if (currentUid.isEmpty) return null;
 
+    var isInitialSnapshot = true;
     return _firestore
         .collection('users')
         .doc(currentUid)
@@ -799,21 +822,31 @@ class FriendsService {
         .where('read', isEqualTo: false)
         .snapshots()
         .listen((snap) {
-          for (final doc in snap.docs) {
-            final data = doc.data();
-            final groupName = data['groupName']?.toString() ?? 'Task Squad';
-            final creatorName = data['creatorName']?.toString() ?? 'A Friend';
-            final isTaskAssignment = data['isTaskAssignment'] == true;
-            final taskTitle = data['taskTitle']?.toString() ?? 'a task';
-
-            if (isTaskAssignment && onTaskAssignedReceived != null) {
-              onTaskAssignedReceived(groupName, creatorName, taskTitle);
-            } else {
-              onGroupNoticeReceived(groupName, creatorName);
+          if (isInitialSnapshot) {
+            isInitialSnapshot = false;
+            for (final doc in snap.docs) {
+              doc.reference.update({'read': true});
             }
+            return;
+          }
 
-            // Mark as read
-            doc.reference.update({'read': true});
+          for (final change in snap.docChanges) {
+            if (change.type == DocumentChangeType.added) {
+              final doc = change.doc;
+              final data = doc.data() ?? {};
+              final groupName = data['groupName']?.toString() ?? 'Task Squad';
+              final creatorName = data['creatorName']?.toString() ?? 'A Friend';
+              final isTaskAssignment = data['isTaskAssignment'] == true;
+              final taskTitle = data['taskTitle']?.toString() ?? 'a task';
+
+              if (isTaskAssignment && onTaskAssignedReceived != null) {
+                onTaskAssignedReceived(groupName, creatorName, taskTitle);
+              } else {
+                onGroupNoticeReceived(groupName, creatorName);
+              }
+
+              doc.reference.update({'read': true});
+            }
           }
         });
   }
@@ -959,6 +992,7 @@ class FriendsService {
   }) {
     if (currentUid.isEmpty) return null;
 
+    var isInitialSnapshot = true;
     return _firestore
         .collection('users')
         .doc(currentUid)
@@ -966,16 +1000,202 @@ class FriendsService {
         .where('read', isEqualTo: false)
         .snapshots()
         .listen((snap) {
-          for (final doc in snap.docs) {
-            final data = doc.data();
-            final friendName = data['fromName']?.toString() ?? 'A Friend';
-            final taskTitle = data['taskTitle']?.toString() ?? 'their task';
+          if (isInitialSnapshot) {
+            isInitialSnapshot = false;
+            for (final doc in snap.docs) {
+              doc.reference.update({'read': true});
+            }
+            return;
+          }
 
-            onCompletionReceived(friendName, taskTitle);
+          for (final change in snap.docChanges) {
+            if (change.type == DocumentChangeType.added) {
+              final doc = change.doc;
+              final data = doc.data() ?? {};
+              final friendName = data['fromName']?.toString() ?? 'A Friend';
+              final taskTitle = data['taskTitle']?.toString() ?? 'their task';
 
-            // Mark as read
-            doc.reference.update({'read': true});
+              onCompletionReceived(friendName, taskTitle);
+              doc.reference.update({'read': true});
+            }
           }
         });
+  }
+
+  // ===========================================================================
+  // BEST FRIENDS & STREAKS
+  // ===========================================================================
+
+  /// Streams up to 5 best friends for the current user
+  Stream<List<BestFriend>> streamBestFriends(String currentUid) {
+    if (currentUid.isEmpty) return Stream.value(const []);
+    return _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('best_friends')
+        .limit(5)
+        .snapshots()
+        .map((snap) {
+          return snap.docs
+              .map((doc) => BestFriend.fromMap(doc.data(), docId: doc.id))
+              .toList();
+        });
+  }
+
+  /// Adds a mutual best friend relationship in Firestore for both users
+  Future<void> addBestFriend({
+    required String currentUid,
+    required UserProfile myProfile,
+    String? myPhotoUrl,
+    required FriendUser friend,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final batch = _firestore.batch();
+
+    // 1. In current user's collection
+    final myBestFriendRef = _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('best_friends')
+        .doc(friend.uid);
+
+    final myRecord = BestFriend(
+      uid: friend.uid,
+      displayName: friend.displayName,
+      username: friend.username,
+      photoUrl: friend.photoUrl,
+      streakDays: 1,
+      streakStartedAt: now,
+      currentCycleStartedAt: now,
+      lastInteractedAt: now,
+      isRestoredViaAd: false,
+    );
+    batch.set(myBestFriendRef, myRecord.toMap());
+
+    // 2. In friend's collection
+    final theirBestFriendRef = _firestore
+        .collection('users')
+        .doc(friend.uid)
+        .collection('best_friends')
+        .doc(currentUid);
+
+    final theirRecord = BestFriend(
+      uid: currentUid,
+      displayName: myProfile.displayName.isNotEmpty
+          ? myProfile.displayName
+          : 'Focused User',
+      username: myProfile.handle.replaceAll('@', ''),
+      photoUrl: myPhotoUrl,
+      streakDays: 1,
+      streakStartedAt: now,
+      currentCycleStartedAt: now,
+      lastInteractedAt: now,
+      isRestoredViaAd: false,
+    );
+    batch.set(theirBestFriendRef, theirRecord.toMap());
+
+    await batch.commit();
+  }
+
+  /// Removes best friend relationship permanently for both users
+  Future<void> removeBestFriend({
+    required String currentUid,
+    required String friendUid,
+  }) async {
+    final batch = _firestore.batch();
+
+    final myRef = _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('best_friends')
+        .doc(friendUid);
+
+    final theirRef = _firestore
+        .collection('users')
+        .doc(friendUid)
+        .collection('best_friends')
+        .doc(currentUid);
+
+    batch.delete(myRef);
+    batch.delete(theirRef);
+
+    await batch.commit();
+  }
+
+  /// Records daily interaction (Nudge or Gift).
+  /// Updates streakDays and advances cycle timestamp if 24h passed.
+  Future<void> recordBestFriendInteraction({
+    required String currentUid,
+    required String friendUid,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final myRef = _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('best_friends')
+        .doc(friendUid);
+
+    final theirRef = _firestore
+        .collection('users')
+        .doc(friendUid)
+        .collection('best_friends')
+        .doc(currentUid);
+
+    final snap = await myRef.get();
+    if (!snap.exists || snap.data() == null) return;
+
+    final current = BestFriend.fromMap(snap.data()!, docId: snap.id);
+    int newStreak = current.streakDays;
+    DateTime newCycleStart = current.currentCycleStartedAt;
+
+    // If currently at risk, or if more than 24h elapsed since cycle start, advance cycle and increment streak
+    if (current.isAtRisk || current.elapsedInCycle.inHours >= 24) {
+      newStreak++;
+      newCycleStart = now;
+    } else if (current.lastInteractedAt == null) {
+      newStreak = current.streakDays > 0 ? current.streakDays : 1;
+    }
+
+    final updateData = <String, dynamic>{
+      'streakDays': newStreak,
+      'currentCycleStartedAt': Timestamp.fromDate(newCycleStart),
+      'lastInteractedAt': Timestamp.fromDate(now),
+      'isRestoredViaAd': false,
+    };
+
+    final batch = _firestore.batch();
+    batch.set(myRef, updateData, SetOptions(merge: true));
+    batch.set(theirRef, updateData, SetOptions(merge: true));
+    await batch.commit();
+  }
+
+  /// Restores a broken or at-risk streak using a rewarded ad
+  Future<void> restoreBestFriendStreak({
+    required String currentUid,
+    required String friendUid,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final myRef = _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('best_friends')
+        .doc(friendUid);
+
+    final theirRef = _firestore
+        .collection('users')
+        .doc(friendUid)
+        .collection('best_friends')
+        .doc(currentUid);
+
+    final updateData = <String, dynamic>{
+      'currentCycleStartedAt': Timestamp.fromDate(now),
+      'lastInteractedAt': Timestamp.fromDate(now),
+      'isRestoredViaAd': true,
+    };
+
+    final batch = _firestore.batch();
+    batch.set(myRef, updateData, SetOptions(merge: true));
+    batch.set(theirRef, updateData, SetOptions(merge: true));
+    await batch.commit();
   }
 }

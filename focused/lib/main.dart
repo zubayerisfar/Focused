@@ -19,6 +19,8 @@ import 'features/friends/providers/task_mate_provider.dart';
 import 'features/streak/providers/streak_goal_provider.dart';
 import 'features/tasks/providers/task_provider.dart';
 import 'core/providers/theme_provider.dart';
+import 'core/services/notification_action_handler.dart';
+import 'core/services/push_notification_service.dart';
 import 'features/wellbeing/providers/usage_provider.dart';
 import 'features/profile/models/user_profile.dart';
 import 'features/profile/providers/user_profile_provider.dart';
@@ -55,6 +57,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await PushNotificationService.init();
 
   await Hive.initFlutter();
 
@@ -101,6 +104,7 @@ Future<void> main() async {
     occurrenceCompletionStorage: occurrenceCompletionStorage,
   );
   await taskProvider.loadStoredTasks();
+  NotificationActionHandler.taskProvider = taskProvider;
 
   final focusProvider = FocusProvider(
     storageService: focusSessionStorageService,
@@ -165,6 +169,7 @@ Future<void> main() async {
     reminderScheduler: habitNotificationService,
   );
   await habitProvider.loadStoredHabits();
+  NotificationActionHandler.habitProvider = habitProvider;
 
   final userProfileProvider = UserProfileProvider(
     storageService: userProfileStorageService,
@@ -205,6 +210,10 @@ Future<void> main() async {
     authService: AuthService(),
     lifecycleService: accountLifecycleService,
     onSignOutOrAccountWiped: () async {
+      final currentUid = accountProvider.user?.uid;
+      if (currentUid != null) {
+        await PushNotificationService.clearUserToken(currentUid);
+      }
       await taskNotificationService.cancelAllTaskReminders();
       await habitNotificationService.cancelAllHabitReminders();
       await accountLifecycleService.clearLocalWorkspaceData();
@@ -219,6 +228,7 @@ Future<void> main() async {
   await accountProvider.initialize();
 
   if (accountProvider.isSignedIn) {
+    unawaited(PushNotificationService.syncUserToken(accountProvider.user!.uid));
     await userProfileProvider.updateProfile(
       displayName: accountProvider.displayName,
       email: accountProvider.email,
@@ -363,4 +373,9 @@ Future<void> main() async {
   unawaited(usageProvider.refreshPermissionAndUsage());
   unawaited(const AppUsageSummaryService().initialize());
   unawaited(AdService.instance.initialize());
+
+  // Periodically refresh usage stats so active app usage and limits are checked
+  Timer.periodic(const Duration(minutes: 1), (_) {
+    unawaited(usageProvider.refreshPermissionAndUsage());
+  });
 }

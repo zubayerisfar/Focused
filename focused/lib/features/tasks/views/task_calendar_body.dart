@@ -20,6 +20,7 @@ class TaskCalendarBody extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
   final VoidCallback onPickDate;
+  final VoidCallback? onBack;
 
   const TaskCalendarBody({
     super.key,
@@ -27,6 +28,7 @@ class TaskCalendarBody extends StatelessWidget {
     required this.selectedDate,
     required this.onDateSelected,
     required this.onPickDate,
+    this.onBack,
   });
 
   @override
@@ -37,28 +39,33 @@ class TaskCalendarBody extends StatelessWidget {
           selectedDate: selectedDate,
           onDateSelected: onDateSelected,
           onPickDate: onPickDate,
+          onBack: onBack,
         );
       case PlannerCalendarMode.day:
         return _DayView(
           selectedDate: selectedDate,
           onDateSelected: onDateSelected,
+          onBack: onBack,
         );
       case PlannerCalendarMode.threeDays:
         return _MultiDayFlow(
           selectedDate: selectedDate,
           dayCount: 3,
           onDateSelected: onDateSelected,
+          onBack: onBack,
         );
       case PlannerCalendarMode.week:
         return _MultiDayFlow(
           selectedDate: _weekStart(selectedDate),
           dayCount: 7,
           onDateSelected: onDateSelected,
+          onBack: onBack,
         );
       case PlannerCalendarMode.month:
         return _MonthView(
           selectedDate: selectedDate,
           onDateSelected: onDateSelected,
+          onBack: onBack,
         );
     }
   }
@@ -68,11 +75,13 @@ class _ScheduleView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
   final VoidCallback onPickDate;
+  final VoidCallback? onBack;
 
   const _ScheduleView({
     required this.selectedDate,
     required this.onDateSelected,
     required this.onPickDate,
+    this.onBack,
   });
 
   @override
@@ -90,6 +99,7 @@ class _ScheduleView extends StatelessWidget {
           title: 'Create your plan',
           selectedDate: selectedDate,
           onPickDate: onPickDate,
+          onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
@@ -137,8 +147,13 @@ class _ScheduleView extends StatelessWidget {
 class _DayView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onBack;
 
-  const _DayView({required this.selectedDate, required this.onDateSelected});
+  const _DayView({
+    required this.selectedDate,
+    required this.onDateSelected,
+    this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +178,7 @@ class _DayView extends StatelessWidget {
               : DateFormat('EEEE').format(selectedDate),
           subtitle: DateFormat('MMMM d, yyyy').format(selectedDate),
           selectedDate: selectedDate,
+          onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
@@ -198,11 +214,13 @@ class _MultiDayFlow extends StatelessWidget {
   final DateTime selectedDate;
   final int dayCount;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onBack;
 
   const _MultiDayFlow({
     required this.selectedDate,
     required this.dayCount,
     required this.onDateSelected,
+    this.onBack,
   });
 
   @override
@@ -233,6 +251,7 @@ class _MultiDayFlow extends StatelessWidget {
               ? '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}'
               : '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}',
           selectedDate: selectedDate,
+          onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
@@ -269,8 +288,13 @@ class _MultiDayFlow extends StatelessWidget {
 class _MonthView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onBack;
 
-  const _MonthView({required this.selectedDate, required this.onDateSelected});
+  const _MonthView({
+    required this.selectedDate,
+    required this.onDateSelected,
+    this.onBack,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +324,7 @@ class _MonthView extends StatelessWidget {
           title: DateFormat('MMMM').format(selectedDate),
           subtitle: 'Tap any date to open its plan.',
           selectedDate: selectedDate,
+          onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
@@ -432,6 +457,7 @@ class _CalendarModeIntro extends StatelessWidget {
   final DateTime selectedDate;
   final VoidCallback? onPickDate;
   final Widget? action;
+  final VoidCallback? onBack;
 
   const _CalendarModeIntro({
     required this.title,
@@ -439,6 +465,7 @@ class _CalendarModeIntro extends StatelessWidget {
     required this.selectedDate,
     this.onPickDate,
     this.action,
+    this.onBack,
   });
 
   @override
@@ -446,29 +473,44 @@ class _CalendarModeIntro extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (onBack != null) ...[
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onBack,
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
                 title,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,
                 ),
               ),
-              if (onPickDate != null) ...[
-                const SizedBox(height: 6),
+            ),
+          ],
+        ),
+        if (onPickDate != null || action != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (onPickDate != null)
                 InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: onPickDate,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
-                      vertical: 5,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: scheme.primary.withValues(
@@ -493,7 +535,7 @@ class _CalendarModeIntro extends StatelessWidget {
                         Text(
                           DateFormat('MMMM yyyy').format(selectedDate),
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: scheme.primary,
                             letterSpacing: -0.2,
@@ -502,27 +544,27 @@ class _CalendarModeIntro extends StatelessWidget {
                         const SizedBox(width: 4),
                         Icon(
                           Icons.arrow_drop_down_rounded,
-                          size: 22,
+                          size: 20,
                           color: scheme.primary,
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-              if (subtitle != null && subtitle!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  subtitle!,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+              const Spacer(),
+              ?action,
             ],
           ),
-        ),
-        if (action != null) ...[const SizedBox(width: 12), action!],
+        ],
+        if (subtitle != null && subtitle!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            subtitle!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -559,15 +601,16 @@ class _AgendaDaySection extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   SizedBox(
-                    width: 48,
+                    width: 62,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
                           DateFormat('EEE').format(date),
-                          style: Theme.of(context).textTheme.labelLarge
+                          style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: _isToday(date)
                                     ? Theme.of(context).colorScheme.primary
@@ -579,11 +622,18 @@ class _AgendaDaySection extends StatelessWidget {
                         ),
                         Text(
                           '${date.day}',
-                          style: Theme.of(context).textTheme.headlineMedium,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: _isToday(date)
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Divider(
                       color: _isToday(date)

@@ -6,35 +6,25 @@ import 'package:provider/provider.dart';
 import '../../tasks/providers/task_provider.dart';
 import '../widgets/reminder_item_card.dart';
 
-bool _sameDate(DateTime first, DateTime second) =>
-    first.year == second.year &&
-    first.month == second.month &&
-    first.day == second.day;
-
 class RemindersPlannerBody extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onBack;
 
   const RemindersPlannerBody({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
+    this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
-    final allReminders = taskProvider.reminders;
-
-    final dateReminders = allReminders.where((t) {
-      if (t.scheduledStart != null) {
-        return _sameDate(t.scheduledStart!, selectedDate);
-      }
-      if (t.plannedDate != null) {
-        return _sameDate(t.plannedDate!, selectedDate);
-      }
-      return false;
-    }).toList();
+    final dateReminders = taskProvider.remindersForDate(
+      selectedDate,
+      includeCompleted: true,
+    );
 
     final completedCount = dateReminders
         .where((r) => taskProvider.isTaskCompletedForDate(r, selectedDate))
@@ -46,27 +36,37 @@ class RemindersPlannerBody extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (onBack != null) ...[
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onBack,
+              ),
+              const SizedBox(width: 10),
+            ],
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Reminders',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    dateReminders.isEmpty
-                        ? 'No reminders are scheduled for this date.'
-                        : '$completedCount of ${dateReminders.length} complete',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Reminders',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                dateReminders.isEmpty
+                    ? 'No reminders are scheduled for this date.'
+                    : '$completedCount of ${dateReminders.length} complete',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
             const SizedBox(width: 12),

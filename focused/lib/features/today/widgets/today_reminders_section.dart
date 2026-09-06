@@ -6,9 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../tasks/providers/task_provider.dart';
 
-bool _sameDate(DateTime a, DateTime b) =>
-    a.year == b.year && a.month == b.month && a.day == b.day;
-
 class TodayRemindersSection extends StatelessWidget {
   final DateTime date;
 
@@ -17,20 +14,13 @@ class TodayRemindersSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
-    final allReminders = taskProvider.reminders;
-
-    final dateReminders = allReminders.where((t) {
-      if (t.scheduledStart != null) {
-        return _sameDate(t.scheduledStart!, date);
-      }
-      if (t.plannedDate != null) {
-        return _sameDate(t.plannedDate!, date);
-      }
-      return false;
-    }).toList();
+    final dateReminders = taskProvider.remindersForDate(
+      date,
+      includeCompleted: true,
+    );
 
     final activeReminders = dateReminders
-        .where((t) => !t.isCompleted)
+        .where((t) => !taskProvider.isTaskCompletedForDate(t, date))
         .take(3)
         .toList();
 
@@ -154,8 +144,11 @@ class TodayRemindersSection extends StatelessWidget {
                         ),
                         IconButton(
                           tooltip: 'Done',
-                          onPressed: () =>
-                              taskProvider.setCompleted(reminder.id, true),
+                          onPressed: () => taskProvider.setCompletedForDate(
+                            reminder.id,
+                            date,
+                            true,
+                          ),
                           icon: const Icon(Icons.circle_outlined),
                         ),
                       ],

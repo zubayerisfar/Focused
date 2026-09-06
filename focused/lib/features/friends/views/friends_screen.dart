@@ -4,21 +4,15 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/friend_user.dart';
-import '../../tasks/models/task_group.dart';
 import '../../auth/providers/account_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/task_mate_provider.dart';
-import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/widgets/profile_streak_xp_bar.dart';
 
-import '../tabs/task_mates_tab.dart';
+import '../tabs/activities_tab.dart';
 import '../tabs/friends_list_tab.dart';
 import '../widgets/claim_exp_banner.dart';
-import '../widgets/partner_quest_card.dart';
 import '../sheets/friend_notification_hub_sheet.dart';
-import '../sheets/create_squad_sheet.dart';
-import '../sheets/assign_squad_task_sheet.dart';
-import '../widgets/squad_task_actions.dart';
 
 class FriendsScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -187,7 +181,6 @@ class _FriendsScreenState extends State<FriendsScreen>
     final unclaimedGifts = friendsProvider.unclaimedGifts;
     final following = friendsProvider.following;
     final followers = friendsProvider.followers;
-    final quest = friendsProvider.partnerQuest;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
@@ -221,6 +214,7 @@ class _FriendsScreenState extends State<FriendsScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        toolbarHeight: 54,
         titleSpacing: 18,
         title: Text(
           'Friends',
@@ -283,7 +277,7 @@ class _FriendsScreenState extends State<FriendsScreen>
           ),
           const SizedBox(width: 4),
           const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
-          const SizedBox(width: 14),
+          const SizedBox(width: 18),
         ],
       ),
       body: NestedScrollView(
@@ -335,43 +329,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                     ),
                   ],
 
-                  // ── PARTNER QUEST CARD ("Quest with a Friend") ──
-                  if (quest != null) ...[
-                    PartnerQuestCard(
-                      quest: quest,
-                      isDark: isDark,
-                      canSendReminder: friendsProvider.canSendReminder,
-                      remindersUsed: friendsProvider.remindersSentToday,
-                      onSendReminder: () async {
-                        final success = await friendsProvider.sendReminder(
-                          quest.partnerUid,
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              content: Text(
-                                success
-                                    ? '🔔 Task reminder sent to ${quest.partnerName}! (${friendsProvider.remindersSentToday}/5 sent today)'
-                                    : 'Daily reminder limit of 5 reached for today.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      onSendExp: () => _confirmSendExp(
-                        context,
-                        quest.partnerUid,
-                        quest.partnerName,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // ── TABS: TASK MATES (FRONT), FOLLOWING & FOLLOWERS ──
+                  // ── TABS: ACTIVITIES (FRONT), FOLLOWING & FOLLOWERS ──
                   Container(
                     height: 52,
                     padding: const EdgeInsets.all(4),
@@ -404,7 +362,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                         fontSize: 14.5,
                       ),
                       tabs: const [
-                        Tab(text: 'Task Mates'),
+                        Tab(text: 'Activities'),
                         Tab(text: 'Following'),
                         Tab(text: 'Followers'),
                       ],
@@ -419,15 +377,10 @@ class _FriendsScreenState extends State<FriendsScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            // 1. Task Mates Tab (FRONT)
-            TaskMatesTab(
+            // 1. Activities Tab (FRONT)
+            ActivitiesTab(
               isDark: isDark,
-              onCreateGroup: () => _showCreateGroupDialog(context),
-              onAssignTask: (group) => _showAssignTaskSheet(context, group),
-              onPickTime: (group, idx) =>
-                  _pickScheduleTime(context, group, taskIndex: idx),
-              onStartTask: (group, idx) =>
-                  _startTask(context, group, taskIndex: idx),
+              onFindFriends: () => context.push('/friends/add'),
             ),
 
             // 2. Following Tab
@@ -436,7 +389,8 @@ class _FriendsScreenState extends State<FriendsScreen>
               isFollowingTab: true,
               isDark: isDark,
               canSendReminder: friendsProvider.canSendReminder,
-              canSendGift: friendsProvider.canSendGift,
+              canSendReminderTo: (f) => friendsProvider.canNudgeFriend(f.uid),
+              canSendGift: false,
               onSendReminder: (f) async {
                 final ok = await friendsProvider.sendReminder(f.uid);
                 if (context.mounted) {
@@ -446,14 +400,14 @@ class _FriendsScreenState extends State<FriendsScreen>
                       content: Text(
                         ok
                             ? '🔔 Reminder sent to ${f.displayName}! (${friendsProvider.remindersSentToday}/5 sent today)'
-                            : 'Daily limit of 5 reminders reached.',
+                            : (friendsProvider.hasNudgedToday(f.uid)
+                                  ? 'Already reminded ${f.displayName} today.'
+                                  : 'Daily limit of 5 reminders reached.'),
                       ),
                     ),
                   );
                 }
               },
-              onSendExp: (f) => _confirmSendExp(context, f.uid, f.displayName),
-              onPairQuest: (f) => friendsProvider.pairWithFriend(f),
               onUnfollow: (f) => _confirmUnfollow(context, f),
             ),
 
@@ -463,10 +417,8 @@ class _FriendsScreenState extends State<FriendsScreen>
               isFollowingTab: false,
               isDark: isDark,
               canSendReminder: friendsProvider.canSendReminder,
-              canSendGift: friendsProvider.canSendGift,
+              canSendGift: false,
               onSendReminder: (_) {},
-              onSendExp: (_) {},
-              onPairQuest: (f) => friendsProvider.pairWithFriend(f),
               onFollowBack: (f) => friendsProvider.follow(f),
               onUnfollow: (f) => _confirmUnfollow(context, f),
             ),
@@ -474,102 +426,6 @@ class _FriendsScreenState extends State<FriendsScreen>
         ),
       ),
     );
-  }
-
-  void _confirmSendExp(
-    BuildContext context,
-    String targetUid,
-    String targetName,
-  ) async {
-    final stats = context.read<UserStatsProvider>();
-    if (stats.xpPoints < 50) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You need at least 50 EXP to send a gift.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scheme = Theme.of(context).colorScheme;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1A282F) : scheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: Row(
-          children: [
-            SvgPicture.asset(
-              'assets/icon/gift_box_icon.svg',
-              width: 26,
-              height: 26,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Send 50 EXP Boost?',
-              style: TextStyle(
-                color: isDark ? Colors.white : scheme.onSurface,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Send 50 EXP to boost $targetName\'s mindset! This will transfer 50 EXP from your balance.',
-          style: TextStyle(
-            color: isDark ? const Color(0xFFAFBBC1) : scheme.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: isDark
-                    ? const Color(0xFF77878F)
-                    : scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFFFB300),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Send 50 EXP',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      final success = await context.read<FriendsProvider>().send50Exp(
-        targetUid,
-      );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF1A73E8),
-            behavior: SnackBarBehavior.floating,
-            content: Text(
-              success
-                  ? '✨ Sent 50 EXP gift to $targetName!'
-                  : 'Could not send EXP gift.',
-            ),
-          ),
-        );
-      }
-    }
   }
 
   // ── UNFOLLOW WITH GROUP CLEANUP ──
@@ -642,38 +498,6 @@ class _FriendsScreenState extends State<FriendsScreen>
         await friendsProvider.unfollow(friend.uid);
       }
     }
-  }
-
-  // ── TASK MATES DIALOGS & ACTIONS ──
-
-  void _showCreateGroupDialog(BuildContext context) {
-    showCreateGroupDialog(context);
-  }
-
-  void _showAssignTaskSheet(BuildContext context, TaskGroup group) {
-    showAssignTaskSheet(context, group);
-  }
-
-  Future<void> _pickScheduleTime(
-    BuildContext context,
-    TaskGroup group, {
-    int taskIndex = 0,
-    GroupActiveTask? task,
-  }) {
-    return SquadTaskActions.pickScheduleTime(
-      context,
-      group,
-      taskIndex: taskIndex,
-      task: task,
-    );
-  }
-
-  Future<void> _startTask(
-    BuildContext context,
-    TaskGroup group, {
-    int taskIndex = 0,
-  }) {
-    return SquadTaskActions.startTask(context, group, taskIndex: taskIndex);
   }
 
   void _openNotificationHub(BuildContext context) {

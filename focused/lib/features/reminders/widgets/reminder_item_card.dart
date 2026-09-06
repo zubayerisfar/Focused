@@ -16,6 +16,8 @@ class ReminderItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const reminderColor = Color(0xFFFF9600);
+    final taskProvider = context.watch<TaskProvider>();
+    final isDone = taskProvider.isTaskCompletedForDate(task, date);
 
     return Material(
       color: Theme.of(context).colorScheme.surface,
@@ -53,9 +55,7 @@ class ReminderItemCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        decoration: task.isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
+                        decoration: isDone ? TextDecoration.lineThrough : null,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -99,20 +99,17 @@ class ReminderItemCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               IconButton(
-                tooltip: task.isCompleted ? 'Undo' : 'Complete',
+                tooltip: isDone ? 'Undo' : 'Complete',
                 onPressed: () {
-                  final now = DateTime.now();
                   context.read<TaskProvider>().setCompletedForDate(
                     task.id,
-                    now,
-                    !task.isCompleted,
+                    date,
+                    !isDone,
                   );
                 },
                 icon: Icon(
-                  task.isCompleted
-                      ? Icons.check_circle_rounded
-                      : Icons.circle_outlined,
-                  color: task.isCompleted ? reminderColor : null,
+                  isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: isDone ? reminderColor : null,
                 ),
               ),
             ],
@@ -122,4 +119,3 @@ class ReminderItemCard extends StatelessWidget {
     );
   }
 }
-

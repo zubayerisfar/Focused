@@ -81,7 +81,7 @@ class AppLimitsScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withOpacity(0.12),
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -220,7 +220,7 @@ class _AppLimitTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isOverLimit
-                  ? const Color(0xFFEF4444).withOpacity(0.5)
+                  ? const Color(0xFFEF4444).withValues(alpha: 0.5)
                   : theme.dividerColor,
             ),
           ),
@@ -270,10 +270,12 @@ class _AppLimitTile extends StatelessWidget {
                   if (limit != null)
                     Switch.adaptive(
                       value: limit.isEnabled,
-                      onChanged: (val) {
-                        context.read<AppLimitProvider>().toggleLimit(
-                          item.packageId,
-                        );
+                      onChanged: (val) async {
+                        final limitProv = context.read<AppLimitProvider>();
+                        final usageProv = context.read<UsageProvider>();
+                        await limitProv.toggleLimit(item.packageId);
+                        final currentUsage = usageProv.getTodayUsageByPackage();
+                        await limitProv.checkUsageLimits(currentUsage);
                       },
                     )
                   else
@@ -472,11 +474,15 @@ class _SetAppLimitSheetState extends State<_SetAppLimitSheet> {
             child: FilledButton(
               onPressed: () async {
                 if (_selectedMinutes <= 0) return;
-                await context.read<AppLimitProvider>().setLimit(
+                final limitProv = context.read<AppLimitProvider>();
+                final usageProv = context.read<UsageProvider>();
+                await limitProv.setLimit(
                   packageId: widget.item.packageId,
                   appName: widget.item.appName,
                   dailyLimitMinutes: _selectedMinutes,
                 );
+                final currentUsage = usageProv.getTodayUsageByPackage();
+                await limitProv.checkUsageLimits(currentUsage);
                 if (context.mounted) Navigator.pop(context);
               },
               child: const Text(

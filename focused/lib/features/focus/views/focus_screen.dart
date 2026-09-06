@@ -22,13 +22,28 @@ class FocusScreen extends StatelessWidget {
     final longest = provider.longestFocusSessionForDate(now);
     final recent = provider.sessionHistory.take(5).toList(growable: false);
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 54,
+        titleSpacing: 18,
+        title: Text(
+          'Focus',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+          ),
+        ),
+        actions: const [
+          ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          SizedBox(width: 18),
+        ],
+      ),
+      body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 110),
         children: [
-          const _FocusHeader(),
-          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -86,31 +101,6 @@ class FocusScreen extends StatelessWidget {
             ),
           const SizedBox(height: 16),
           const AppBannerAdWidget(),
-        ],
-      ),
-    );
-  }
-}
-
-class _FocusHeader extends StatelessWidget {
-  const _FocusHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 54,
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Focus',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
-              ),
-            ),
-          ),
-          const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
         ],
       ),
     );

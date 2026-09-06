@@ -9,12 +9,14 @@ class AchievementService {
     required int longestStreak,
     required Duration longestLinkedTaskSession,
     required Duration totalFocus,
+    int longestFriendStreak = 0,
     Iterable<String> unlockedBadgeIds = const <String>[],
   }) {
     final unlockedSet = unlockedBadgeIds.toSet();
 
     final badges = <AchievementBadge>[
       ..._streakBadges(longestStreak, unlockedSet),
+      ..._friendshipBadges(longestFriendStreak, unlockedSet),
       ..._sessionBadges(longestLinkedTaskSession, unlockedSet),
       ..._totalFocusBadges(totalFocus, unlockedSet),
     ];
@@ -29,26 +31,54 @@ class AchievementService {
     const milestones = <int>[7, 30, 60, 100, 120, 180, 300, 365, 500, 1000];
 
     return milestones
-        .map(
-          (days) {
-            final id = 'streak_$days';
-            final isAchieved = longestStreak >= days || unlockedSet.contains(id);
-            final currentProgress = isAchieved
-                ? math.max(longestStreak.toDouble(), days.toDouble())
-                : longestStreak.toDouble();
+        .map((days) {
+          final id = 'streak_$days';
+          final isAchieved = longestStreak >= days || unlockedSet.contains(id);
+          final currentProgress = isAchieved
+              ? math.max(longestStreak.toDouble(), days.toDouble())
+              : longestStreak.toDouble();
 
-            return AchievementBadge(
-              id: id,
-              title: '$days day streak',
-              description: 'Reach a $days-day productivity streak.',
-              assetPath: 'assets/badges/streak_$days.png',
-              category: AchievementBadgeCategory.streak,
-              achieved: isAchieved,
-              progress: currentProgress,
-              target: days.toDouble(),
-            );
-          },
-        )
+          return AchievementBadge(
+            id: id,
+            title: '$days day streak',
+            description: 'Reach a $days-day productivity streak.',
+            assetPath: 'assets/badges/streak_$days.png',
+            category: AchievementBadgeCategory.streak,
+            achieved: isAchieved,
+            progress: currentProgress,
+            target: days.toDouble(),
+          );
+        })
+        .toList(growable: false);
+  }
+
+  List<AchievementBadge> _friendshipBadges(
+    int longestFriendStreak,
+    Set<String> unlockedSet,
+  ) {
+    const milestones = <int>[30, 100, 365];
+
+    return milestones
+        .map((days) {
+          final id = 'friendship_streak_$days';
+          final isAchieved =
+              longestFriendStreak >= days || unlockedSet.contains(id);
+          final currentProgress = isAchieved
+              ? math.max(longestFriendStreak.toDouble(), days.toDouble())
+              : longestFriendStreak.toDouble();
+
+          return AchievementBadge(
+            id: id,
+            title: '$days day friend streak',
+            description:
+                'Keep a $days-day friendship streak alive with a best friend.',
+            assetPath: 'assets/badges/${days}_days_friendship_badge.png',
+            category: AchievementBadgeCategory.friendship,
+            achieved: isAchieved,
+            progress: currentProgress,
+            target: days.toDouble(),
+          );
+        })
         .toList(growable: false);
   }
 
@@ -96,26 +126,24 @@ class AchievementService {
     const milestones = <int>[20, 50, 60, 100, 200, 300, 500, 1000];
 
     return milestones
-        .map(
-          (targetHours) {
-            final id = 'focus_total_${targetHours}h';
-            final isAchieved = hours >= targetHours || unlockedSet.contains(id);
-            final currentProgress = isAchieved
-                ? math.max(hours, targetHours.toDouble())
-                : hours;
+        .map((targetHours) {
+          final id = 'focus_total_${targetHours}h';
+          final isAchieved = hours >= targetHours || unlockedSet.contains(id);
+          final currentProgress = isAchieved
+              ? math.max(hours, targetHours.toDouble())
+              : hours;
 
-            return AchievementBadge(
-              id: id,
-              title: '$targetHours focus hours',
-              description: 'Accumulate $targetHours hours of real focused work.',
-              assetPath: 'assets/badges/focus_total_${targetHours}h.png',
-              category: AchievementBadgeCategory.totalFocus,
-              achieved: isAchieved,
-              progress: currentProgress,
-              target: targetHours.toDouble(),
-            );
-          },
-        )
+          return AchievementBadge(
+            id: id,
+            title: '$targetHours focus hours',
+            description: 'Accumulate $targetHours hours of real focused work.',
+            assetPath: 'assets/badges/focus_total_${targetHours}h.png',
+            category: AchievementBadgeCategory.totalFocus,
+            achieved: isAchieved,
+            progress: currentProgress,
+            target: targetHours.toDouble(),
+          );
+        })
         .toList(growable: false);
   }
 }

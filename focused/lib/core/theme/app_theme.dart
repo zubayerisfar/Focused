@@ -202,8 +202,10 @@ class AppTheme {
   }
 
   static ThemeData darkTheme() {
-    const scaffold = Color(0xFF0C0E14);
-    const surface = Color(0xFF141720);
+    const scaffold = Color(0xFF08090D); // Deep pitch obsidian dark background
+    const surface = Color(
+      0xFF161A24,
+    ); // Refined matte slate container for cards & tiles
     const text = Color(0xFFF1F4F9);
     const muted = Color(0xFF8E99AC);
 
@@ -214,21 +216,21 @@ class AppTheme {
         ).copyWith(
           primary: const Color(0xFF6F9AFF),
           onPrimary: const Color(0xFF0D1424),
-          primaryContainer: const Color(0xFF26334D),
+          primaryContainer: const Color(0xFF24324A),
           onPrimaryContainer: const Color(0xFFDCE8FF),
           secondary: const Color(0xFF83B5C9),
-          secondaryContainer: const Color(0xFF22353E),
+          secondaryContainer: const Color(0xFF1E3038),
           tertiary: const Color(0xFFC9A978),
           surface: surface,
-          surfaceContainerLowest: const Color(0xFF08090D),
-          surfaceContainerLow: const Color(0xFF0F1118),
-          surfaceContainer: const Color(0xFF141720),
-          surfaceContainerHigh: const Color(0xFF191D28),
-          surfaceContainerHighest: const Color(0xFF202532),
+          surfaceContainerLowest: const Color(0xFF050608),
+          surfaceContainerLow: const Color(0xFF0E1117),
+          surfaceContainer: const Color(0xFF161A24), // Main tile matte surface
+          surfaceContainerHigh: const Color(0xFF1C2230),
+          surfaceContainerHighest: const Color(0xFF242A3B),
           onSurface: text,
           onSurfaceVariant: muted,
-          outline: const Color(0xFF363E52),
-          outlineVariant: const Color(0xFF1D222F),
+          outline: const Color(0xFF384359),
+          outlineVariant: const Color(0xFF232A38),
           error: const Color(0xFFFF9DAF),
           errorContainer: const Color(0xFF3B1720),
         );
@@ -240,7 +242,7 @@ class AppTheme {
       scaffoldBackgroundColor: scaffold,
       canvasColor: scaffold,
       cardColor: surface,
-      dividerColor: const Color(0xFF1B202C),
+      dividerColor: const Color(0xFF1F2636),
       appBarTheme: const AppBarTheme(
         backgroundColor: scaffold,
         foregroundColor: text,
@@ -256,8 +258,8 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 68,
-        backgroundColor: const Color(0xFF0F1118),
-        indicatorColor: const Color(0xFF26334D),
+        backgroundColor: const Color(0xFF0B0D13),
+        indicatorColor: const Color(0xFF24324A),
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -284,16 +286,16 @@ class AppTheme {
         }),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Color(0xFF141720),
+        backgroundColor: Color(0xFF161A24),
         surfaceTintColor: Colors.transparent,
       ),
       dialogTheme: const DialogThemeData(
-        backgroundColor: Color(0xFF161922),
+        backgroundColor: Color(0xFF161A24),
         surfaceTintColor: Colors.transparent,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF141720),
+        fillColor: const Color(0xFF161A24),
         labelStyle: const TextStyle(color: Color(0xFF8EA1BD)),
         hintStyle: const TextStyle(color: Color(0xFF5E708A)),
         prefixIconColor: const Color(0xFF7187A7),

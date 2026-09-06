@@ -7,6 +7,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../../core/services/notification_action_handler.dart';
 import '../models/task.dart';
 import '../models/task_recurrence.dart';
 import '../models/task_reminder_result.dart';
@@ -62,7 +63,13 @@ class TaskNotificationService {
       ),
     );
 
-    await _notifications.initialize(settings);
+    await _notifications.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (response) {
+        NotificationActionHandler.handleAction(response, isBackground: false);
+      },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
 
     _initialized = true;
   }
@@ -1025,7 +1032,7 @@ class TaskNotificationService {
 
   static const NotificationDetails _details = NotificationDetails(
     android: AndroidNotificationDetails(
-      'task_reminders_v3',
+      'task_reminders_v4',
       'Task reminders',
       channelDescription: 'Reminders for scheduled Focused tasks',
       importance: Importance.max,
@@ -1036,11 +1043,20 @@ class TaskNotificationService {
       playSound: true,
       enableVibration: true,
       sound: RawResourceAndroidNotificationSound('notification_sound'),
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          NotificationActionHandler.actionMarkDoneTask,
+          'Mark as Done',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+      ],
     ),
     iOS: DarwinNotificationDetails(
       presentAlert: true,
       presentSound: true,
       sound: 'notification_sound.mp3',
+      categoryIdentifier: 'task_category',
     ),
     macOS: DarwinNotificationDetails(
       presentAlert: true,
@@ -1051,7 +1067,7 @@ class TaskNotificationService {
 
   static const NotificationDetails _lateDetails = NotificationDetails(
     android: AndroidNotificationDetails(
-      'task_reminders_late_v1',
+      'task_reminders_late_v2',
       'Late task reminders',
       channelDescription: 'Alerts when tasks are overdue or missed',
       importance: Importance.max,
@@ -1062,11 +1078,20 @@ class TaskNotificationService {
       playSound: true,
       enableVibration: true,
       sound: RawResourceAndroidNotificationSound('notification_sound'),
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          NotificationActionHandler.actionMarkDoneTask,
+          'Mark as Done',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+      ],
     ),
     iOS: DarwinNotificationDetails(
       presentAlert: true,
       presentSound: true,
       sound: 'notification_sound.mp3',
+      categoryIdentifier: 'task_category',
     ),
     macOS: DarwinNotificationDetails(
       presentAlert: true,

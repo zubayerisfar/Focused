@@ -164,7 +164,7 @@ class _IntroSequenceScreenState extends State<IntroSequenceScreen> {
                                 ),
                                 const SizedBox(height: 14),
                                 Text(
-                                  'Your workspace stays local-first and private by design.',
+                                  'Your all-in-one lifestyle manager for tasks, habits, and focus.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: isDark

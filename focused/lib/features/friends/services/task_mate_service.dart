@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../tasks/models/task_group.dart';
+import '../../tasks/models/group_task_history.dart';
 
 class TaskMateService {
   final FirebaseFirestore _firestore;
@@ -24,6 +25,41 @@ class TaskMateService {
               .map((doc) => TaskGroup.fromFirestore(doc))
               .toList();
         });
+  }
+
+  /// Streams task history across the user's groups
+  Stream<List<GroupTaskHistory>> streamGroupsHistory(List<String> groupIds) {
+    if (groupIds.isEmpty) return Stream.value(const []);
+
+    // Query history collection group or query per group
+    // Each group stores history under task_groups/{groupId}/history
+    // If groupIds has 1-10 items, we can combine stream or query group_task_history
+    final groupLimit = groupIds.take(10).toList();
+    return _firestore
+        .collectionGroup('history')
+        .where('groupId', whereIn: groupLimit)
+        .snapshots()
+        .map((snapshot) {
+          final items = snapshot.docs
+              .map((doc) => GroupTaskHistory.fromFirestore(doc))
+              .toList();
+          items.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+          return items;
+        });
+  }
+
+  /// Deletes selected history entries
+  Future<void> deleteHistoryItems(List<GroupTaskHistory> itemsToDelete) async {
+    final batch = _firestore.batch();
+    for (final item in itemsToDelete) {
+      final docRef = _firestore
+          .collection('task_groups')
+          .doc(item.groupId)
+          .collection('history')
+          .doc(item.id);
+      batch.delete(docRef);
+    }
+    await batch.commit();
   }
 
   /// Creates a new Task Mate group (up to 3 members total)
@@ -250,7 +286,7 @@ class TaskMateService {
     }
   }
 
-  /// Completes the task for the current member
+  /// Completes the task for the current member and archives to history if all members finished
   Future<void> completeMemberTask({
     required String groupId,
     required String uid,
@@ -261,6 +297,14 @@ class TaskMateService {
     if (!snap.exists) return;
     final data = snap.data();
     final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
+    final memberUids =
+        (data?['memberUids'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+    final groupName = (data?['name']?.toString() ?? 'TASK SQUAD').toUpperCase();
+    final membersMap = (data?['members'] as Map<String, dynamic>?) ?? {};
+
     if (rawActiveTasks.isNotEmpty &&
         taskIndex >= 0 &&
         taskIndex < rawActiveTasks.length) {
@@ -286,9 +330,53 @@ class TaskMateService {
       memberSchedules[uid] = currentMemberSched;
       targetTask['memberSchedules'] = memberSchedules;
 
+      // Check if ALL squad members have completed this task
+      final allCompleted =
+          memberUids.isNotEmpty &&
+          memberUids.every((mUid) {
+            final sched = memberSchedules[mUid] as Map<String, dynamic>?;
+            return sched?['completed'] == true;
+          });
+
+      if (allCompleted) {
+        // Archive to group history
+        try {
+          final historyMembers = <String, dynamic>{};
+          for (final mUid in memberUids) {
+            final sched = memberSchedules[mUid] as Map<String, dynamic>?;
+            final mData = membersMap[mUid] as Map<String, dynamic>?;
+            historyMembers[mUid] = {
+              'uid': mUid,
+              'displayName': mData?['displayName'] ?? 'Member',
+              'photoUrl': mData?['photoUrl'],
+              'completedAt': sched?['completedAt'] ?? Timestamp.fromDate(now),
+              'isLate': sched?['completedLate'] ?? false,
+            };
+          }
+
+          await docRef.collection('history').add({
+            'groupId': groupId,
+            'groupName': groupName,
+            'title': targetTask['title'] ?? 'Squad Task',
+            if (targetTask['category'] != null)
+              'category': targetTask['category'],
+            'isHabit': targetTask['isHabit'] ?? false,
+            'completedAt': FieldValue.serverTimestamp(),
+            'memberCompletions': historyMembers,
+          });
+
+          // Remove the completed task from activeTasks so squad can start next cycle / new task
+          updatedTasks.removeAt(taskIndex);
+        } catch (e) {
+          debugPrint('Error archiving completed group task to history: $e');
+        }
+      }
+
       await docRef.update({
         'activeTasks': updatedTasks,
-        'activeTask': updatedTasks.first,
+        'activeTask': updatedTasks.isNotEmpty
+            ? updatedTasks.first
+            : FieldValue.delete(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } else {

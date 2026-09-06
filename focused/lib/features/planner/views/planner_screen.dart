@@ -20,13 +20,23 @@ class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key, this.initialArea});
 
   @override
-  State<PlannerScreen> createState() => _PlannerScreenState();
+  State<PlannerScreen> createState() => PlannerScreenState();
 }
 
-class _PlannerScreenState extends State<PlannerScreen> {
+class PlannerScreenState extends State<PlannerScreen> {
   late PlannerArea _area;
   PlannerCalendarMode _calendarMode = PlannerCalendarMode.schedule;
   DateTime _selectedDate = _dateOnly(DateTime.now());
+
+  bool handleBack() {
+    if (_area != PlannerArea.hub) {
+      setState(() {
+        _area = PlannerArea.hub;
+      });
+      return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -80,45 +90,49 @@ class _PlannerScreenState extends State<PlannerScreen> {
       },
       child: Theme(
         data: plannerTheme,
-        child: SafeArea(
-          bottom: false,
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  Material(
-                    elevation: 0,
-                    shadowColor: Colors.transparent,
-                    color: bg,
-                    child: PlannerHeader(
-                      selectedDate: _selectedDate,
-                      area: _area,
-                      calendarMode: _calendarMode,
-                      onPickDate: _pickDate,
-                      onToday: () {
-                        setState(() {
-                          _selectedDate = _dateOnly(DateTime.now());
-                        });
-                      },
-                      onModeChanged: (mode) {
-                        setState(() {
-                          _calendarMode = mode;
-                        });
-                      },
-                      onSync: _syncPlanner,
-                      onMenuAction: _handleMenuAction,
-                      onBackToHub: () {
-                        setState(() {
-                          _area = PlannerArea.hub;
-                        });
-                      },
-                    ),
+        child: Scaffold(
+          backgroundColor: bg,
+          appBar: _area == PlannerArea.hub
+              ? AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  toolbarHeight: 54,
+                  automaticallyImplyLeading: false,
+                  titleSpacing: 0,
+                  title: PlannerHeader(
+                    selectedDate: _selectedDate,
+                    area: _area,
+                    calendarMode: _calendarMode,
+                    onPickDate: _pickDate,
+                    onToday: () {
+                      setState(() {
+                        _selectedDate = _dateOnly(DateTime.now());
+                      });
+                    },
+                    onModeChanged: (mode) {
+                      setState(() {
+                        _calendarMode = mode;
+                      });
+                    },
+                    onSync: _syncPlanner,
+                    onMenuAction: _handleMenuAction,
+                    onBackToHub: () {
+                      setState(() {
+                        _area = PlannerArea.hub;
+                      });
+                    },
                   ),
-                  Expanded(child: SizedBox.expand(child: _buildAreaBody())),
-                  if (_area != PlannerArea.tasks) const AppBannerAdWidget(),
-                ],
-              ),
-            ],
+                )
+              : null,
+          body: SafeArea(
+            top: _area != PlannerArea.hub,
+            bottom: false,
+            child: Column(
+              children: [
+                Expanded(child: SizedBox.expand(child: _buildAreaBody())),
+                if (_area != PlannerArea.tasks) const AppBannerAdWidget(),
+              ],
+            ),
           ),
         ),
       ),
@@ -147,6 +161,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
             });
           },
           onPickDate: _pickDate,
+          onBack: () {
+            setState(() {
+              _area = PlannerArea.hub;
+            });
+          },
         );
       case PlannerArea.reminders:
         return RemindersPlannerBody(
@@ -156,6 +175,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
               _selectedDate = _dateOnly(date);
             });
           },
+          onBack: () {
+            setState(() {
+              _area = PlannerArea.hub;
+            });
+          },
         );
       case PlannerArea.habits:
         return HabitPlannerBody(
@@ -163,6 +187,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
           onDateSelected: (date) {
             setState(() {
               _selectedDate = _dateOnly(date);
+            });
+          },
+          onBack: () {
+            setState(() {
+              _area = PlannerArea.hub;
             });
           },
         );
