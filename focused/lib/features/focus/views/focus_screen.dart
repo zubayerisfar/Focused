@@ -130,7 +130,6 @@ class _FocusStartCard extends StatelessWidget {
           colors: [scheme.primaryContainer, scheme.surfaceContainer],
         ),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: scheme.primary.withOpacity(0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,7 +326,6 @@ class _FocusEmptyHistory extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [

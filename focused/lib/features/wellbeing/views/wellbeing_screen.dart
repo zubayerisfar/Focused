@@ -517,74 +517,273 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
     );
   }
 
+  String _formatDayLabel(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(target).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return DateFormat('EEEE').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
     final focus = context.watch<FocusProvider>();
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return FutureBuilder<List<DailyUsageMetrics>>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData) {
           return const SizedBox(
-            height: 92,
+            height: 120,
             child: Center(child: CircularProgressIndicator()),
           );
         }
         final days = (snapshot.data ?? const <DailyUsageMetrics>[]).reversed
             .toList(growable: false);
         if (days.isEmpty) {
-          return const Text('No recent daily measurements yet.');
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Center(
+              child: Text(
+                'No recent daily measurements yet.',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          );
         }
-        return Material(
-          color: Theme.of(context).colorScheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-            side: BorderSide(color: Theme.of(context).dividerColor),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: List.generate(days.length, (index) {
-              final day = days[index];
-              final focused = focus.focusedDurationForDate(day.day);
-              return Column(
-                children: [
-                  ListTile(
-                    leading: Container(
-                      width: 42,
-                      height: 42,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: Text(
-                        DateFormat('d').format(day.day),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    title: Text(
-                      DateFormat('EEE, MMM d').format(day.day),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      'Screen ${day.measured ? _duration(day.totalUsage) : '—'}  •  Focus ${_duration(focused)}',
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () {
-                      final raw = DateFormat('yyyy-MM-dd').format(day.day);
-                      context.push('/wellbeing/day?date=$raw');
-                    },
+
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: days.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final day = days[index];
+            final focused = focus.focusedDurationForDate(day.day);
+            final dayTitle = _formatDayLabel(day.day);
+            final formattedDate = DateFormat('MMM d').format(day.day);
+            final isToday = dayTitle == 'Today';
+
+            return Material(
+              color: isDark ? const Color(0xFF1E212B) : scheme.surface,
+              borderRadius: BorderRadius.circular(18),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  final raw = DateFormat('yyyy-MM-dd').format(day.day);
+                  context.push('/wellbeing/day?date=$raw');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                  if (index != days.length - 1)
-                    Divider(
-                      height: 1,
-                      indent: 68,
-                      color: Theme.of(context).dividerColor,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isToday
+                          ? scheme.primary.withValues(alpha: 0.4)
+                          : theme.dividerColor.withValues(alpha: 0.7),
+                      width: isToday ? 1.4 : 1.0,
                     ),
-                ],
-              );
-            }),
-          ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Date Block Badge
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isToday
+                              ? scheme.primaryContainer
+                              : isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isToday
+                                ? scheme.primary.withValues(alpha: 0.3)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              DateFormat('d').format(day.day),
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isToday
+                                    ? scheme.onPrimaryContainer
+                                    : scheme.onSurface,
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
+                              DateFormat('MMM').format(day.day).toUpperCase(),
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: isToday
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Day name and metrics pills
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  dayTitle,
+                                  style: const TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                if (!isToday) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    formattedDate,
+                                    style: TextStyle(
+                                      fontFamily: 'Quicksand',
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 7),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                // Screen Time Pill
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.phone_android_rounded,
+                                        size: 13,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        day.measured
+                                            ? _duration(day.totalUsage)
+                                            : '—',
+                                        style: TextStyle(
+                                          fontFamily: 'Quicksand',
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Focus Time Pill
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: focused > Duration.zero
+                                        ? const Color(
+                                            0xFF10B981,
+                                          ).withValues(alpha: 0.12)
+                                        : isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.center_focus_strong_rounded,
+                                        size: 13,
+                                        color: focused > Duration.zero
+                                            ? const Color(0xFF10B981)
+                                            : scheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _duration(focused),
+                                        style: TextStyle(
+                                          fontFamily: 'Quicksand',
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: focused > Duration.zero
+                                              ? const Color(0xFF10B981)
+                                              : scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Trailing chevron
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );

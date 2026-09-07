@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/best_friend.dart';
@@ -176,6 +177,8 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
+          onTap: () =>
+              context.push('/profile/view', extra: friend.toFriendUser()),
           onLongPress: () => _confirmRemoveBestFriend(context, friend),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
@@ -185,22 +188,14 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                   ? (widget.isDark
                         ? const Color(0xFF2A1515)
                         : const Color(0xFFFFF0F0))
-                  : scheme.surfaceContainerHigh,
+                  : scheme.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isAtRisk
                     ? const Color(0xFFEF4444)
                     : scheme.outlineVariant,
-                width: isAtRisk ? 1.8 : 1.2,
+                width: isAtRisk ? 1.8 : 1.0,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: (isAtRisk ? const Color(0xFFEF4444) : Colors.black)
-                      .withValues(alpha: widget.isDark ? 0.2 : 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +343,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                               tooltip: hasNudged
                                   ? 'Already nudged today (resets at midnight)'
                                   : (canNudge
-                                        ? 'Send Nudge (+5s Ad)'
+                                        ? 'Send Nudge'
                                         : 'Daily limit of 5 reached'),
                               padding: const EdgeInsets.all(6),
                               constraints: const BoxConstraints(
@@ -374,7 +369,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                               tooltip: hasGifted
                                   ? 'Already sent gift today (resets at midnight)'
                                   : (canGift
-                                        ? 'Send 25 EXP Gift (+5s Ad)'
+                                        ? 'Send 25 EXP Gift'
                                         : 'Daily limit of 5 reached'),
                               padding: const EdgeInsets.all(6),
                               constraints: const BoxConstraints(

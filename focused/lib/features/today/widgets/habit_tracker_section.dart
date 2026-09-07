@@ -61,7 +61,6 @@ class HabitTrackerSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Text(
               'No habits scheduled today.',

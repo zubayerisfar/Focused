@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../auth/providers/account_provider.dart';
@@ -52,6 +53,10 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
       if (!mounted) return;
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop(true);
+      }
+      // Instantly route user to signup/login screen
+      if (mounted) {
+        context.go('/login');
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -125,10 +130,14 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _bulletItem('Cloud Firestore synchronized tasks & habits'),
-                  _bulletItem('Focus session logs and analytics'),
-                  _bulletItem('Local application usage and screen time cache'),
-                  _bulletItem('Firebase user authentication credentials'),
+                  _bulletItem(
+                    'Synchronized tasks, habits, and streak progress',
+                  ),
+                  _bulletItem(
+                    'Focus session history and productivity analytics',
+                  ),
+                  _bulletItem('Application usage and screen time history'),
+                  _bulletItem('Account profile and login credentials'),
                 ],
               ),
             ),

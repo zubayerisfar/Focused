@@ -65,7 +65,6 @@ class TodayRemindersSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: scheme.surface,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Text(
               'No active reminders for today.',

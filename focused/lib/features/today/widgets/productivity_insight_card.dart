@@ -32,25 +32,16 @@ class _ProductivityInsightCardState extends State<ProductivityInsightCard> {
             end: Alignment.bottomRight,
           );
 
-    final cardBorderColor = _unlocked
-        ? const Color(0xFF10B981).withValues(alpha: 0.5)
-        : (isDark
-              ? const Color(0xFF1CB0F6).withValues(alpha: 0.40)
-              : const Color(0xFF1CB0F6).withValues(alpha: 0.32));
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         gradient: cardBgGradient,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cardBorderColor, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: const Color(
-              0xFF1CB0F6,
-            ).withValues(alpha: isDark ? 0.20 : 0.10),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -68,11 +59,6 @@ class _ProductivityInsightCardState extends State<ProductivityInsightCard> {
                       ? const Color(0xFF1CB0F6).withValues(alpha: 0.18)
                       : const Color(0xFFE8F4FD),
                   borderRadius: BorderRadius.circular(11),
-                  border: Border.all(
-                    color: const Color(
-                      0xFF1CB0F6,
-                    ).withValues(alpha: isDark ? 0.35 : 0.25),
-                  ),
                 ),
                 child: SvgPicture.asset(
                   'assets/icon/productivity_insight_icon.svg',

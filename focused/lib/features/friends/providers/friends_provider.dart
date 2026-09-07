@@ -91,7 +91,13 @@ class FriendsProvider extends ChangeNotifier {
   /// Checks if the user has already nudged/reminded a specific friend today
   bool hasNudgedToday(String friendUid) {
     _checkDailyReset();
-    return _nudgedFriendUidsToday.contains(friendUid);
+    if (_nudgedFriendUidsToday.contains(friendUid)) return true;
+    try {
+      final matching = _following.firstWhere((f) => f.uid == friendUid);
+      return matching.hasNudgedToday;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Checks if the user has already sent a gift to a specific friend today
@@ -289,11 +295,16 @@ class FriendsProvider extends ChangeNotifier {
       }
     });
 
-    // 6. Listen for incoming reminders (nudges) - mark read so they don't linger
+    // 6. Listen for incoming reminders (nudges)
     _incomingRemindersSub = _friendsService.listenForIncomingReminders(
       currentUid: uid,
       onReminderReceived: (fromName, message) {
-        // Handled directly by FCM push notifications
+        if (_prefsProvider?.friendNudgesAndGifts ?? true) {
+          _notificationService?.showFriendReminderNotification(
+            fromName: fromName,
+            message: message,
+          );
+        }
       },
     );
 
@@ -477,6 +488,7 @@ class FriendsProvider extends ChangeNotifier {
       );
 
       _following = _following.where((u) => u.uid != targetUid).toList();
+      _bestFriends = _bestFriends.where((bf) => bf.uid != targetUid).toList();
 
       final followerIdx = _followers.indexWhere((u) => u.uid == targetUid);
       if (followerIdx != -1) {
@@ -661,7 +673,7 @@ class FriendsProvider extends ChangeNotifier {
     }
   }
 
-  /// Nudge best friend: shows 5-second interstitial ad, then registers interaction and sends nudge
+  /// Nudge best friend: registers interaction and sends nudge
   Future<bool> nudgeBestFriend(BestFriend friend) async {
     if (_currentUid.isEmpty) return false;
     _checkDailyReset();
@@ -669,9 +681,6 @@ class FriendsProvider extends ChangeNotifier {
         _nudgedFriendUidsToday.contains(friend.uid)) {
       return false;
     }
-
-    // Show 5-second interstitial ad
-    AdService.instance.showInterstitialAd();
 
     final profile = _profileProvider.profile;
     await _friendsService.sendFriendReminder(
@@ -694,7 +703,7 @@ class FriendsProvider extends ChangeNotifier {
   }
 
   /// Sends 25 EXP gift to Best Friend:
-  /// Requires 25 EXP from sender's balance, shows 5s ad, records interaction
+  /// Requires 25 EXP from sender's balance, records interaction
   Future<bool> send25ExpToBestFriend(BestFriend friend) async {
     if (_currentUid.isEmpty) return false;
     _checkDailyReset();
@@ -707,9 +716,6 @@ class FriendsProvider extends ChangeNotifier {
     // Deduct 25 EXP from sender
     final success = await _statsProvider.spendXp(25);
     if (!success) return false;
-
-    // Show 5-second interstitial ad
-    AdService.instance.showInterstitialAd();
 
     final profile = _profileProvider.profile;
     await _friendsService.sendExpGift(

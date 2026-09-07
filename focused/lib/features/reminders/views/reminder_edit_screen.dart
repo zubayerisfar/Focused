@@ -114,13 +114,6 @@ class _ReminderEditScreenState extends State<ReminderEditScreen> {
                 icon: const Icon(Icons.delete_outline_rounded),
                 onPressed: _isSaving ? null : _deleteReminder,
               ),
-            TextButton(
-              onPressed: _isSaving ? null : _saveReminder,
-              child: Text(
-                _isSaving ? 'Saving...' : 'Save',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
             const SizedBox(width: 8),
           ],
         ),
@@ -283,6 +276,7 @@ class _ReminderEditScreenState extends State<ReminderEditScreen> {
                             ? 'Update Reminder'
                             : 'Create Reminder',
                         style: const TextStyle(
+                          fontFamily: 'Quicksand',
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -301,7 +295,10 @@ class _ReminderEditScreenState extends State<ReminderEditScreen> {
                   icon: const Icon(Icons.delete_outline_rounded),
                   label: const Text(
                     'Delete Reminder',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),

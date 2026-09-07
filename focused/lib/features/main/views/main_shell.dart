@@ -180,14 +180,14 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.home_outlined,
                       color: Color(0xFFFF8228), // Orange
                       isSelected: false,
-                      size: 28,
+                      size: 32,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_home.svg',
                       fallbackIcon: Icons.home_rounded,
                       color: Color(0xFFFF8228), // Orange
                       isSelected: true,
-                      size: 28,
+                      size: 32,
                     ),
                     label: 'Home',
                   ),
@@ -197,14 +197,14 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.view_timeline_outlined,
                       color: Color(0xFF58CC02), // Green
                       isSelected: false,
-                      size: 28,
+                      size: 32,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_planner.svg',
                       fallbackIcon: Icons.view_timeline_rounded,
                       color: Color(0xFF58CC02), // Green
                       isSelected: true,
-                      size: 28,
+                      size: 32,
                     ),
                     label: 'Planner',
                   ),
@@ -214,14 +214,14 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.center_focus_strong_outlined,
                       color: Color(0xFFFF5252), // Red
                       isSelected: false,
-                      size: 28,
+                      size: 32,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_focus.svg',
                       fallbackIcon: Icons.center_focus_strong_rounded,
                       color: Color(0xFFFF5252), // Red
                       isSelected: true,
-                      size: 28,
+                      size: 32,
                     ),
                     label: 'Focus',
                   ),
@@ -232,7 +232,7 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.groups_outlined,
                       color: Color(0xFF1CB0F6), // Blue
                       isSelected: false,
-                      size: 28,
+                      size: 32,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'group_icon.svg',
@@ -240,7 +240,7 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.groups_rounded,
                       color: Color(0xFF1CB0F6), // Blue
                       isSelected: true,
-                      size: 28,
+                      size: 32,
                     ),
                     label: 'Groups',
                   ),
@@ -251,7 +251,7 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.people_alt_outlined,
                       color: Color(0xFF9B51E0), // Purple
                       isSelected: false,
-                      size: 28,
+                      size: 32,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_friends.svg',
@@ -259,7 +259,7 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.people_alt_rounded,
                       color: Color(0xFF9B51E0), // Purple
                       isSelected: true,
-                      size: 28,
+                      size: 32,
                     ),
                     label: 'Friends',
                   ),
@@ -269,14 +269,14 @@ class _MainShellState extends State<MainShell> {
                       fallbackIcon: Icons.settings_outlined,
                       color: Color(0xFF0EA5E9), // Bluish
                       isSelected: false,
-                      size: 28,
+                      size: 32,
                     ),
                     selectedIcon: _NavIcon(
                       assetName: 'nav_settings.svg',
                       fallbackIcon: Icons.settings_rounded,
                       color: Color(0xFF0EA5E9), // Bluish
                       isSelected: true,
-                      size: 28,
+                      size: 32,
                     ),
                     label: 'Settings',
                   ),

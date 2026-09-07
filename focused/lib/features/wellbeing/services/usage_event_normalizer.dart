@@ -35,10 +35,9 @@ class UsageEventNormalizer {
       return const [];
     }
 
-    final ordered = events
-        .where((event) => !event.timestamp.isAfter(rangeEnd))
-        .toList()
-      ..sort(_compareEvents);
+    final ordered =
+        events.where((event) => !event.timestamp.isAfter(rangeEnd)).toList()
+          ..sort(_compareEvents);
 
     final activeComponents = <String, _ActiveComponent>{};
     final rawRecords = <AppUsageRecord>[];
@@ -86,6 +85,18 @@ class UsageEventNormalizer {
           final packageName = event.packageName?.trim();
           if (packageName == null || packageName.isEmpty) {
             continue;
+          }
+
+          // In Android, only one application is actively in the user's foreground at
+          // a time. When a new package enters foreground, any other package's components
+          // that missed a background event (e.g. system alarms, lockscreen dismissals,
+          // floating overlays) are closed at this timestamp to prevent phantom hours.
+          final otherPackageKeys = activeComponents.entries
+              .where((entry) => entry.value.packageName != packageName)
+              .map((entry) => entry.key)
+              .toList(growable: false);
+          for (final otherKey in otherPackageKeys) {
+            closeComponent(otherKey, event.timestamp);
           }
 
           final key = _componentKey(packageName, event.className);
@@ -242,8 +253,5 @@ class _ActiveComponent {
   final String packageName;
   final DateTime startedAt;
 
-  const _ActiveComponent({
-    required this.packageName,
-    required this.startedAt,
-  });
+  const _ActiveComponent({required this.packageName, required this.startedAt});
 }

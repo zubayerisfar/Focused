@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../models/focus_session.dart';
 import '../providers/focus_provider.dart';
-import '../../tasks/providers/task_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 import '../models/focus_analysis_result.dart';
@@ -67,71 +66,56 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
     final usageProvider = context.watch<UsageProvider>();
     final analysis = usageProvider.focusAnalysisResult;
 
-    final taskProvider = context.watch<TaskProvider>();
-    final linkedTask = session.taskId == null
-        ? null
-        : taskProvider.getTaskById(session.taskId!);
-
-    final linkedDay = session.linkedOccurrenceDate ?? session.startedAt;
-    final sessionDate = DateTime(
-      linkedDay.year,
-      linkedDay.month,
-      linkedDay.day,
-    );
-
-    final linkedTaskCompleted =
-        linkedTask != null &&
-        taskProvider.isTaskCompletedForDate(linkedTask, sessionDate);
-
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 40, 20, 30),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 30),
           children: [
-            const SizedBox(height: 20),
-
             Center(
               child: Container(
-                width: 100,
-                height: 100,
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF34B27B).withOpacity(0.12),
+                  color: const Color(0xFF34B27B).withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   session.completedNaturally
                       ? Icons.check_rounded
                       : Icons.stop_rounded,
-                  size: 52,
+                  size: 44,
                   color: const Color(0xFF34B27B),
                 ),
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
 
             Text(
               session.completedNaturally ? 'Nice work!' : 'Session ended',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontFamily: 'Quicksand',
+                fontWeight: FontWeight.w700,
+              ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
             Text(
               session.taskName,
               textAlign: TextAlign.center,
               style: TextStyle(
+                fontFamily: 'Quicksand',
                 fontSize: 16,
+                fontWeight: FontWeight.w600,
                 color: Theme.of(
                   context,
-                ).colorScheme.onSurface.withOpacity(0.55),
+                ).colorScheme.onSurface.withValues(alpha: 0.65),
               ),
             ),
 
-            const SizedBox(height: 38),
+            const SizedBox(height: 28),
 
             _SessionResultsCard(session: session),
 
@@ -189,42 +173,6 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
               ),
               const SizedBox(height: 24),
             ],
-
-            if (linkedTask != null) ...[
-              _LinkedTaskCompletionCard(
-                taskName: linkedTask.title,
-                isCompleted: linkedTaskCompleted,
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.insights_rounded,
-                    color: AppTheme.primaryBlue,
-                    size: 32,
-                  ),
-
-                  const SizedBox(width: 14),
-
-                  Expanded(
-                    child: Text(
-                      session.completedNaturally
-                          ? 'Your focus session was completed successfully.'
-                          : 'Your completed focus time was still recorded.',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
-              ),
-            ),
 
             const SizedBox(height: 34),
 
@@ -417,67 +365,6 @@ String _durationShort(Duration value) {
   return rest == 0 ? '${hours}h' : '${hours}h ${rest}m';
 }
 
-class _LinkedTaskCompletionCard extends StatelessWidget {
-  final String taskName;
-  final bool isCompleted;
-
-  const _LinkedTaskCompletionCard({
-    required this.taskName,
-    required this.isCompleted,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isCompleted
-        ? AppTheme.success
-        : Theme.of(context).colorScheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            isCompleted ? Icons.task_alt_rounded : Icons.sync_rounded,
-            color: color,
-            size: 30,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isCompleted ? 'Task completed' : 'Finishing task…',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  isCompleted
-                      ? '“$taskName” was completed when this focus session ended.'
-                      : 'Focused is updating “$taskName” as completed.',
-                  style: TextStyle(
-                    height: 1.35,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SessionResultsCard extends StatelessWidget {
   final FocusSession session;
 
@@ -661,22 +548,36 @@ class _FocusQualityCard extends StatelessWidget {
           Row(
             children: [
               SizedBox(
-                width: 68,
-                height: 68,
+                width: 76,
+                height: 76,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CircularProgressIndicator(
-                      value: analysis.focusQuality / 100,
-                      strokeWidth: 7,
-                      backgroundColor: AppTheme.primaryBlue.withOpacity(0.10),
+                    SizedBox(
+                      width: 76,
+                      height: 76,
+                      child: CircularProgressIndicator(
+                        value: analysis.focusQuality / 100,
+                        strokeWidth: 6,
+                        backgroundColor: AppTheme.primaryBlue.withValues(
+                          alpha: 0.12,
+                        ),
+                        color: AppTheme.primaryBlue,
+                      ),
                     ),
 
-                    Text(
-                      '$quality%',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          '$quality%',
+                          style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   ],

@@ -39,12 +39,23 @@ class DailyOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: scheme.surface,
+        color: isDark ? scheme.surface : Colors.white,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : const Color(0xFF1E293B).withValues(alpha: 0.08),
+            blurRadius: 20,
+            spreadRadius: isDark ? 0 : 1,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,9 +109,7 @@ class DailyOverviewCard extends StatelessWidget {
             ),
           ),
           if (topApps.isNotEmpty) ...[
-            const SizedBox(height: 22),
-            Divider(height: 1, color: Theme.of(context).dividerColor),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -348,7 +357,8 @@ class DailyOverviewCard extends StatelessWidget {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: todaySessions.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final session = todaySessions[index];
                       final duration = session.actualFocusDuration;
@@ -455,36 +465,42 @@ class _OverviewMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final trend = trendPercent;
     final isClickable = onTap != null;
+
+    // Solid, opaque, non-transparent colors with high contrast and clarity
+    final Color solidLightColor;
+    final Color solidDarkColor;
+    if (accent.toARGB32() == const Color(0xFFFF5B5B).toARGB32()) {
+      solidLightColor = const Color(0xFFFFECEC); // Solid soft pastel coral/red
+      solidDarkColor = const Color(0xFF2C1E20);
+    } else if (accent.toARGB32() == const Color(0xFF6C5CE7).toARGB32()) {
+      solidLightColor = const Color(
+        0xFFEEECFF,
+      ); // Solid soft pastel purple/indigo
+      solidDarkColor = const Color(0xFF1E1E2E);
+    } else {
+      solidLightColor = Color.alphaBlend(
+        accent.withValues(alpha: 0.18),
+        Colors.white,
+      );
+      solidDarkColor = Color.alphaBlend(
+        accent.withValues(alpha: 0.22),
+        const Color(0xFF1C1D22),
+      );
+    }
+
+    final cardBgColor = isClickable
+        ? (isDark ? solidDarkColor : solidLightColor)
+        : (isDark ? const Color(0xFF1E2024) : const Color(0xFFF1F0EC));
 
     final content = Container(
       constraints: const BoxConstraints(minHeight: 142),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isClickable
-            ? (isDark
-                  ? scheme.surfaceContainerHigh
-                  : accent.withValues(alpha: 0.05))
-            : scheme.surfaceContainerLow,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isClickable
-              ? accent.withValues(alpha: isDark ? 0.35 : 0.28)
-              : scheme.outlineVariant.withValues(alpha: 0.4),
-          width: isClickable ? 1.5 : 1.0,
-        ),
-        boxShadow: isClickable
-            ? [
-                BoxShadow(
-                  color: accent.withValues(alpha: isDark ? 0.12 : 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -641,68 +657,54 @@ class _TopAppsCompactList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: scheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Theme.of(context).dividerColor),
-      ),
+      color: isDark ? scheme.surfaceContainerLowest : const Color(0xFFF6F5F0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: List.generate(entries.length, (index) {
           final entry = entries[index];
-          final isLast = index == entries.length - 1;
 
-          return Column(
-            children: [
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 5,
-                ),
-                leading: AppIcon(
-                  iconBytes: entry.iconBytes,
-                  appName: entry.appName,
-                  size: 40,
-                ),
-                title: Text(
-                  entry.appName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 5,
+            ),
+            leading: AppIcon(
+              iconBytes: entry.iconBytes,
+              appName: entry.appName,
+              size: 40,
+            ),
+            title: Text(
+              entry.appName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15.5,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatDuration(entry.duration),
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 15.5,
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 14,
                   ),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatDuration(entry.duration),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 20,
-                      color: scheme.outline,
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: scheme.outline,
                 ),
-                onTap: () => onOpenApp(entry),
-              ),
-              if (!isLast)
-                Divider(
-                  height: 1,
-                  indent: 16,
-                  endIndent: 16,
-                  color: Theme.of(context).dividerColor,
-                ),
-            ],
+              ],
+            ),
+            onTap: () => onOpenApp(entry),
           );
         }),
       ),

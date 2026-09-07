@@ -159,45 +159,18 @@ class TaskMatesSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: scheme.surface,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: Theme.of(
-                  context,
-                ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'No active squad tasks today',
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          color: scheme.onSurface,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Collaborate and stay accountable with mates.',
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'No active squad tasks today',
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 TextButton(

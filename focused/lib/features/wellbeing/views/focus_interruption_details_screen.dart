@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../focus/models/focus_analysis_result.dart';
 import '../../focus/models/focus_interruption.dart';
+import '../../focus/models/focus_session.dart';
 import '../../focus/providers/focus_provider.dart';
 import '../providers/usage_provider.dart';
 import '../../../core/services/ad_service.dart';
@@ -10,14 +13,41 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_icon.dart';
 import 'advanced_focus_analysis_screen.dart';
 
-class FocusInterruptionDetailsScreen extends StatelessWidget {
+class FocusInterruptionDetailsScreen extends StatefulWidget {
   const FocusInterruptionDetailsScreen({super.key});
+
+  @override
+  State<FocusInterruptionDetailsScreen> createState() =>
+      _FocusInterruptionDetailsScreenState();
+}
+
+class _FocusInterruptionDetailsScreenState
+    extends State<FocusInterruptionDetailsScreen> {
+  String? _selectedSessionId;
+  final Set<String> _analyzingSessionIds = {};
 
   @override
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
     final focusProvider = context.watch<FocusProvider>();
-    final result = _latestSavedAnalysis(focusProvider, usageProvider);
+    final sessions = focusProvider.sessionHistory;
+
+    // Pick selected session or latest
+    final currentSession = _resolveSelectedSession(sessions);
+    final result = _resolveAnalysis(currentSession, usageProvider);
+
+    // If we have a session but no analysis, trigger it automatically once
+    if (currentSession != null &&
+        result == null &&
+        !usageProvider.isAnalyzingFocus &&
+        !_analyzingSessionIds.contains(currentSession.id)) {
+      _analyzingSessionIds.add(currentSession.id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          usageProvider.analyzeCompletedFocusSession(currentSession);
+        }
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -26,32 +56,172 @@ class FocusInterruptionDetailsScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
-      body: result == null
-          ? _NoFocusAnalysis(
+      body: sessions.isEmpty
+          ? _NoFocusSessions(
               onRefresh: () async {
                 await usageProvider.refreshPermissionAndUsage(force: true);
               },
             )
-          : _FocusAnalysisBody(result: result),
+          : usageProvider.isAnalyzingFocus && result == null
+          ? const _AnalyzingFocusState()
+          : !usageProvider.hasUsageAccess && usageProvider.isSupported
+          ? _NoUsagePermissionState(
+              onGrantPermission: () => context.push('/wellbeing/permission'),
+            )
+          : result == null
+          ? _NoFocusAnalysis(
+              reason: usageProvider.analysisUnavailableReason,
+              onRefresh: () async {
+                if (currentSession != null) {
+                  await usageProvider.analyzeCompletedFocusSession(
+                    currentSession,
+                  );
+                } else {
+                  await usageProvider.refreshPermissionAndUsage(force: true);
+                }
+              },
+            )
+          : _FocusAnalysisBody(
+              result: result,
+              sessions: sessions,
+              selectedSessionId: currentSession?.id,
+              onSelectSession: (session) {
+                setState(() {
+                  _selectedSessionId = session.id;
+                });
+                if (!usageProvider.storedFocusAnalyses.containsKey(
+                  session.id,
+                )) {
+                  usageProvider.analyzeCompletedFocusSession(session);
+                }
+              },
+            ),
+    );
+  }
+
+  FocusSession? _resolveSelectedSession(List<FocusSession> sessions) {
+    if (sessions.isEmpty) return null;
+    if (_selectedSessionId != null) {
+      for (final s in sessions) {
+        if (s.id == _selectedSessionId) return s;
+      }
+    }
+    return sessions.first;
+  }
+
+  FocusAnalysisResult? _resolveAnalysis(
+    FocusSession? session,
+    UsageProvider usage,
+  ) {
+    if (session == null) return null;
+    final stored = usage.storedFocusAnalyses[session.id];
+    if (stored != null) return stored;
+    final live = usage.focusAnalysisResult;
+    if (live != null &&
+        live.focusStart == session.startedAt &&
+        live.focusEnd == session.endedAt) {
+      return live;
+    }
+    return null;
+  }
+}
+
+class _AnalyzingFocusState extends StatelessWidget {
+  const _AnalyzingFocusState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(strokeWidth: 3.5),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Analyzing Focus Session...',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Measuring app usage and distraction timeline during your focus interval.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-FocusAnalysisResult? _latestSavedAnalysis(
-  FocusProvider focus,
-  UsageProvider usage,
-) {
-  final live = usage.focusAnalysisResult;
-  if (live != null) return live;
-  for (final session in focus.sessionHistory) {
-    final saved = usage.storedFocusAnalyses[session.id];
-    if (saved != null) return saved;
+class _NoUsagePermissionState extends StatelessWidget {
+  const _NoUsagePermissionState({required this.onGrantPermission});
+  final VoidCallback onGrantPermission;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.security_rounded,
+                size: 36,
+                color: Color(0xFF6366F1),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Usage Access Required',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'To show which apps distracted you during your focus session, Focused needs Android Usage Access.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 22),
+            FilledButton.icon(
+              onPressed: onGrantPermission,
+              icon: const Icon(Icons.check_circle_outline_rounded),
+              label: const Text('Grant Access'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-  return null;
 }
 
-class _NoFocusAnalysis extends StatelessWidget {
-  const _NoFocusAnalysis({required this.onRefresh});
+class _NoFocusSessions extends StatelessWidget {
+  const _NoFocusSessions({required this.onRefresh});
   final Future<void> Function() onRefresh;
 
   @override
@@ -65,14 +235,14 @@ class _NoFocusAnalysis extends StatelessWidget {
             const Icon(Icons.center_focus_strong_rounded, size: 46),
             const SizedBox(height: 16),
             Text(
-              'No focus analysis yet',
+              'No focus sessions yet',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(
-              'Finish a focus session first. Focused will then show interruptions, effective focus and the top interrupter here.',
+              'Complete a focus session first. Focused will then show interruptions, effective focus and the top interrupter here.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -88,16 +258,77 @@ class _NoFocusAnalysis extends StatelessWidget {
   }
 }
 
+class _NoFocusAnalysis extends StatelessWidget {
+  const _NoFocusAnalysis({required this.onRefresh, this.reason});
+  final Future<void> Function() onRefresh;
+  final String? reason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.analytics_outlined, size: 46),
+            const SizedBox(height: 16),
+            Text(
+              'Analysis Unavailable',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              reason ??
+                  'Could not generate app interruption analysis for this session. Ensure Android Usage Access is active and try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: onRefresh,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry Analysis'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _FocusAnalysisBody extends StatelessWidget {
   final FocusAnalysisResult result;
+  final List<FocusSession> sessions;
+  final String? selectedSessionId;
+  final ValueChanged<FocusSession> onSelectSession;
 
-  const _FocusAnalysisBody({required this.result});
+  const _FocusAnalysisBody({
+    required this.result,
+    this.sessions = const [],
+    this.selectedSessionId,
+    required this.onSelectSession,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
       children: [
+        if (sessions.length > 1) ...[
+          _SessionSelectorBar(
+            sessions: sessions,
+            selectedSessionId: selectedSessionId,
+            onSelectSession: onSelectSession,
+          ),
+          const SizedBox(height: 14),
+        ],
+
         _QualityCard(result: result),
 
         const SizedBox(height: 16),
@@ -143,6 +374,84 @@ class _FocusAnalysisBody extends StatelessWidget {
 
         _InterruptionTimeline(interruptions: result.interruptions),
       ],
+    );
+  }
+}
+
+class _SessionSelectorBar extends StatelessWidget {
+  final List<FocusSession> sessions;
+  final String? selectedSessionId;
+  final ValueChanged<FocusSession> onSelectSession;
+
+  const _SessionSelectorBar({
+    required this.sessions,
+    required this.selectedSessionId,
+    required this.onSelectSession,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.history_rounded, size: 20, color: scheme.primary),
+          const SizedBox(width: 10),
+          Text(
+            'Session:',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedSessionId ?? sessions.first.id,
+                isDense: true,
+                isExpanded: true,
+                icon: const Icon(Icons.arrow_drop_down_rounded),
+                items: sessions
+                    .map((session) {
+                      final title = session.taskName.isNotEmpty
+                          ? session.taskName
+                          : 'Focus Session';
+                      final date = DateFormat(
+                        'MMM d, h:mm a',
+                      ).format(session.startedAt);
+                      return DropdownMenuItem<String>(
+                        value: session.id,
+                        child: Text(
+                          '$title • $date',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    })
+                    .toList(growable: false),
+                onChanged: (id) {
+                  if (id == null) return;
+                  final match = sessions.firstWhere((s) => s.id == id);
+                  onSelectSession(match);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

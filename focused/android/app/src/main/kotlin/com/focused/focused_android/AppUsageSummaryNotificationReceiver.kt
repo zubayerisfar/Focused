@@ -63,7 +63,15 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
             // Keyboards & Input Methods
             "com.google.android.inputmethod.latin",
             "com.touchtype.swiftkey",
-            "com.samsung.android.honeyboard"
+            "com.samsung.android.honeyboard",
+            // System Clocks, Alarms & Timers (prevent phantom background lockscreen/alarm time)
+            "com.google.android.deskclock",
+            "com.android.deskclock",
+            "com.sec.android.app.clockpackage",
+            "com.motorola.timeweatherwidget",
+            "com.oneplus.deskclock",
+            "com.coloros.alarm",
+            "com.miui.clock"
         )
     }
 
@@ -251,6 +259,7 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
         if (packageName.startsWith("com.android.systemui")) return true
         if (packageName.contains("launcher") || packageName.contains("nexuslauncher")) return true
         if (packageName == "com.google.android.googlequicksearchbox") return true
+        if (packageName.contains("deskclock") || packageName.contains("clockpackage")) return true
         return false
     }
 

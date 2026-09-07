@@ -61,6 +61,14 @@ class AndroidUsageStatsService implements UsageStatsService {
     'com.google.android.inputmethod.latin',
     'com.touchtype.swiftkey',
     'com.samsung.android.honeyboard',
+    // System Clocks, Alarms & Timers (prevent phantom background lockscreen/alarm time)
+    'com.google.android.deskclock',
+    'com.android.deskclock',
+    'com.sec.android.app.clockpackage',
+    'com.motorola.timeweatherwidget',
+    'com.oneplus.deskclock',
+    'com.coloros.alarm',
+    'com.miui.clock',
   };
 
   Future<Set<String>> _getEffectiveIgnoredPackages() async {

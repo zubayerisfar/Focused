@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/focus_provider.dart';
@@ -37,7 +38,11 @@ class FocusSessionScreen extends StatelessWidget {
 
                 const Text(
                   'No active focus session',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
 
                 const SizedBox(height: 20),
@@ -78,11 +83,40 @@ class FocusSessionScreen extends StatelessWidget {
 
                   const Spacer(),
 
-                  Text(
-                    isBreak ? 'Break' : 'Focus',
-                    style: TextStyle(
-                      color: activeColor,
-                      fontWeight: FontWeight.w700,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: activeColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: activeColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: activeColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isBreak ? 'Break' : 'Focusing',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            color: activeColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -94,18 +128,11 @@ class FocusSessionScreen extends StatelessWidget {
 
               const Spacer(),
 
-              Icon(
-                isBreak ? Icons.free_breakfast_rounded : Icons.timer_rounded,
-                size: 44,
-                color: activeColor,
-              ),
-
-              const SizedBox(height: 18),
-
               Text(
                 isBreak ? 'Take a break' : focus.taskName,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontFamily: 'Quicksand',
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -122,9 +149,10 @@ class FocusSessionScreen extends StatelessWidget {
                           'of ${focus.totalFocusBlocks}',
                 textAlign: TextAlign.center,
                 style: TextStyle(
+                  fontFamily: 'Quicksand',
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.50),
+                  ).colorScheme.onSurface.withValues(alpha: 0.55),
                 ),
               ),
 
@@ -147,7 +175,7 @@ class FocusSessionScreen extends StatelessWidget {
                         value: focus.currentBlockProgress,
                         strokeWidth: 14,
                         strokeCap: StrokeCap.round,
-                        backgroundColor: activeColor.withOpacity(0.12),
+                        backgroundColor: activeColor.withValues(alpha: 0.12),
                         color: activeColor,
                       ),
                     ),
@@ -157,10 +185,11 @@ class FocusSessionScreen extends StatelessWidget {
                       children: [
                         Text(
                           _formatClock(focus.remainingSeconds),
-                          style: const TextStyle(
-                            fontSize: 48,
+                          style: GoogleFonts.orbitron(
+                            fontSize: 44,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: -1,
+                            letterSpacing: 1.5,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
 
@@ -169,9 +198,11 @@ class FocusSessionScreen extends StatelessWidget {
                         Text(
                           focus.isPaused ? 'Paused' : 'Remaining',
                           style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontWeight: FontWeight.w600,
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.50),
+                            ).colorScheme.onSurface.withValues(alpha: 0.55),
                           ),
                         ),
                       ],
@@ -181,6 +212,26 @@ class FocusSessionScreen extends StatelessWidget {
               ),
 
               const Spacer(),
+
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6, bottom: 2),
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.98,
+                      child: Image.asset(
+                        'assets/animation/task_ongoing_down_right.gif',
+                        width: 145,
+                        height: 145,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
               if (!isBreak)
                 Row(
@@ -265,10 +316,11 @@ class FocusSessionScreen extends StatelessWidget {
                   'The next focus block starts automatically when the break ends.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
+                    fontFamily: 'Quicksand',
                     fontSize: 12,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.45),
+                    ).colorScheme.onSurface.withValues(alpha: 0.50),
                   ),
                 ),
             ],
@@ -344,7 +396,6 @@ class FocusSessionScreen extends StatelessWidget {
   }
 }
 
-
 class _FocusGuardStatusCard extends StatelessWidget {
   final FocusProvider focus;
 
@@ -379,7 +430,8 @@ class _FocusGuardStatusCard extends StatelessWidget {
       text = 'Notifications are off • background warnings may be hidden';
     } else if (status.serviceRunning) {
       icon = Icons.shield_rounded;
-      text = 'Focus Guard active • ${status.warningThresholdSeconds}s outside-workspace warning';
+      text =
+          'Focus Guard active • ${status.warningThresholdSeconds}s outside-workspace warning';
     } else {
       text = 'Starting Focus Guard…';
     }

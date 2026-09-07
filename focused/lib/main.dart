@@ -158,6 +158,10 @@ Future<void> main() async {
     unawaited(appLimitProvider.checkUsageLimits(usageMap));
   };
 
+  focusProvider.addSessionFinishedListener((session) {
+    unawaited(usageProvider.analyzeCompletedFocusSession(session));
+  });
+
   await usageProvider.loadStoredCategories();
   await usageProvider.syncFocusGuardAllowedPackages();
   await usageProvider.loadStoredFocusAnalyses();

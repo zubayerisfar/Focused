@@ -187,30 +187,7 @@ class _FriendsScreenState extends State<FriendsScreen>
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: _tabController.index == 0
-          ? null
-          : Padding(
-              padding: const EdgeInsets.only(bottom: 72),
-              child: SizedBox(
-                height: 42,
-                child: FloatingActionButton.extended(
-                  heroTag: 'add_friends_fab',
-                  backgroundColor: const Color(0xFF1CB0F6),
-                  foregroundColor: Colors.white,
-                  elevation: 3,
-                  onPressed: () => context.push('/friends/add'),
-                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                  label: const Text(
-                    'Add',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+      floatingActionButton: null,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -383,31 +360,12 @@ class _FriendsScreenState extends State<FriendsScreen>
               onFindFriends: () => context.push('/friends/add'),
             ),
 
-            // 2. Following Tab
-            FriendsListTab(
-              friends: following,
-              isFollowingTab: true,
+            // 2. Following Tab (with Search & Follow directly at top)
+            _FollowingTab(
+              following: following,
               isDark: isDark,
-              canSendReminder: friendsProvider.canSendReminder,
-              canSendReminderTo: (f) => friendsProvider.canNudgeFriend(f.uid),
-              canSendGift: false,
-              onSendReminder: (f) async {
-                final ok = await friendsProvider.sendReminder(f.uid);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      content: Text(
-                        ok
-                            ? '🔔 Reminder sent to ${f.displayName}! (${friendsProvider.remindersSentToday}/5 sent today)'
-                            : (friendsProvider.hasNudgedToday(f.uid)
-                                  ? 'Already reminded ${f.displayName} today.'
-                                  : 'Daily limit of 5 reminders reached.'),
-                      ),
-                    ),
-                  );
-                }
-              },
+              scheme: scheme,
+              friendsProvider: friendsProvider,
               onUnfollow: (f) => _confirmUnfollow(context, f),
             ),
 
@@ -525,5 +483,376 @@ class _FriendsScreenState extends State<FriendsScreen>
       backgroundColor: Colors.transparent,
       builder: (ctx) => const FriendNotificationHubSheet(),
     );
+  }
+}
+
+// ── FOLLOWING TAB WITH TOP INLINE SEARCH BAR & DIRECT FOLLOW ──
+
+class _FollowingTab extends StatefulWidget {
+  final List<FriendUser> following;
+  final bool isDark;
+  final ColorScheme scheme;
+  final FriendsProvider friendsProvider;
+  final Function(FriendUser) onUnfollow;
+
+  const _FollowingTab({
+    required this.following,
+    required this.isDark,
+    required this.scheme,
+    required this.friendsProvider,
+    required this.onUnfollow,
+  });
+
+  @override
+  State<_FollowingTab> createState() => _FollowingTabState();
+}
+
+class _FollowingTabState extends State<_FollowingTab> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final friendsProvider = widget.friendsProvider;
+    final isSearching = friendsProvider.isSearching;
+    final searchResults = friendsProvider.searchResults;
+    final query = _searchController.text.trim();
+    final isQueryActive = query.isNotEmpty;
+
+    return Column(
+      children: [
+        // ── Top Inline Search Bar ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+          child: TextField(
+            controller: _searchController,
+            style: TextStyle(
+              color: widget.isDark ? Colors.white : widget.scheme.onSurface,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search username or name to follow…',
+              hintStyle: TextStyle(
+                color: widget.isDark
+                    ? const Color(0xFF77878F)
+                    : widget.scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                fontSize: 13.5,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: Color(0xFF1CB0F6),
+                size: 20,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: widget.isDark
+                            ? const Color(0xFF77878F)
+                            : widget.scheme.onSurfaceVariant,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        _searchController.clear();
+                        friendsProvider.searchUsers('');
+                        setState(() {});
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: widget.scheme.surfaceContainerHigh,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: widget.scheme.outlineVariant),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: widget.scheme.outlineVariant),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF1CB0F6),
+                  width: 1.8,
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 10,
+              ),
+              isDense: true,
+            ),
+            textInputAction: TextInputAction.search,
+            onChanged: (text) {
+              setState(() {});
+              friendsProvider.searchUsers(text);
+            },
+            onSubmitted: (text) {
+              friendsProvider.searchUsersImmediate(text);
+            },
+          ),
+        ),
+
+        // ── Body: Search Results OR Normal Following List ──
+        Expanded(
+          child: isQueryActive
+              ? (isSearching
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF1CB0F6),
+                        ),
+                      )
+                    : searchResults.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('😕', style: TextStyle(fontSize: 40)),
+                            const SizedBox(height: 10),
+                            Text(
+                              'No users found for "$query"',
+                              style: TextStyle(
+                                color: widget.isDark
+                                    ? Colors.white
+                                    : widget.scheme.onSurface,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Check the spelling or try searching their exact handle',
+                              style: TextStyle(
+                                color: widget.isDark
+                                    ? const Color(0xFF77878F)
+                                    : widget.scheme.onSurfaceVariant,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                        itemCount: searchResults.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, i) {
+                          final user = searchResults[i];
+                          return _SearchUserResultTile(
+                            user: user,
+                            isDark: widget.isDark,
+                            scheme: widget.scheme,
+                            onFollow: () => friendsProvider.follow(user),
+                            onUnfollow: () => widget.onUnfollow(user),
+                          );
+                        },
+                      ))
+              : FriendsListTab(
+                  friends: widget.following,
+                  isFollowingTab: true,
+                  isDark: widget.isDark,
+                  canSendReminder: friendsProvider.canSendReminder,
+                  canSendReminderTo: (f) =>
+                      friendsProvider.canNudgeFriend(f.uid),
+                  canSendGift: false,
+                  onSendReminder: (f) async {
+                    final ok = await friendsProvider.sendReminder(f.uid);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          behavior: SnackBarBehavior.floating,
+                          content: Text(
+                            ok
+                                ? '🔔 Reminder sent to ${f.displayName}! (${friendsProvider.remindersSentToday}/5 sent today)'
+                                : (friendsProvider.hasNudgedToday(f.uid)
+                                      ? 'Already reminded ${f.displayName} today.'
+                                      : 'Daily limit of 5 reminders reached.'),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  onUnfollow: widget.onUnfollow,
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchUserResultTile extends StatelessWidget {
+  final FriendUser user;
+  final bool isDark;
+  final ColorScheme scheme;
+  final VoidCallback onFollow;
+  final VoidCallback onUnfollow;
+
+  const _SearchUserResultTile({
+    required this.user,
+    required this.isDark,
+    required this.scheme,
+    required this.onFollow,
+    required this.onUnfollow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.push('/profile/view', extra: user),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: const Color(0xFF58CC02),
+              backgroundImage: user.photoUrl != null
+                  ? NetworkImage(user.photoUrl!)
+                  : null,
+              child: user.photoUrl == null
+                  ? Text(
+                      _initials(user.displayName),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : scheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        user.handle,
+                        style: const TextStyle(
+                          color: Color(0xFF1CB0F6),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      if (user.streakDays > 0) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '🔥 ${user.streakDays}d',
+                          style: const TextStyle(
+                            color: Color(0xFFFF9600),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (user.isSelf)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF26334D)
+                      : const Color(0xFFE8EAF5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'You',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: Color(0xFF1CB0F6),
+                  ),
+                ),
+              )
+            else if (user.isFollowing)
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: isDark
+                      ? const Color(0xFF77878F)
+                      : scheme.onSurfaceVariant,
+                  side: BorderSide(
+                    color: isDark
+                        ? const Color(0xFF37464F)
+                        : scheme.outlineVariant,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: onUnfollow,
+                child: const Text(
+                  'Following',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                ),
+              )
+            else
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1CB0F6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: onFollow,
+                child: const Text(
+                  'Follow',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final words = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return 'U';
+    if (words.length == 1) return words.first[0].toUpperCase();
+    return '${words.first[0]}${words.last[0]}'.toUpperCase();
   }
 }

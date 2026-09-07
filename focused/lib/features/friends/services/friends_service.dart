@@ -703,8 +703,22 @@ class FriendsService {
         .collection('followers')
         .doc(currentUid);
 
+    final myBestFriendRef = _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('best_friends')
+        .doc(targetUid);
+
+    final theirBestFriendRef = _firestore
+        .collection('users')
+        .doc(targetUid)
+        .collection('best_friends')
+        .doc(currentUid);
+
     batch.delete(myFollowingRef);
     batch.delete(targetFollowerRef);
+    batch.delete(myBestFriendRef);
+    batch.delete(theirBestFriendRef);
 
     await batch.commit();
   }
@@ -749,6 +763,9 @@ class FriendsService {
     required String targetUid,
   }) async {
     final cleanUsername = fromUsername.replaceAll('@', '').trim();
+    final now = DateTime.now();
+
+    // 1. Add reminder notification document for the recipient
     await _firestore
         .collection('users')
         .doc(targetUid)
@@ -761,6 +778,15 @@ class FriendsService {
           'createdAt': FieldValue.serverTimestamp(),
           'read': false,
         });
+
+    // 2. Persist lastNudgedAt timestamp on sender's following relationship
+    // so it persists across app restarts and account switches
+    await _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('following')
+        .doc(targetUid)
+        .set({'lastNudgedAt': now.toIso8601String()}, SetOptions(merge: true));
   }
 
   /// Listens for incoming unread reminders to alert the user
@@ -772,17 +798,30 @@ class FriendsService {
     if (currentUid.isEmpty) return null;
 
     var isInitialSnapshot = true;
+    final cutoff = DateTime.now().subtract(const Duration(hours: 48));
+
     return _firestore
         .collection('users')
         .doc(currentUid)
         .collection('friend_reminders')
-        .where('read', isEqualTo: false)
+        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(cutoff))
+        .limit(10)
         .snapshots()
         .listen((snap) {
           if (isInitialSnapshot) {
             isInitialSnapshot = false;
+            // Catch-up unread reminders missed while logged out or away
             for (final doc in snap.docs) {
-              doc.reference.update({'read': true});
+              final data = doc.data();
+              final fromName = data['fromName']?.toString() ?? 'A Friend';
+              final message =
+                  data['message']?.toString() ??
+                  '$fromName is telling you to finish your task today! 🔥';
+              onReminderReceived(fromName, message);
+              // Clean up immediately to keep Firestore zero-byte & prevent backlog
+              doc.reference.delete().catchError((e) {
+                debugPrint('Error cleaning up reminder: $e');
+              });
             }
             return;
           }
@@ -797,7 +836,10 @@ class FriendsService {
                   '$fromName is reminding you to finish your task!';
 
               onReminderReceived(fromName, message);
-              doc.reference.update({'read': true});
+              // Clean up immediately after displaying notification
+              doc.reference.delete().catchError((e) {
+                debugPrint('Error cleaning up reminder: $e');
+              });
             }
           }
         });
@@ -1148,8 +1190,8 @@ class FriendsService {
     int newStreak = current.streakDays;
     DateTime newCycleStart = current.currentCycleStartedAt;
 
-    // If currently at risk, or if more than 24h elapsed since cycle start, advance cycle and increment streak
-    if (current.isAtRisk || current.elapsedInCycle.inHours >= 24) {
+    // If currently at risk, or if 24h elapsed since cycle start, advance cycle and increment streak
+    if (current.isAtRisk || current.rawElapsedSinceBaseCycle.inHours >= 24) {
       newStreak++;
       newCycleStart = now;
     } else if (current.lastInteractedAt == null) {

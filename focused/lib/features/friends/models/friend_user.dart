@@ -8,6 +8,7 @@ class FriendUser {
   final int totalFocusMinutes;
   final bool isFollowing;
   final bool isSelf;
+  final DateTime? lastNudgedAt;
 
   const FriendUser({
     required this.uid,
@@ -19,6 +20,7 @@ class FriendUser {
     this.totalFocusMinutes = 0,
     this.isFollowing = false,
     this.isSelf = false,
+    this.lastNudgedAt,
   });
 
   String get handle {
@@ -36,6 +38,16 @@ class FriendUser {
     return '@user';
   }
 
+  /// Has this friend been nudged today?
+  bool get hasNudgedToday {
+    if (lastNudgedAt == null) return false;
+    final now = DateTime.now();
+    final nudged = lastNudgedAt!.toLocal();
+    return nudged.year == now.year &&
+        nudged.month == now.month &&
+        nudged.day == now.day;
+  }
+
   FriendUser copyWith({
     String? uid,
     String? displayName,
@@ -46,6 +58,7 @@ class FriendUser {
     int? totalFocusMinutes,
     bool? isFollowing,
     bool? isSelf,
+    DateTime? lastNudgedAt,
   }) {
     return FriendUser(
       uid: uid ?? this.uid,
@@ -57,6 +70,7 @@ class FriendUser {
       totalFocusMinutes: totalFocusMinutes ?? this.totalFocusMinutes,
       isFollowing: isFollowing ?? this.isFollowing,
       isSelf: isSelf ?? this.isSelf,
+      lastNudgedAt: lastNudgedAt ?? this.lastNudgedAt,
     );
   }
 
@@ -70,6 +84,7 @@ class FriendUser {
       'xpPoints': xpPoints,
       'totalFocusMinutes': totalFocusMinutes,
       'isFollowing': isFollowing,
+      if (lastNudgedAt != null) 'lastNudgedAt': lastNudgedAt!.toIso8601String(),
     };
   }
 
@@ -82,6 +97,16 @@ class FriendUser {
     final rawUsername = (map['username'] ?? map['handle'] ?? '')
         .toString()
         .trim();
+
+    DateTime? parseNudgedAt(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value;
+      if (value is String && value.isNotEmpty) {
+        return DateTime.tryParse(value);
+      }
+      return null;
+    }
+
     return FriendUser(
       uid: (docId ?? map['uid'] ?? '').toString(),
       displayName: (map['displayName'] ?? 'Focused User').toString(),
@@ -92,6 +117,7 @@ class FriendUser {
       totalFocusMinutes: (map['totalFocusMinutes'] as num?)?.toInt() ?? 0,
       isFollowing: isFollowing || map['isFollowing'] == true,
       isSelf: isSelf,
+      lastNudgedAt: parseNudgedAt(map['lastNudgedAt']),
     );
   }
 }

@@ -141,13 +141,6 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 icon: const Icon(Icons.delete_outline_rounded),
                 onPressed: _isSaving ? null : _deleteTask,
               ),
-            TextButton(
-              onPressed: _isSaving ? null : _saveTask,
-              child: Text(
-                _isSaving ? 'Saving...' : 'Save',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
             const SizedBox(width: 8),
           ],
         ),
@@ -156,16 +149,21 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
           children: [
             Text(
               widget.isEditing ? 'Update your task' : 'What needs to be done?',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontFamily: 'Quicksand',
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 18),
             TextField(
               controller: _titleController,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(hintText: 'Task title'),
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontFamily: 'Quicksand',
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -177,6 +175,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 hintText: 'Add a description...',
                 alignLabelWithHint: true,
               ),
+              style: const TextStyle(fontFamily: 'Quicksand', fontSize: 14.5),
             ),
             const SizedBox(height: 28),
             const _SectionTitle('Priority'),
@@ -186,6 +185,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 Expanded(
                   child: _PriorityButton(
                     label: 'Critical',
+                    icon: Icons.warning_amber_rounded,
                     color: const Color(0xFFFF6B5E),
                     selected: _priority == TaskPriority.critical,
                     onTap: () => setState(() {
@@ -197,6 +197,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 Expanded(
                   child: _PriorityButton(
                     label: 'Important',
+                    icon: Icons.star_rounded,
                     color: AppTheme.primaryBlue,
                     selected: _priority == TaskPriority.important,
                     onTap: () => setState(() {
@@ -208,6 +209,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 Expanded(
                   child: _PriorityButton(
                     label: 'Growth',
+                    icon: Icons.trending_up_rounded,
                     color: const Color(0xFF34B27B),
                     selected: _priority == TaskPriority.growth,
                     onTap: () => setState(() {
@@ -241,47 +243,31 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 24),
             const _SectionTitle('Calendar'),
             const SizedBox(height: 12),
             Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
-              child: SwitchListTile(
+              child: _SettingSwitchRow(
+                icon: Icons.calendar_month_rounded,
+                title: 'Schedule task',
+                subtitle: 'Set a time block, recurrence and optional reminder.',
                 value: _scheduleOnCalendar,
                 onChanged: (value) {
                   setState(() {
                     _scheduleOnCalendar = value;
                   });
                 },
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                secondary: Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryBlue.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.calendar_month_rounded,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-                title: const Text(
-                  'Schedule task',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Padding(
-                  padding: EdgeInsets.only(top: 3),
-                  child: Text(
-                    'Set a time block, recurrence and optional reminder.',
-                  ),
-                ),
               ),
             ),
             if (_scheduleOnCalendar) ...[
@@ -325,24 +311,12 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     onTap: _showReminderPicker,
                   ),
                   const Divider(height: 1),
-                  SwitchListTile.adaptive(
-                    secondary: const Icon(Icons.alarm_off_outlined),
-                    title: const Text(
-                      'Late reminder if delayed',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                    subtitle: Text(
-                      _enableLateReminder
-                          ? 'Remind $_lateReminderMinutes min after scheduled time'
-                          : 'No notification if overdue',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                  _SettingSwitchRow(
+                    icon: Icons.alarm_off_outlined,
+                    title: 'Late reminder if delayed',
+                    subtitle: _enableLateReminder
+                        ? 'Remind $_lateReminderMinutes min after scheduled time'
+                        : 'No notification if overdue',
                     value: _enableLateReminder,
                     onChanged: (val) {
                       setState(() => _enableLateReminder = val);
@@ -440,6 +414,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     : Text(
                         widget.isEditing ? 'Update Task' : 'Create Task',
                         style: const TextStyle(
+                          fontFamily: 'Quicksand',
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -458,7 +433,10 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                   icon: const Icon(Icons.delete_outline_rounded),
                   label: const Text(
                     'Delete Task',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -1258,21 +1236,24 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(
-        context,
-      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        fontFamily: 'Quicksand',
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }
 
 class _PriorityButton extends StatelessWidget {
   final String label;
+  final IconData icon;
   final Color color;
   final bool selected;
   final VoidCallback onTap;
 
   const _PriorityButton({
     required this.label,
+    required this.icon,
     required this.color,
     required this.selected,
     required this.onTap,
@@ -1280,29 +1261,62 @@ class _PriorityButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 50,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected
-              ? color.withOpacity(0.14)
-              : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? color : Colors.transparent,
-            width: 1.5,
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 48,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected ? color : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected
+                  ? color
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+              width: 1.2,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.32),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? color : null,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : color.withValues(alpha: 0.85),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    color: selected
+                        ? Colors.white
+                        : theme.colorScheme.onSurface,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1322,6 +1336,12 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(children: children),
     );
@@ -1343,23 +1363,136 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
+    final theme = Theme.of(context);
+    return InkWell(
       onTap: onTap,
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 20, color: AppTheme.primaryBlue),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'Quicksand',
+                color: AppTheme.primaryBlue,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingSwitchRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SettingSwitchRow({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppTheme.primaryBlue,
-              fontWeight: FontWeight.w700,
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color:
+                  (value
+                          ? AppTheme.primaryBlue
+                          : theme.colorScheme.outlineVariant)
+                      .withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 20,
+              color: value
+                  ? AppTheme.primaryBlue
+                  : theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded, size: 20),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: AppTheme.primaryBlue,
+            activeTrackColor: AppTheme.primaryBlue.withValues(alpha: 0.5),
+          ),
         ],
       ),
     );

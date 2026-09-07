@@ -33,7 +33,7 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
     DateTime.sunday,
   };
   int _iconCodePoint = Icons.check_rounded.codePoint;
-  int _colorValue = const Color(0xFF4D7CFE).value;
+  int _colorValue = const Color(0xFF4D7CFE).toARGB32();
   bool _reminderEnabled = false;
   int _reminderMinutesFromMidnight = 20 * 60;
   bool _enableLateReminder = false;
@@ -113,9 +113,16 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
               TextFormField(
                 controller: _titleController,
                 textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Habit name',
                   hintText: 'Read, exercise, drink water…',
+                  labelStyle: TextStyle(fontFamily: 'Quicksand'),
+                  hintStyle: TextStyle(fontFamily: 'Quicksand'),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -127,76 +134,194 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
               const SizedBox(height: 20),
               const _SectionLabel('Goal'),
               const SizedBox(height: 8),
-              SegmentedButton<HabitGoalType>(
-                segments: const [
-                  ButtonSegment(
-                    value: HabitGoalType.checkIn,
-                    label: Text('Check-in'),
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    width: 1,
                   ),
-                  ButtonSegment(
-                    value: HabitGoalType.count,
-                    label: Text('Count'),
-                  ),
-                  ButtonSegment(
-                    value: HabitGoalType.duration,
-                    label: Text('Duration'),
-                  ),
-                ],
-                selected: {_goalType},
-                onSelectionChanged: (selection) {
-                  setState(() {
-                    _goalType = selection.first;
-                    if (_goalType == HabitGoalType.checkIn) {
-                      _targetController.text = '1';
-                      _unitController.text = 'done';
-                    } else if (_goalType == HabitGoalType.duration) {
-                      if (_targetController.text == '1') {
-                        _targetController.text = '30';
-                      }
-                      _unitController.text = 'minutes';
-                    } else {
-                      if (_targetController.text == '1') {
-                        _targetController.text = '8';
-                      }
-                      _unitController.text = 'times';
-                    }
-                  });
-                },
-              ),
-              if (_goalType != HabitGoalType.checkIn) ...[
-                const SizedBox(height: 12),
-                Row(
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _targetController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Target'),
-                        validator: (value) {
-                          final parsed = int.tryParse(value ?? '');
-                          if (parsed == null || parsed < 1) {
-                            return 'Use a number above 0.';
-                          }
-                          return null;
-                        },
-                      ),
+                    Row(
+                      children: [
+                        _buildGoalTypeOption(
+                          context,
+                          label: 'Check-in',
+                          icon: Icons.check_circle_outline_rounded,
+                          selected: _goalType == HabitGoalType.checkIn,
+                          onTap: () {
+                            setState(() {
+                              _goalType = HabitGoalType.checkIn;
+                              _targetController.text = '1';
+                              _unitController.text = 'done';
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _buildGoalTypeOption(
+                          context,
+                          label: 'Count',
+                          icon: Icons.tag_rounded,
+                          selected: _goalType == HabitGoalType.count,
+                          onTap: () {
+                            setState(() {
+                              _goalType = HabitGoalType.count;
+                              if (_targetController.text == '1') {
+                                _targetController.text = '8';
+                              }
+                              _unitController.text = 'times';
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _buildGoalTypeOption(
+                          context,
+                          label: 'Duration',
+                          icon: Icons.timer_outlined,
+                          selected: _goalType == HabitGoalType.duration,
+                          onTap: () {
+                            setState(() {
+                              _goalType = HabitGoalType.duration;
+                              if (_targetController.text == '1') {
+                                _targetController.text = '30';
+                              }
+                              _unitController.text = 'minutes';
+                            });
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _unitController,
-                        decoration: const InputDecoration(labelText: 'Unit'),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Enter a unit.';
-                          }
-                          return null;
-                        },
+                    if (_goalType != HabitGoalType.checkIn) ...[
+                      const SizedBox(height: 14),
+                      const Divider(height: 1),
+                      const SizedBox(height: 14),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _goalType == HabitGoalType.duration
+                                      ? 'Duration target'
+                                      : 'Target count',
+                                  style: TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                TextFormField(
+                                  controller: _targetController,
+                                  keyboardType: TextInputType.number,
+                                  style: const TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        _goalType == HabitGoalType.duration
+                                        ? '30'
+                                        : '8',
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
+                                    fillColor: Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerLow,
+                                    filled: true,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    final parsed = int.tryParse(value ?? '');
+                                    if (parsed == null || parsed < 1) {
+                                      return 'Must be ≥ 1';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Unit',
+                                  style: TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                TextFormField(
+                                  controller: _unitController,
+                                  style: const TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        _goalType == HabitGoalType.duration
+                                        ? 'minutes'
+                                        : 'times',
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
+                                    fillColor: Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerLow,
+                                    filled: true,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Enter unit';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    ],
                   ],
                 ),
-              ],
+              ),
               const SizedBox(height: 20),
               const _SectionLabel('Repeat'),
               const SizedBox(height: 8),
@@ -220,8 +345,13 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Theme.of(context).dividerColor),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -232,27 +362,43 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
                       },
                       title: const Text(
                         'Habit reminder',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       subtitle: Text(
                         _reminderEnabled
                             ? 'Only on the repeat days selected above.'
                             : 'Off',
+                        style: const TextStyle(fontFamily: 'Quicksand'),
                       ),
                     ),
                     if (_reminderEnabled) ...[
-                      Divider(height: 1, color: Theme.of(context).dividerColor),
+                      const Divider(height: 1),
                       ListTile(
                         leading: const Icon(Icons.schedule_rounded),
-                        title: const Text('Reminder time'),
-                        subtitle: const Text('Uses your device timezone'),
+                        title: const Text(
+                          'Reminder time',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Uses your device timezone',
+                          style: TextStyle(fontFamily: 'Quicksand'),
+                        ),
                         trailing: Text(
                           _reminderTime.format(context),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         onTap: _pickReminderTime,
                       ),
-                      Divider(height: 1, color: Theme.of(context).dividerColor),
+                      const Divider(height: 1),
                       SwitchListTile.adaptive(
                         value: _enableLateReminder,
                         onChanged: (value) {
@@ -260,25 +406,35 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
                         },
                         title: const Text(
                           'Follow-up if delayed',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         subtitle: Text(
                           _enableLateReminder
                               ? 'Remind $_lateReminderMinutes min later if not checked in'
                               : 'No late notification',
+                          style: const TextStyle(fontFamily: 'Quicksand'),
                         ),
                       ),
                       if (_enableLateReminder) ...[
-                        Divider(
-                          height: 1,
-                          color: Theme.of(context).dividerColor,
-                        ),
+                        const Divider(height: 1),
                         ListTile(
                           leading: const Icon(Icons.timer_outlined),
-                          title: const Text('Follow-up delay'),
+                          title: const Text(
+                            'Follow-up delay',
+                            style: TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           trailing: Text(
                             '$_lateReminderMinutes min after',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           onTap: _pickLateDelay,
                         ),
@@ -298,27 +454,41 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
                 onColorChanged: (value) => setState(() => _colorValue = value),
               ),
               const SizedBox(height: 28),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+              SizedBox(
+                height: 54,
+                child: FilledButton(
+                  onPressed: _saving ? null : _save,
                   child: Text(
                     _saving
                         ? 'Saving…'
                         : widget.isEditing
                         ? 'Save changes'
                         : 'Create habit',
+                    style: const TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
               if (widget.isEditing) ...[
                 const SizedBox(height: 10),
-                TextButton(
-                  onPressed: _saving ? null : _delete,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
+                SizedBox(
+                  height: 48,
+                  child: TextButton(
+                    onPressed: _saving ? null : _delete,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    child: const Text(
+                      'Delete habit',
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                  child: const Text('Delete habit'),
                 ),
               ],
             ],
@@ -487,6 +657,77 @@ class _HabitEditScreenState extends State<HabitEditScreen> {
       setState(() => _saving = false);
     }
   }
+
+  Widget _buildGoalTypeOption(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final activeColor = Theme.of(context).colorScheme.primary;
+
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected
+                  ? activeColor
+                  : theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: selected
+                    ? activeColor
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                width: 1.2,
+              ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: activeColor.withValues(alpha: 0.28),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: selected
+                      ? Colors.white
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected
+                        ? Colors.white
+                        : theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -497,9 +738,10 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: Theme.of(
-        context,
-      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+        fontFamily: 'Quicksand',
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }
@@ -535,6 +777,7 @@ class _WeekdaySelector extends StatelessWidget {
                 child: Text(
                   labels[index],
                   style: TextStyle(
+                    fontFamily: 'Quicksand',
                     fontWeight: FontWeight.w700,
                     color: active
                         ? Theme.of(context).colorScheme.onPrimaryContainer
@@ -602,10 +845,10 @@ class _StylePicker extends StatelessWidget {
         Wrap(
           spacing: 10,
           children: _colors.map((color) {
-            final active = color.value == colorValue;
+            final active = color.toARGB32() == colorValue;
             return InkWell(
               borderRadius: BorderRadius.circular(18),
-              onTap: () => onColorChanged(color.value),
+              onTap: () => onColorChanged(color.toARGB32()),
               child: Container(
                 width: 34,
                 height: 34,
