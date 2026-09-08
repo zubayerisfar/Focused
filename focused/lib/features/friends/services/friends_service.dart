@@ -932,19 +932,12 @@ class FriendsService {
       'claimed': false,
       'createdAt': FieldValue.serverTimestamp(),
     };
-    // Write to both gem_gifts and exp_gifts for backwards compatibility
-    await Future.wait([
-      _firestore
-          .collection('users')
-          .doc(targetUid)
-          .collection('gem_gifts')
-          .add(data),
-      _firestore
-          .collection('users')
-          .doc(targetUid)
-          .collection('exp_gifts')
-          .add(data),
-    ]);
+    // Write to gem_gifts
+    await _firestore
+        .collection('users')
+        .doc(targetUid)
+        .collection('gem_gifts')
+        .add(data);
   }
 
   /// Streams unclaimed Gems gifts for the current user
@@ -971,22 +964,13 @@ class FriendsService {
     required String currentUid,
     required String giftId,
   }) async {
-    await Future.wait([
-      _firestore
-          .collection('users')
-          .doc(currentUid)
-          .collection('gem_gifts')
-          .doc(giftId)
-          .update({'claimed': true})
-          .catchError((_) {}),
-      _firestore
-          .collection('users')
-          .doc(currentUid)
-          .collection('exp_gifts')
-          .doc(giftId)
-          .update({'claimed': true})
-          .catchError((_) {}),
-    ]);
+    await _firestore
+        .collection('users')
+        .doc(currentUid)
+        .collection('gem_gifts')
+        .doc(giftId)
+        .update({'claimed': true})
+        .catchError((_) {});
   }
 
   // ===========================================================================

@@ -10,7 +10,8 @@ class PartnerQuestCard extends StatelessWidget {
   final VoidCallback onSendReminder;
   final VoidCallback onSendExp;
 
-  const PartnerQuestCard({super.key, 
+  const PartnerQuestCard({
+    super.key,
     required this.quest,
     required this.isDark,
     required this.canSendReminder,
