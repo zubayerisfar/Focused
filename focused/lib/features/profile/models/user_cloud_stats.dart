@@ -6,12 +6,15 @@ class UserCloudStats {
   final List<String> unlockedBadgeIds;
   final DateTime? updatedAt;
 
-  // XP System
+  // XP / Gem System
   final int xpPoints;
   final int xpAdsWatchedToday;
   final String? xpAdsWatchedDate; // ISO8601 date-only string (yyyy-MM-dd)
   final DateTime?
   xpAdsCooldownUntil; // Timestamp when watching ads is unblocked
+
+  /// Restored calendar days (yyyy-MM-dd) to preserve restored streaks
+  final List<String> restoredStreakDates;
 
   const UserCloudStats({
     this.streakDays = 0,
@@ -24,8 +27,10 @@ class UserCloudStats {
     this.xpAdsWatchedToday = 0,
     this.xpAdsWatchedDate,
     this.xpAdsCooldownUntil,
+    this.restoredStreakDates = const <String>[],
   });
 
+  int get gems => xpPoints;
   Duration get totalFocusDuration => Duration(minutes: totalFocusMinutes);
 
   UserCloudStats copyWith({
@@ -39,6 +44,7 @@ class UserCloudStats {
     int? xpAdsWatchedToday,
     String? xpAdsWatchedDate,
     DateTime? xpAdsCooldownUntil,
+    List<String>? restoredStreakDates,
     bool clearCooldown = false,
   }) {
     return UserCloudStats(
@@ -55,12 +61,13 @@ class UserCloudStats {
       xpAdsCooldownUntil: clearCooldown
           ? null
           : (xpAdsCooldownUntil ?? this.xpAdsCooldownUntil),
+      restoredStreakDates: restoredStreakDates ?? this.restoredStreakDates,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'schemaVersion': 2,
+      'schemaVersion': 3,
       'streakDays': streakDays,
       'longestStreak': longestStreak,
       'totalFocusMinutes': totalFocusMinutes,
@@ -68,9 +75,11 @@ class UserCloudStats {
       'unlockedBadgeIds': unlockedBadgeIds,
       'updatedAt': updatedAt?.toIso8601String(),
       'xpPoints': xpPoints,
+      'gems': xpPoints,
       'xpAdsWatchedToday': xpAdsWatchedToday,
       'xpAdsWatchedDate': xpAdsWatchedDate,
       'xpAdsCooldownUntil': xpAdsCooldownUntil?.toIso8601String(),
+      'restoredStreakDates': restoredStreakDates,
     };
   }
 
@@ -81,10 +90,11 @@ class UserCloudStats {
     final sessions = map['completedSessionsCount'];
     final badgesRaw = map['unlockedBadgeIds'];
     final updatedRaw = map['updatedAt'];
-    final xp = map['xpPoints'];
+    final xp = map['xpPoints'] ?? map['gems'];
     final xpAds = map['xpAdsWatchedToday'];
     final xpDate = map['xpAdsWatchedDate'];
     final cooldownRaw = map['xpAdsCooldownUntil'];
+    final restoredRaw = map['restoredStreakDates'];
 
     return UserCloudStats(
       streakDays: (streak is num) ? streak.toInt() : 0,
@@ -101,6 +111,9 @@ class UserCloudStats {
       xpAdsCooldownUntil: (cooldownRaw is String)
           ? DateTime.tryParse(cooldownRaw)
           : null,
+      restoredStreakDates: (restoredRaw is List)
+          ? List<String>.from(restoredRaw.map((e) => e.toString()))
+          : const <String>[],
     );
   }
 }

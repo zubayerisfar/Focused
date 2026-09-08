@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../focus/providers/focus_provider.dart';
@@ -49,11 +50,14 @@ class TodayScreen extends StatelessWidget {
       ...focusProvider.focusActivityDates(),
       ...habitProvider.habitCompletionDates(),
     };
-    final localStreak = _streakService.calculateCurrentStreak(
+    final streakDetails = _streakService.evaluateStreakDetails(
       now: now,
       activityDates: activityDates,
+      restoredDates: userStats.parsedRestoredStreakDates,
+      debugForceDanger: userStats.debugSimulateStreakInDanger,
     );
-    final streak = math.max(localStreak, userStats.syncedStreakDays);
+    final isInDanger = streakDetails.isInDanger;
+    final streak = math.max(streakDetails.currentStreak, userStats.syncedStreakDays);
 
     final localFocus = focusProvider.totalStoredFocusDuration;
     final effectiveFocus = localFocus > userStats.syncedFocusDuration
@@ -143,6 +147,13 @@ class TodayScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 110),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  if (isInDanger) ...[
+                    _StreakDangerBanner(
+                      streak: streak,
+                      onRestoreTap: () => Navigator.of(context).pushNamed('/streak'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   DailyOverviewCard(
                     focusedToday: focusedToday,
                     focusComparisonPercent: focusComparisonPercent,
@@ -183,4 +194,106 @@ String _formatDuration(Duration duration) {
     return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
   }
   return '${duration.inMinutes}m';
+}
+
+class _StreakDangerBanner extends StatelessWidget {
+  final int streak;
+  final VoidCallback onRestoreTap;
+
+  const _StreakDangerBanner({
+    required this.streak,
+    required this.onRestoreTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF3F1D1D) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withValues(alpha: 0.45),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                '⚠️',
+                style: TextStyle(fontSize: 22),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Streak in Danger! ($streak d)',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Missed yesterday! 1-day grace period ends at 11:59 PM.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => context.push('/streak'),
+            child: const Text(
+              'Restore',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

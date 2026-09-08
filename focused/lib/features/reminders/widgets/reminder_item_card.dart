@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/models/task_recurrence.dart';
 import '../../tasks/providers/task_provider.dart';
+import '../../streak/providers/user_stats_provider.dart';
 
 class ReminderItemCard extends StatelessWidget {
   final Task task;
@@ -100,12 +101,26 @@ class ReminderItemCard extends StatelessWidget {
               const SizedBox(width: 8),
               IconButton(
                 tooltip: isDone ? 'Undo' : 'Complete',
-                onPressed: () {
-                  context.read<TaskProvider>().setCompletedForDate(
+                onPressed: () async {
+                  final willComplete = !isDone;
+                  await context.read<TaskProvider>().setCompletedForDate(
                     task.id,
                     date,
-                    !isDone,
+                    willComplete,
                   );
+                  if (willComplete && context.mounted) {
+                    final stats = context.read<UserStatsProvider>();
+                    await stats.addGems(UserStatsProvider.gemReminderReward);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Color(0xFF10B981),
+                          content: Text('💎 +10 Gems earned!'),
+                        ),
+                      );
+                    }
+                  }
                 },
                 icon: Icon(
                   isDone ? Icons.check_circle_rounded : Icons.circle_outlined,

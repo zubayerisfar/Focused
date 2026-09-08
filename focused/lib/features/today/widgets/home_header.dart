@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 String _initials(String name) {
@@ -17,18 +18,21 @@ class HomeHeader extends StatelessWidget {
   final String? photoUrl;
   final String displayName;
   final int xpPoints;
+  final bool isInDanger;
 
   const HomeHeader({super.key, 
     required this.streak,
     required this.photoUrl,
     required this.displayName,
     required this.xpPoints,
+    this.isInDanger = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
+    final streakColor = isInDanger ? const Color(0xFFEF4444) : const Color(0xFFFF9600);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 2),
@@ -38,14 +42,14 @@ class HomeHeader extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Home',
+                'Focus',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.4,
                 ),
               ),
             ),
-            // XP chip
+            // Gem chip
             InkWell(
               borderRadius: BorderRadius.circular(19),
               onTap: () => context.push('/xp'),
@@ -66,10 +70,10 @@ class HomeHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.bolt_rounded,
-                      size: 20,
-                      color: Color(0xFF1CB0F6),
+                    SvgPicture.asset(
+                      'assets/icon/gem.svg',
+                      width: 18,
+                      height: 18,
                     ),
                     const SizedBox(width: 5),
                     Text(
@@ -93,30 +97,28 @@ class HomeHeader extends StatelessWidget {
                 height: 38,
                 padding: const EdgeInsets.symmetric(horizontal: 13),
                 decoration: BoxDecoration(
-                  color: const Color(
-                    0xFFFF9600,
-                  ).withValues(alpha: isDark ? 0.16 : 0.12),
+                  color: streakColor.withValues(alpha: isDark ? 0.18 : 0.13),
                   borderRadius: BorderRadius.circular(19),
                   border: Border.all(
-                    color: const Color(0xFFFF9600).withValues(alpha: 0.32),
-                    width: 1.2,
+                    color: streakColor.withValues(alpha: isInDanger ? 0.6 : 0.32),
+                    width: isInDanger ? 1.5 : 1.2,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text(
-                      '🔥',
-                      style: TextStyle(fontSize: 16, height: 1.0),
+                    Text(
+                      isInDanger ? '⚠️' : '🔥',
+                      style: const TextStyle(fontSize: 16, height: 1.0),
                     ),
                     const SizedBox(width: 5),
                     Text(
                       '$streak',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFFFF9600),
+                        color: streakColor,
                       ),
                     ),
                   ],

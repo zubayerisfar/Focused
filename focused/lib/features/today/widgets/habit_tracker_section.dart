@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../habits/models/habit.dart';
 import '../../habits/providers/habit_provider.dart';
+import '../../streak/providers/user_stats_provider.dart';
 
 class HabitTrackerSection extends StatelessWidget {
   final List<Habit> habits;
@@ -145,7 +146,23 @@ class _HabitTrackerCard extends StatelessWidget {
               ),
               IconButton(
                 tooltip: complete ? 'Undo' : 'Complete',
-                onPressed: () => provider.toggleCompleted(habit.id, date),
+                onPressed: () async {
+                  final willComplete = !complete;
+                  await provider.toggleCompleted(habit.id, date);
+                  if (willComplete && context.mounted) {
+                    final stats = context.read<UserStatsProvider>();
+                    await stats.addGems(UserStatsProvider.gemHabitReward);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Color(0xFF10B981),
+                          content: Text('💎 +10 Gems earned!'),
+                        ),
+                      );
+                    }
+                  }
+                },
                 icon: Icon(
                   complete ? Icons.check_circle_rounded : Icons.circle_outlined,
                   color: complete ? habit.color : null,

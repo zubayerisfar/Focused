@@ -157,39 +157,13 @@ class TaskDetailsScreen extends StatelessWidget {
 
                 if (newCompleted && context.mounted) {
                   final stats = context.read<UserStatsProvider>();
-                  await stats.addXp(50); // Standard task reward
+                  await stats.addGems(UserStatsProvider.gemTaskReward); // 20 Gems
+
+                  // 5-second interstitial ad on task completion
+                  AdService.instance.showInterstitialAd();
 
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color(0xFF58CC02),
-                        duration: const Duration(seconds: 4),
-                        content: const Row(
-                          children: [Text('🎉 +50 EXP earned!')],
-                        ),
-                        action: SnackBarAction(
-                          textColor: const Color(0xFFFFD700),
-                          label: '📺 DOUBLE EXP (+100)',
-                          onPressed: () {
-                            AdService.instance.showRewardedAd(
-                              onUserEarnedReward: (reward) async {
-                                await stats.addXp(50); // Bonus +50 EXP
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      backgroundColor: Color(0xFF10B981),
-                                      content: Text(
-                                        '⚡ Reward Doubled: +100 EXP total!',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    );
+                    _showTaskCompletionRewardDialog(context, stats);
                   }
                 }
               },
@@ -552,3 +526,145 @@ String _dateQuery(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-'
     '${value.month.toString().padLeft(2, '0')}-'
     '${value.day.toString().padLeft(2, '0')}';
+
+void _showTaskCompletionRewardDialog(BuildContext context, UserStatsProvider stats) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final scheme = Theme.of(context).colorScheme;
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      title: Row(
+        children: const [
+          Text('🎉', style: TextStyle(fontSize: 26)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Task Completed!',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  'assets/icon/gem.svg',
+                  width: 22,
+                  height: 22,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'EARNED +20 GEMS',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Great job! Watch a quick video to double your earnings to +40 Gems.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? const Color(0xFFAFBBC1) : scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actions: [
+        Row(
+          children: [
+            // Smaller, slightly grayed button
+            Expanded(
+              flex: 4,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: Text(
+                  'Claim 20',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? const Color(0xFF64748B) : Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Prominent bold button to double
+            Expanded(
+              flex: 6,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () {
+                  Navigator.pop(dialogCtx);
+                  AdService.instance.showRewardedAd(
+                    onUserEarnedReward: (reward) async {
+                      await stats.addGems(20); // Add +20 bonus gems
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            backgroundColor: Color(0xFF10B981),
+                            content: Text('💎 Reward Doubled: +40 Gems total!'),
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
+                icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
+                label: const Text(
+                  'Double to 40',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}

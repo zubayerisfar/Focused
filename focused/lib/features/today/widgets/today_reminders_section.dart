@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../tasks/providers/task_provider.dart';
+import '../../streak/providers/user_stats_provider.dart';
 
 class TodayRemindersSection extends StatelessWidget {
   final DateTime date;
@@ -143,11 +144,26 @@ class TodayRemindersSection extends StatelessWidget {
                         ),
                         IconButton(
                           tooltip: 'Done',
-                          onPressed: () => taskProvider.setCompletedForDate(
-                            reminder.id,
-                            date,
-                            true,
-                          ),
+                          onPressed: () async {
+                            await taskProvider.setCompletedForDate(
+                              reminder.id,
+                              date,
+                              true,
+                            );
+                            if (context.mounted) {
+                              final stats = context.read<UserStatsProvider>();
+                              await stats.addGems(UserStatsProvider.gemReminderReward);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    duration: Duration(seconds: 2),
+                                    backgroundColor: Color(0xFF10B981),
+                                    content: Text('💎 +10 Gems earned!'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
                           icon: const Icon(Icons.circle_outlined),
                         ),
                       ],

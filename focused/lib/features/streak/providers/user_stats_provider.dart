@@ -17,18 +17,51 @@ class UserStatsProvider extends ChangeNotifier {
   List<String> get unlockedBadgeIds => _stats.unlockedBadgeIds;
 
   // ──────────────────────────────────────
-  // XP System
+  // Gem / XP System
   // ──────────────────────────────────────
 
-  static const int xpPerRewardedAd = 100;
-  static const int xpPerXpPageAd = 500;
+  static const int gemsPerRewardedAd = 100;
+  static const int gemsPerXpPageAd = 100;
   static const int xpAdsPerDay = 2;
-  static const int xpStreakRestoreCost = 2000;
+  static const int gemStreakRestoreCost = 500;
+  static const int gemTaskReward = 20;
+  static const int gemHabitReward = 10;
+  static const int gemReminderReward = 10;
+  static const int gemSquadTaskReward = 50;
+  static const int gemSquadTaskDoubleReward = 100;
   static const Duration xpAdsCooldownDuration = Duration(hours: 6);
 
+  // Backward-compat aliases
+  static const int xpPerRewardedAd = gemsPerRewardedAd;
+  static const int xpPerXpPageAd = gemsPerXpPageAd;
+  static const int xpStreakRestoreCost = gemStreakRestoreCost;
+
+  int get gems => _stats.xpPoints;
   int get xpPoints => _stats.xpPoints;
 
   DateTime? get xpAdsCooldownUntil => _stats.xpAdsCooldownUntil;
+
+  /// Restored calendar dates (yyyy-MM-dd)
+  List<String> get restoredStreakDates => _stats.restoredStreakDates;
+
+  Set<DateTime> get parsedRestoredStreakDates {
+    return _stats.restoredStreakDates
+        .map((str) => DateTime.tryParse(str))
+        .whereType<DateTime>()
+        .map((dt) => DateTime(dt.year, dt.month, dt.day))
+        .toSet();
+  }
+
+  // ──────────────────────────────────────
+  // QA Testing: Streak In Danger Simulation
+  // ──────────────────────────────────────
+  bool _debugSimulateStreakInDanger = false;
+  bool get debugSimulateStreakInDanger => _debugSimulateStreakInDanger;
+
+  void setDebugSimulateStreakInDanger(bool value) {
+    _debugSimulateStreakInDanger = value;
+    notifyListeners();
+  }
 
   /// Whether user is currently in the 6-hour cooldown block
   bool get isXpAdInCooldown {
@@ -45,9 +78,8 @@ class UserStatsProvider extends ChangeNotifier {
     return diff.isNegative ? Duration.zero : diff;
   }
 
-  /// How many XP-page ads have been watched in the current batch (resets after cooldown or if expired)
+  /// How many Gem/XP-page ads have been watched in the current batch (resets after cooldown or if expired)
   int get xpAdsWatchedToday {
-    // If cooldown was active and has now passed, the batch has expired
     final until = _stats.xpAdsCooldownUntil;
     if (until != null && DateTime.now().isAfter(until)) {
       return 0;
@@ -82,21 +114,27 @@ class UserStatsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Add XP (e.g., from watching a rewarded ad)
-  Future<void> addXp(int amount) async {
+  /// Add Gems
+  Future<void> addGems(int amount) async {
     final updated = _stats.copyWith(xpPoints: _stats.xpPoints + amount);
     await updateStats(updated);
   }
 
-  /// Spend XP — returns true if successful (enough balance)
-  Future<bool> spendXp(int amount) async {
+  /// Spend Gems — returns true if successful (enough balance)
+  Future<bool> spendGems(int amount) async {
     if (_stats.xpPoints < amount) return false;
     final updated = _stats.copyWith(xpPoints: _stats.xpPoints - amount);
     await updateStats(updated);
     return true;
   }
 
-  /// Record a watched XP-page ad — increments count, and triggers 6-hour block if 2 ads reached
+  /// Add XP (alias for gems)
+  Future<void> addXp(int amount) => addGems(amount);
+
+  /// Spend XP (alias for gems)
+  Future<bool> spendXp(int amount) => spendGems(amount);
+
+  /// Record a watched Gem-page ad — increments count, and triggers 6-hour block if 2 ads reached
   Future<void> recordXpAdWatched() async {
     // Check if previous cooldown expired
     final until = _stats.xpAdsCooldownUntil;
@@ -115,19 +153,52 @@ class UserStatsProvider extends ChangeNotifier {
       xpAdsWatchedToday: triggersCooldown ? 0 : newCount,
       xpAdsCooldownUntil: cooldownUntil,
       clearCooldown: !triggersCooldown,
-      // Grant XP
-      xpPoints: _stats.xpPoints + xpPerXpPageAd,
+      // Grant Gems
+      xpPoints: _stats.xpPoints + gemsPerXpPageAd,
     );
     await updateStats(updated);
   }
 
-  /// Restore streak using XP — returns true if successful
-  Future<bool> restoreStreakWithXp() async {
-    if (_stats.xpPoints < xpStreakRestoreCost) return false;
+  /// Restore streak using Rewarded Ad — repairs the missed day
+  Future<bool> restoreStreakWithAd(DateTime missedDate) async {
+    final dateStr = _formatDateKey(missedDate);
+    final restored = List<String>.from(_stats.restoredStreakDates);
+    if (!restored.contains(dateStr)) {
+      restored.add(dateStr);
+    }
+    _debugSimulateStreakInDanger = false;
+    final updated = _stats.copyWith(restoredStreakDates: restored);
+    await updateStats(updated);
+    return true;
+  }
+
+  /// Restore streak using 500 Gems — repairs the missed day
+  Future<bool> restoreStreakWithGems(DateTime missedDate) async {
+    if (_stats.xpPoints < gemStreakRestoreCost) return false;
+    final dateStr = _formatDateKey(missedDate);
+    final restored = List<String>.from(_stats.restoredStreakDates);
+    if (!restored.contains(dateStr)) {
+      restored.add(dateStr);
+    }
+    _debugSimulateStreakInDanger = false;
     final updated = _stats.copyWith(
-      xpPoints: _stats.xpPoints - xpStreakRestoreCost,
+      xpPoints: _stats.xpPoints - gemStreakRestoreCost,
+      restoredStreakDates: restored,
     );
     await updateStats(updated);
     return true;
+  }
+
+  /// Restore streak using XP (legacy method)
+  Future<bool> restoreStreakWithXp([DateTime? missedDate]) async {
+    final targetDate = missedDate ?? DateTime.now().subtract(const Duration(days: 1));
+    return restoreStreakWithGems(targetDate);
+  }
+
+  String _formatDateKey(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
   }
 }

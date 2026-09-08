@@ -532,9 +532,13 @@ class ProfileScreen extends StatelessWidget {
                 isDark: isDark,
               ),
               _StatGridCard(
-                icon: '⚡',
-                value: '$xp Points',
-                label: 'XP Points',
+                iconWidget: SvgPicture.asset(
+                  'assets/icon/gem.svg',
+                  width: 24,
+                  height: 24,
+                ),
+                value: '$xp Gems',
+                label: 'Gems',
                 isDark: isDark,
               ),
             ],

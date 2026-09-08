@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -25,13 +26,13 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+    _pulseAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Periodic timer to keep cooldown countdown updated live every second
+    // Periodic timer to tick remaining cooldown every second
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final stats = context.read<UserStatsProvider>();
       if (stats.isXpAdInCooldown && mounted) {
@@ -42,18 +43,18 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _cooldownTimer?.cancel();
     _pulseController.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final stats = context.watch<UserStatsProvider>();
-    final xp = stats.xpPoints;
+    final gems = stats.gems;
     final adsWatched = stats.xpAdsWatchedToday;
     final canWatch = stats.canWatchXpAdToday;
-    final canRestore = xp >= UserStatsProvider.xpStreakRestoreCost;
+    final canRestore = gems >= UserStatsProvider.gemStreakRestoreCost;
     final isCooldown = stats.isXpAdInCooldown;
     final remainingCooldown = stats.xpAdRemainingCooldown;
     final adsLeft = isCooldown
@@ -62,7 +63,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('XP Points'),
+        title: const Text('Gems & Rewards'),
         centerTitle: false,
         titleTextStyle: Theme.of(
           context,
@@ -73,40 +74,40 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── XP Balance Card ──────────────────────────────────
-            _XpBalanceCard(xp: xp, pulseAnimation: _pulseAnimation),
+            // ── Gem Balance Card ──────────────────────────────────
+            _XpBalanceCard(xp: gems, pulseAnimation: _pulseAnimation),
             const SizedBox(height: 24),
 
-            // ── What is XP? ──────────────────────────────────────
-            _SectionLabel('What is XP?'),
+            // ── What are Gems? ──────────────────────────────────────
+            _SectionLabel('What are Gems?'),
             const SizedBox(height: 10),
             _InfoCard(
               children: const [
                 _InfoRow(
-                  icon: FontAwesomeIcons.bolt,
-                  iconColor: Color(0xFFFFB300),
+                  icon: FontAwesomeIcons.gem,
+                  iconColor: Color(0xFF1CB0F6),
                   text:
-                      'XP (Experience Points) are earned by watching 30-second reward video ads.',
+                      'Gems are earned by finishing tasks, habits, and watching reward video ads.',
                 ),
                 SizedBox(height: 12),
                 _InfoRow(
                   icon: FontAwesomeIcons.fire,
                   iconColor: Colors.deepOrange,
-                  text: 'Use 2,000 XP to restore a broken productivity streak.',
+                  text: 'Use 500 Gems to restore a broken or frozen productivity streak.',
                 ),
                 SizedBox(height: 12),
                 _InfoRow(
                   icon: FontAwesomeIcons.circleCheck,
                   iconColor: Colors.green,
                   text:
-                      'Earn 500 XP per ad · Watch 2 ads, then unlock again after a 6-hour break.',
+                      'Earn 100 Gems per ad · Watch 2 ads, then unlock again after a 6-hour break.',
                 ),
               ],
             ),
             const SizedBox(height: 28),
 
-            // ── Earn XP Section ───────────────────────────────────
-            _SectionLabel('Earn XP Today'),
+            // ── Earn Gems Section ───────────────────────────────────
+            _SectionLabel('Earn Gems Today'),
             const SizedBox(height: 10),
             _EarnXpCard(
               adsWatched: adsWatched,
@@ -123,7 +124,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
             _SectionLabel('Streak Restore'),
             const SizedBox(height: 10),
             _StreakRestoreCard(
-              xp: xp,
+              xp: gems,
               canRestore: canRestore && !_restoringStreak,
               isLoading: _restoringStreak,
               onRestore: _onRestoreStreak,
@@ -144,7 +145,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
       onUserEarnedReward: (reward) {
         if (!mounted) return;
         stats.recordXpAdWatched();
-        _showSnack('+${UserStatsProvider.xpPerXpPageAd} XP earned! 🎉');
+        _showSnack('+${UserStatsProvider.gemsPerXpPageAd} Gems earned! 🎉');
       },
       onAdDismissed: () {
         if (mounted) setState(() => _watchingAd = false);
@@ -154,7 +155,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
 
   void _onRestoreStreak() async {
     final stats = context.read<UserStatsProvider>();
-    if (stats.xpPoints < UserStatsProvider.xpStreakRestoreCost) return;
+    if (stats.gems < UserStatsProvider.gemStreakRestoreCost) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -168,8 +169,8 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
           ],
         ),
         content: Text(
-          'This will spend 2,000 XP to restore your productivity streak. '
-          'You currently have ${stats.xpPoints} XP.',
+          'This will spend 500 Gems to restore your productivity streak. '
+          'You currently have ${stats.gems} Gems.',
         ),
         actions: [
           TextButton(
@@ -178,7 +179,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Spend 2,000 XP'),
+            child: const Text('Spend 500 Gems'),
           ),
         ],
       ),
@@ -192,9 +193,9 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
     setState(() => _restoringStreak = false);
 
     if (success) {
-      _showSnack('🔥 Streak restored! −2,000 XP spent.');
+      _showSnack('🔥 Streak restored! −500 Gems spent.');
     } else {
-      _showSnack('Not enough XP.');
+      _showSnack('Not enough Gems.');
     }
   }
 
@@ -211,7 +212,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
 }
 
 // ─────────────────────────────────────────────────────────────
-// XP Balance Card
+// Gem Balance Card
 // ─────────────────────────────────────────────────────────────
 
 class _XpBalanceCard extends StatelessWidget {
@@ -227,15 +228,15 @@ class _XpBalanceCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFFFF8E1), Color(0xFFFFECB3)],
+          colors: [Color(0xFFE0F2FE), Color(0xFFBAE6FD)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFFFCA28).withOpacity(0.5)),
+        border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFB300).withOpacity(0.18),
+            color: const Color(0xFF0284C7).withValues(alpha: 0.15),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -249,21 +250,21 @@ class _XpBalanceCard extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFCA28),
+                color: const Color(0xFF0284C7),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFB300).withOpacity(0.4),
+                    color: const Color(0xFF0369A1).withValues(alpha: 0.35),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
                 ],
               ),
-              child: const Center(
-                child: FaIcon(
-                  FontAwesomeIcons.bolt,
-                  color: Colors.white,
-                  size: 36,
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/icon/gem.svg',
+                  width: 44,
+                  height: 44,
                 ),
               ),
             ),
@@ -274,18 +275,18 @@ class _XpBalanceCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF5D4037),
+              color: Color(0xFF0C4A6E),
               letterSpacing: -1.5,
               height: 1,
             ),
           ),
           const SizedBox(height: 4),
           const Text(
-            'XP Points',
+            'Gems',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF795548),
+              color: Color(0xFF0369A1),
               letterSpacing: 0.5,
             ),
           ),
@@ -503,9 +504,9 @@ class _StreakRestoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final xpNeeded = UserStatsProvider.xpStreakRestoreCost;
-    final deficit = (xpNeeded - xp).clamp(0, xpNeeded);
-    final canAfford = xp >= xpNeeded;
+    final gemCost = UserStatsProvider.gemStreakRestoreCost;
+    final deficit = (gemCost - xp).clamp(0, gemCost);
+    final canAfford = xp >= gemCost;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -551,8 +552,8 @@ class _StreakRestoreCard extends StatelessWidget {
                     ),
                     Text(
                       canAfford
-                          ? 'Tap to spend $xpNeeded XP and recover your streak'
-                          : 'Need ${deficit} more XP to unlock',
+                          ? 'Tap to spend $gemCost Gems and recover your streak'
+                          : 'Need $deficit more Gems to unlock',
                       style: TextStyle(
                         fontSize: 13,
                         color: scheme.onSurfaceVariant,
@@ -565,17 +566,17 @@ class _StreakRestoreCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
-          // XP cost display
+          // Gem cost display
           Row(
             children: [
-              const FaIcon(
-                FontAwesomeIcons.bolt,
-                size: 14,
-                color: Color(0xFFFFB300),
+              SvgPicture.asset(
+                'assets/icon/gem.svg',
+                width: 16,
+                height: 16,
               ),
               const SizedBox(width: 6),
               Text(
-                '$xpNeeded XP required',
+                '$gemCost Gems required',
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF5D4037),
@@ -583,7 +584,7 @@ class _StreakRestoreCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                'Your balance: $xp XP',
+                'Your balance: $xp Gems',
                 style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
@@ -594,10 +595,10 @@ class _StreakRestoreCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
-                value: xp / xpNeeded,
+                value: xp / gemCost,
                 minHeight: 7,
                 backgroundColor: scheme.outlineVariant,
-                valueColor: const AlwaysStoppedAnimation(Color(0xFFFFB300)),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF0284C7)),
               ),
             ),
           ],
@@ -624,8 +625,8 @@ class _StreakRestoreCard extends StatelessWidget {
                 isLoading
                     ? 'Restoring…'
                     : canAfford
-                    ? 'Restore Streak (−2,000 XP)'
-                    : 'Not Enough XP',
+                    ? 'Restore Streak (−$gemCost Gems)'
+                    : 'Not Enough Gems',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),

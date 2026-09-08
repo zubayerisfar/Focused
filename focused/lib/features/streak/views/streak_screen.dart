@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/services/ad_service.dart';
 import '../models/achievement_badge.dart';
 import '../../focus/providers/focus_provider.dart';
 import '../../habits/providers/habit_provider.dart';
@@ -25,6 +27,7 @@ class StreakScreen extends StatefulWidget {
 class _StreakScreenState extends State<StreakScreen> {
   static const _streakService = ProductivityStreakService();
   static const _achievementService = AchievementService();
+  bool _isRestoring = false;
 
   late DateTime _visibleMonth = DateTime(
     DateTime.now().year,
@@ -49,16 +52,16 @@ class _StreakScreenState extends State<StreakScreen> {
         .map((date) => DateTime(date.year, date.month, date.day))
         .toSet();
 
-    final localCurrent = _streakService.calculateCurrentStreak(
+    final streakDetails = _streakService.evaluateStreakDetails(
       now: now,
       activityDates: activityDates,
+      restoredDates: userStats.parsedRestoredStreakDates,
+      debugForceDanger: userStats.debugSimulateStreakInDanger,
     );
-    final localLongest = _streakService.calculateLongestStreak(
-      activityDates: activityDates,
-    );
-    final current = math.max(localCurrent, userStats.syncedStreakDays);
+    final isInDanger = streakDetails.isInDanger;
+    final current = math.max(streakDetails.currentStreak, userStats.syncedStreakDays);
     final longest = math.max(
-      math.max(localLongest, userStats.syncedLongestStreak),
+      math.max(streakDetails.longestStreak, userStats.syncedLongestStreak),
       current,
     );
 
@@ -79,7 +82,13 @@ class _StreakScreenState extends State<StreakScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Streak'),
+        title: Text(
+          isInDanger ? 'Streak (In Danger)' : 'Streak',
+          style: TextStyle(
+            color: isInDanger ? const Color(0xFFEF4444) : null,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: 'All badges',
@@ -91,7 +100,60 @@ class _StreakScreenState extends State<StreakScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
         children: [
-          _StreakHero(current: current, longest: longest),
+          if (isInDanger) ...[
+            _StreakDangerRestoreCard(
+              missedDate: streakDetails.missedDate ?? now.subtract(const Duration(days: 1)),
+              gems: userStats.gems,
+              isRestoring: _isRestoring,
+              onWatchAdRestore: () {
+                setState(() => _isRestoring = true);
+                AdService.instance.showRewardedAd(
+                  onUserEarnedReward: (reward) async {
+                    final targetDate = streakDetails.missedDate ?? now.subtract(const Duration(days: 1));
+                    await userStats.restoreStreakWithAd(targetDate);
+                    if (mounted) {
+                      setState(() => _isRestoring = false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Color(0xFF10B981),
+                          content: Text('🔥 Streak Restored Successfully! Yesterday repaired.'),
+                        ),
+                      );
+                    }
+                  },
+                  onAdDismissed: () {
+                    if (mounted) setState(() => _isRestoring = false);
+                  },
+                );
+              },
+              onGemsRestore: () async {
+                if (userStats.gems < UserStatsProvider.gemStreakRestoreCost) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Not enough gems. You need 500 gems to restore streak.'),
+                    ),
+                  );
+                  return;
+                }
+                setState(() => _isRestoring = true);
+                final targetDate = streakDetails.missedDate ?? now.subtract(const Duration(days: 1));
+                final success = await userStats.restoreStreakWithGems(targetDate);
+                if (mounted) {
+                  setState(() => _isRestoring = false);
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        backgroundColor: Color(0xFF10B981),
+                        content: Text('🔥 Streak Restored! 500 Gems spent.'),
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+          _StreakHero(current: current, longest: longest, isInDanger: isInDanger),
           const SizedBox(height: 24),
           _MonthCalendar(
             month: _visibleMonth,
@@ -196,20 +258,38 @@ class _StreakScreenState extends State<StreakScreen> {
 }
 
 class _StreakHero extends StatelessWidget {
-  const _StreakHero({required this.current, required this.longest});
+  const _StreakHero({
+    required this.current,
+    required this.longest,
+    this.isInDanger = false,
+  });
 
   final int current;
   final int longest;
+  final bool isInDanger;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final primaryColor = isInDanger ? const Color(0xFFEF4444) : const Color(0xFFFF7A45);
+    final gradientColors = isInDanger
+        ? const [Color(0xFFF87171), Color(0xFFDC2626)]
+        : const [Color(0xFFFFD600), Color(0xFFFF7043)];
+    final shadowColor = isInDanger
+        ? const Color(0xFFDC2626).withValues(alpha: 0.35)
+        : const Color(0xFFFF8A3D).withValues(alpha: 0.28);
+
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(
+          color: isInDanger
+              ? const Color(0xFFEF4444).withValues(alpha: 0.5)
+              : Theme.of(context).dividerColor,
+          width: isInDanger ? 1.5 : 1.0,
+        ),
       ),
       child: Row(
         children: [
@@ -221,14 +301,15 @@ class _StreakHero extends StatelessWidget {
                   '$current',
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFFF7A45),
+                    color: primaryColor,
                   ),
                 ),
                 Text(
-                  'day streak',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  isInDanger ? 'streak in danger!' : 'day streak',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: isInDanger ? const Color(0xFFEF4444) : null,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -247,20 +328,177 @@ class _StreakHero extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFFFD600), Color(0xFFFF7043)],
+                colors: gradientColors,
               ),
               boxShadow: [
                 BoxShadow(
                   blurRadius: 24,
                   offset: const Offset(0, 10),
-                  color: const Color(0xFFFF8A3D).withOpacity(0.28),
+                  color: shadowColor,
                 ),
               ],
             ),
-            child: const Text('🔥', style: TextStyle(fontSize: 58)),
+            child: Text(
+              isInDanger ? '⚠️' : '🔥',
+              style: const TextStyle(fontSize: 58),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StreakDangerRestoreCard extends StatelessWidget {
+  final DateTime missedDate;
+  final int gems;
+  final bool isRestoring;
+  final VoidCallback onWatchAdRestore;
+  final VoidCallback onGemsRestore;
+
+  const _StreakDangerRestoreCard({
+    required this.missedDate,
+    required this.gems,
+    required this.isRestoring,
+    required this.onWatchAdRestore,
+    required this.onGemsRestore,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dayFormat = DateFormat('EEEE, MMM d').format(missedDate);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF3F1D1D) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withValues(alpha: 0.14),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('⚠️', style: TextStyle(fontSize: 24)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Streak Frozen & In Danger!',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Missed task on $dayFormat',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'You get 1 full calendar day to restore your streak before it resets to 0! Watch a reward ad or spend 500 gems to repair yesterday.',
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.4,
+              color: isDark ? Colors.white70 : const Color(0xFF7F1D1D),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: isRestoring ? null : onWatchAdRestore,
+              icon: isRestoring
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.play_circle_fill_rounded, size: 22),
+              label: Text(
+                isRestoring ? 'Restoring Streak…' : 'Watch Ad to Restore Streak',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14.5,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: isRestoring ? null : onGemsRestore,
+              icon: SvgPicture.asset(
+                'assets/icon/gem.svg',
+                width: 18,
+                height: 18,
+              ),
+              label: Text(
+                'Restore for 500 Gems (Balance: $gems)',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+            ),
           ),
         ],
       ),

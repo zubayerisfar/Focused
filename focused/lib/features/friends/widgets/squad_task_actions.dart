@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -158,7 +159,7 @@ class SquadTaskActions {
                     ),
                   ),
                   child: const Text(
-                    'I Finished It • Claim EXP',
+                    'I Finished It • Claim Gems',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   onPressed: () => Navigator.pop(bCtx, 'complete'),
@@ -188,7 +189,7 @@ class SquadTaskActions {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
 
-    // Show Double XP Offer Dialog
+    // Show Double Gems Offer Dialog
     final shouldWatchVideo = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -215,14 +216,14 @@ class SquadTaskActions {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                  colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFB300).withValues(alpha: 0.35),
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.35),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -230,15 +231,19 @@ class SquadTaskActions {
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.bolt_rounded, color: Colors.white, size: 28),
-                  SizedBox(width: 8),
-                  Text(
-                    'DOUBLE XP: 400 EXP',
+                children: [
+                  SvgPicture.asset(
+                    'assets/icon/gem.svg',
+                    width: 24,
+                    height: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'DOUBLE GEMS: 100 GEMS',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
-                      fontSize: 16,
+                      fontSize: 15,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -247,7 +252,7 @@ class SquadTaskActions {
             ),
             const SizedBox(height: 14),
             Text(
-              'You earned +200 EXP! Watch a quick video to double your reward to 400 EXP and climb the leaderboard faster.',
+              'You earned +50 Gems! Watch a quick video to double your reward to 100 Gems and climb the leaderboard faster.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13.5,
@@ -263,23 +268,32 @@ class SquadTaskActions {
         actions: [
           Row(
             children: [
+              // Smaller, slightly grayed button
               Expanded(
+                flex: 4,
                 child: TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: () => Navigator.pop(dialogCtx, false),
                   child: Text(
-                    'Claim 200 EXP',
+                    'Claim 50 Gems',
                     style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      color: isDark ? const Color(0xFF64748B) : Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
+              // Prominent bold button to double
               Expanded(
+                flex: 6,
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8F00),
+                    backgroundColor: const Color(0xFF0284C7),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -289,7 +303,7 @@ class SquadTaskActions {
                   onPressed: () => Navigator.pop(dialogCtx, true),
                   icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
                   label: const Text(
-                    'Double to 400',
+                    'Double to 100',
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 13.5,
@@ -304,31 +318,31 @@ class SquadTaskActions {
     );
 
     if (shouldWatchVideo == true) {
-      // User chose to watch video for double XP (400 EXP)
+      // User chose to watch video for double gems (100 Gems)
       AdService.instance.showRewardedAd(
         onUserEarnedReward: (reward) async {
-          // Complete task with full 400 EXP
+          // Complete task with full 100 Gems
           await taskMateProvider.completeTask(
             groupId: group.id,
             taskIndex: taskIndex,
-            xpAward: 400,
+            xpAward: 100,
           );
 
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                backgroundColor: const Color(0xFFFF8F00),
+                backgroundColor: const Color(0xFF0284C7),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 content: Row(
-                  children: const [
-                    Text('⚡', style: TextStyle(fontSize: 24)),
-                    SizedBox(width: 10),
-                    Expanded(
+                  children: [
+                    SvgPicture.asset('assets/icon/gem.svg', width: 22, height: 22),
+                    const SizedBox(width: 10),
+                    const Expanded(
                       child: Text(
-                        'Awesome! 400 EXP added & synced to your account!',
+                        'Awesome! 100 Gems added & synced to your account!',
                         style: TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 14.5,
@@ -343,7 +357,7 @@ class SquadTaskActions {
           }
         },
         onAdDismissed: () async {
-          // If ad was dismissed or not ready, ensure task is completed with 200 EXP
+          // If ad was dismissed or not ready, ensure task is completed with 50 Gems
           final task = group.activeTasks.length > taskIndex
               ? group.activeTasks[taskIndex]
               : null;
@@ -352,23 +366,23 @@ class SquadTaskActions {
             await taskMateProvider.completeTask(
               groupId: group.id,
               taskIndex: taskIndex,
-              xpAward: 200,
+              xpAward: 50,
             );
           }
         },
       );
     } else {
-      // Standard completion (+200 EXP)
+      // Standard completion (+50 Gems)
       await taskMateProvider.completeTask(
         groupId: group.id,
         taskIndex: taskIndex,
-        xpAward: 200,
+        xpAward: 50,
       );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: const Color(0xFF58CC02),
+            backgroundColor: const Color(0xFF10B981),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),

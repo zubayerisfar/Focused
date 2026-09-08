@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -22,7 +23,7 @@ String _initials(String name) {
   return (words.first[0] + words.last[0]).toUpperCase();
 }
 
-/// Reusable top-bar component that displays XP chip, Streak chip, and profile avatar
+/// Reusable top-bar component that displays Gem chip, Streak chip, and profile avatar
 class ProfileStreakXpBar extends StatelessWidget {
   final bool showProfile;
   final double avatarRadius;
@@ -30,15 +31,16 @@ class ProfileStreakXpBar extends StatelessWidget {
   const ProfileStreakXpBar({
     super.key,
     this.showProfile = true,
-    this.avatarRadius = 19,
+    this.avatarRadius = 20,
   });
 
   static const _streakService = ProductivityStreakService();
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final scheme = theme.colorScheme;
 
     final taskProvider = context.watch<TaskProvider>();
     final focusProvider = context.watch<FocusProvider>();
@@ -52,23 +54,28 @@ class ProfileStreakXpBar extends StatelessWidget {
       ...focusProvider.focusActivityDates(),
       ...habitProvider.habitCompletionDates(),
     };
-    final localStreak = _streakService.calculateCurrentStreak(
+    final streakDetails = _streakService.evaluateStreakDetails(
       now: now,
       activityDates: activityDates,
+      restoredDates: userStats.parsedRestoredStreakDates,
+      debugForceDanger: userStats.debugSimulateStreakInDanger,
     );
-    final streak = math.max(localStreak, userStats.syncedStreakDays);
-    final xpPoints = userStats.xpPoints;
+    final isInDanger = streakDetails.isInDanger;
+    final streak = math.max(streakDetails.currentStreak, userStats.syncedStreakDays);
+    final gems = userStats.gems;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final compact = screenWidth < 380;
     final chipPadding = EdgeInsets.symmetric(horizontal: compact ? 8 : 12);
     final chipGap = compact ? 5.0 : 8.0;
 
+    final streakColor = isInDanger ? const Color(0xFFEF4444) : const Color(0xFFFF9600);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // XP chip
+        // Gem chip
         InkWell(
           borderRadius: BorderRadius.circular(19),
           onTap: () => context.push('/xp'),
@@ -89,14 +96,14 @@ class ProfileStreakXpBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.bolt_rounded,
-                  size: 20,
-                  color: Color(0xFF1CB0F6),
+                SvgPicture.asset(
+                  'assets/icon/gem.svg',
+                  width: 18,
+                  height: 18,
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  '$xpPoints',
+                  '$gems',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -118,27 +125,28 @@ class ProfileStreakXpBar extends StatelessWidget {
             height: 38,
             padding: chipPadding,
             decoration: BoxDecoration(
-              color: const Color(
-                0xFFFF9600,
-              ).withValues(alpha: isDark ? 0.16 : 0.12),
+              color: streakColor.withValues(alpha: isDark ? 0.18 : 0.13),
               borderRadius: BorderRadius.circular(19),
               border: Border.all(
-                color: const Color(0xFFFF9600).withValues(alpha: 0.32),
-                width: 1.2,
+                color: streakColor.withValues(alpha: isInDanger ? 0.6 : 0.32),
+                width: isInDanger ? 1.5 : 1.2,
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text('🔥', style: TextStyle(fontSize: 16, height: 1.0)),
+                Text(
+                  isInDanger ? '⚠️' : '🔥',
+                  style: const TextStyle(fontSize: 16, height: 1.0),
+                ),
                 const SizedBox(width: 5),
                 Text(
                   '$streak',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFFF9600),
+                    color: streakColor,
                   ),
                 ),
               ],
