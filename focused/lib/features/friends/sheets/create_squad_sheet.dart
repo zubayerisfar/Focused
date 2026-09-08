@@ -84,7 +84,7 @@ void showCreateGroupDialog(BuildContext context) {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Partner with up to 4 friends (up to 5 members total). Squad members can share up to 3 active tasks and earn double EXP (+200 EXP)!',
+                    'Partner with up to 4 friends (up to 5 members total). Squad members can share up to 3 active tasks and earn 50 Gems (+100 Gems with ad)!',
                     style: TextStyle(
                       fontFamily: 'Quicksand',
                       color: isDark

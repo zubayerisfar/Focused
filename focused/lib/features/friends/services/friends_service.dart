@@ -45,6 +45,7 @@ class FriendsService {
       'photoUrl': photoUrl,
       'streakDays': streakDays,
       'xpPoints': xpPoints,
+      'gems': xpPoints,
       'totalFocusMinutes': totalFocusMinutes,
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -607,6 +608,7 @@ class FriendsService {
       'photoUrl': targetUser.photoUrl,
       'streakDays': targetUser.streakDays,
       'xpPoints': targetUser.xpPoints,
+      'gems': targetUser.xpPoints,
       'followedAt': FieldValue.serverTimestamp(),
     });
 
@@ -624,6 +626,7 @@ class FriendsService {
       'photoUrl': myPhotoUrl,
       'streakDays': myStreakDays,
       'xpPoints': myXpPoints,
+      'gems': myXpPoints,
       'followedAt': FieldValue.serverTimestamp(),
     });
 
@@ -909,10 +912,10 @@ class FriendsService {
   }
 
   // ===========================================================================
-  // EXP GIFTING & CLAIMING
+  // GEMS / GIFTING & CLAIMING
   // ===========================================================================
 
-  /// Sends a 50 EXP gift to a friend
+  /// Sends a Gems gift to a friend
   Future<void> sendExpGift({
     required String currentUid,
     required String fromName,
@@ -921,47 +924,69 @@ class FriendsService {
     int amount = 50,
   }) async {
     final cleanUsername = fromUsername.replaceAll('@', '').trim();
-    await _firestore
-        .collection('users')
-        .doc(targetUid)
-        .collection('exp_gifts')
-        .add({
-          'fromUid': currentUid,
-          'fromName': fromName,
-          'fromUsername': cleanUsername,
-          'amount': amount,
-          'claimed': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+    final data = {
+      'fromUid': currentUid,
+      'fromName': fromName,
+      'fromUsername': cleanUsername,
+      'amount': amount,
+      'claimed': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+    // Write to both gem_gifts and exp_gifts for backwards compatibility
+    await Future.wait([
+      _firestore
+          .collection('users')
+          .doc(targetUid)
+          .collection('gem_gifts')
+          .add(data),
+      _firestore
+          .collection('users')
+          .doc(targetUid)
+          .collection('exp_gifts')
+          .add(data),
+    ]);
   }
 
-  /// Streams unclaimed EXP gifts for the current user
+  /// Streams unclaimed Gems gifts for the current user
   Stream<List<ExpGift>> streamUnclaimedExpGifts(String currentUid) {
     if (currentUid.isEmpty) return Stream.value(const []);
     return _firestore
         .collection('users')
         .doc(currentUid)
-        .collection('exp_gifts')
+        .collection('gem_gifts')
         .where('claimed', isEqualTo: false)
         .snapshots()
         .map((snap) {
-          return snap.docs
-              .map((d) => ExpGift.fromMap(d.data(), docId: d.id))
-              .toList();
+          if (snap.docs.isNotEmpty) {
+            return snap.docs
+                .map((d) => ExpGift.fromMap(d.data(), docId: d.id))
+                .toList();
+          }
+          return <ExpGift>[];
         });
   }
 
-  /// Marks an EXP gift as claimed
+  /// Marks a gift as claimed
   Future<void> claimExpGift({
     required String currentUid,
     required String giftId,
   }) async {
-    await _firestore
-        .collection('users')
-        .doc(currentUid)
-        .collection('exp_gifts')
-        .doc(giftId)
-        .update({'claimed': true});
+    await Future.wait([
+      _firestore
+          .collection('users')
+          .doc(currentUid)
+          .collection('gem_gifts')
+          .doc(giftId)
+          .update({'claimed': true})
+          .catchError((_) {}),
+      _firestore
+          .collection('users')
+          .doc(currentUid)
+          .collection('exp_gifts')
+          .doc(giftId)
+          .update({'claimed': true})
+          .catchError((_) {}),
+    ]);
   }
 
   // ===========================================================================

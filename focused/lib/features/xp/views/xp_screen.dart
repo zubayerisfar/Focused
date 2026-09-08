@@ -466,7 +466,7 @@ class _EarnXpCard extends StatelessWidget {
                   : FaIcon(
                       isCooldown
                           ? FontAwesomeIcons.lock
-                          : FontAwesomeIcons.bolt,
+                          : FontAwesomeIcons.play,
                       size: 14,
                     ),
               label: Text(
@@ -475,7 +475,7 @@ class _EarnXpCard extends StatelessWidget {
                     : isCooldown
                     ? 'Opens in ${_formatRemainingCooldown(remainingCooldown)}'
                     : canWatch
-                    ? 'Watch 30s Ad (+${UserStatsProvider.xpPerXpPageAd} XP)'
+                    ? 'Earn ${UserStatsProvider.gemsPerXpPageAd} Gems'
                     : 'Break in Progress',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),

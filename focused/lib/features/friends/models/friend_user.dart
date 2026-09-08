@@ -82,6 +82,7 @@ class FriendUser {
       'photoUrl': photoUrl,
       'streakDays': streakDays,
       'xpPoints': xpPoints,
+      'gems': xpPoints,
       'totalFocusMinutes': totalFocusMinutes,
       'isFollowing': isFollowing,
       if (lastNudgedAt != null) 'lastNudgedAt': lastNudgedAt!.toIso8601String(),
@@ -107,13 +108,15 @@ class FriendUser {
       return null;
     }
 
+    final gemsVal = map['gems'] ?? map['xpPoints'];
+
     return FriendUser(
       uid: (docId ?? map['uid'] ?? '').toString(),
       displayName: (map['displayName'] ?? 'Focused User').toString(),
       username: rawUsername,
       photoUrl: map['photoUrl']?.toString(),
       streakDays: (map['streakDays'] as num?)?.toInt() ?? 0,
-      xpPoints: (map['xpPoints'] as num?)?.toInt() ?? 0,
+      xpPoints: (gemsVal as num?)?.toInt() ?? 0,
       totalFocusMinutes: (map['totalFocusMinutes'] as num?)?.toInt() ?? 0,
       isFollowing: isFollowing || map['isFollowing'] == true,
       isSelf: isSelf,

@@ -86,7 +86,7 @@ class _FriendsScreenState extends State<FriendsScreen>
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
-                  'EXP Gifts Waiting!',
+                  'Gems Gifts Waiting!',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
                 ),
               ),
@@ -94,8 +94,8 @@ class _FriendsScreenState extends State<FriendsScreen>
           ),
           content: Text(
             gifts.length == 1
-                ? '🎁 You received +${first.amount} EXP from ${first.fromName}!'
-                : '🎁 You have ${gifts.length} gifts waiting (+total $totalXp EXP) from your friends!',
+                ? '🎁 You received +${first.amount} Gems from ${first.fromName}!'
+                : '🎁 You have ${gifts.length} gifts waiting (+total $totalXp Gems) from your friends!',
             style: const TextStyle(fontSize: 14.5, height: 1.4),
           ),
           actions: [

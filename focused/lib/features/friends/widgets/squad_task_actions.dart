@@ -410,7 +410,7 @@ class SquadTaskActions {
                         ),
                       ),
                       Text(
-                        '+200 EXP added to your account & synced!',
+                        '+50 Gems added to your account & synced!',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
                           fontSize: 12,

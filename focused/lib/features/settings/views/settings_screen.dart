@@ -384,14 +384,14 @@ class SettingsScreen extends StatelessWidget {
                         size: 18,
                       ),
                       title: const Text(
-                        'Friend nudges & EXP gifts',
+                        'Friend nudges & Gems gifts',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14.5,
                         ),
                       ),
                       subtitle: const Text(
-                        'Alerts for task reminders and EXP boosts sent by your friends',
+                        'Alerts for task reminders and Gems boosts sent by your friends',
                         style: TextStyle(fontSize: 12),
                       ),
                       value: notifPrefs.friendNudgesAndGifts,

@@ -495,7 +495,7 @@ class TaskMatesTab extends StatelessWidget {
                             const SizedBox(width: 5),
                             Text(
                               activeCount > 0
-                                  ? '$activeCount/3 Tasks Active (+200 EXP)'
+                                  ? '$activeCount/3 Tasks Active (+50 Gems)'
                                   : 'No Active Tasks (0/3)',
                               style: TextStyle(
                                 fontFamily: 'Quicksand',
@@ -851,7 +851,7 @@ class TaskMatesTab extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Upload up to 3 shared tasks/habits for the squad to conquer together and earn +200 EXP!',
+                                  'Upload up to 3 shared tasks/habits for the squad to conquer together and earn +50 Gems!',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontFamily: 'Quicksand',
@@ -869,19 +869,17 @@ class TaskMatesTab extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
+                                      horizontal: 16,
                                       vertical: 10,
                                     ),
                                   ),
-                                  onPressed: () {
-                                    Navigator.pop(sheetCtx);
-                                    onAssignTask(group);
-                                  },
+                                  onPressed: () => onAssignTask(group),
+                                  icon: const Icon(Icons.add_rounded, size: 18),
                                   label: const Text(
-                                    'Upload Task',
+                                    'Add Task',
                                     style: TextStyle(
                                       fontFamily: 'Quicksand',
-                                      fontWeight: FontWeight.w800,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
@@ -939,18 +937,29 @@ class TaskMatesTab extends StatelessWidget {
                                             ),
                                             decoration: BoxDecoration(
                                               color: const Color(
-                                                0xFFFFB300,
-                                              ).withValues(alpha: 0.2),
+                                                0xFF0284C7,
+                                              ).withValues(alpha: 0.15),
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                             ),
-                                            child: const Text(
-                                              '⚡ +200 EXP',
-                                              style: TextStyle(
-                                                color: Color(0xFFFFB300),
-                                                fontWeight: FontWeight.w900,
-                                                fontSize: 11,
-                                              ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                SvgPicture.asset(
+                                                  'assets/icon/gem.svg',
+                                                  width: 14,
+                                                  height: 14,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Text(
+                                                  '+50 Gems',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF0284C7),
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                           if (task.isHabit) ...[

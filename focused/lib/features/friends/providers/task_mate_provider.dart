@@ -391,6 +391,7 @@ class TaskMateProvider extends ChangeNotifier {
             .doc(_currentUid)
             .set({
               'xpPoints': FieldValue.increment(xpAward),
+              'gems': FieldValue.increment(xpAward),
             }, SetOptions(merge: true));
       } catch (e) {
         debugPrint('Direct Firestore XP increment error: $e');
@@ -442,6 +443,7 @@ class TaskMateProvider extends ChangeNotifier {
             .doc(_currentUid)
             .set({
               'xpPoints': FieldValue.increment(bonusXp),
+              'gems': FieldValue.increment(bonusXp),
             }, SetOptions(merge: true));
       } catch (e) {
         debugPrint('Direct Firestore bonus XP increment error: $e');

@@ -778,10 +778,10 @@ class TaskNotificationService {
     required int amount,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'focused_exp_gifts_v2',
-      'EXP Gifts',
+      'focused_gem_gifts_v2',
+      'Gems Gifts',
       channelDescription:
-          'Notifications when friends send you EXP gifts to boost your level.',
+          'Notifications when friends send you Gems gifts to boost your progress.',
       importance: Importance.max,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
@@ -911,7 +911,7 @@ class TaskNotificationService {
             titleList.length];
 
     final bodyList = [
-      'Your shared squad task starts now. Finish it to earn +200 EXP.',
+      'Your shared squad task starts now. Finish it to earn +50 Gems.',
       'Time to focus on "$taskTitle" with your squad.',
     ];
     final selectedBody =

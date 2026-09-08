@@ -110,7 +110,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Pick up to 5 best friends to build unbroken friendship streaks together! Send daily nudges or 25 EXP gifts to keep your streak alive.',
+              'Pick up to 5 best friends to build unbroken friendship streaks together! Send daily nudges or 25 Gems gifts to keep your streak alive.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Quicksand',
@@ -369,7 +369,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                               tooltip: hasGifted
                                   ? 'Already sent gift today (resets at midnight)'
                                   : (canGift
-                                        ? 'Send 25 EXP Gift'
+                                        ? 'Send 25 Gems Gift'
                                         : 'Daily limit of 5 reached'),
                               padding: const EdgeInsets.all(6),
                               constraints: const BoxConstraints(
@@ -551,14 +551,14 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
-          'Send 25 EXP Gift',
+          'Send 25 Gems Gift',
           style: TextStyle(
             fontFamily: 'Quicksand',
             fontWeight: FontWeight.w800,
           ),
         ),
         content: Text(
-          'Send 25 EXP to ${friend.displayName}? This will count towards your daily friendship interaction and costs 25 EXP.',
+          'Send 25 Gems to ${friend.displayName}? This will count towards your daily friendship interaction and costs 25 Gems.',
           style: const TextStyle(
             fontFamily: 'Quicksand',
             fontWeight: FontWeight.w600,
@@ -594,8 +594,8 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
             ),
             content: Text(
               ok
-                  ? '🎉 Sent 25 EXP gift to ${friend.displayName}! Streak updated.'
-                  : 'Insufficient EXP balance or daily limit reached.',
+                  ? '🎉 Sent 25 Gems gift to ${friend.displayName}! Streak updated.'
+                  : 'Insufficient Gems balance or daily limit reached.',
             ),
           ),
         );

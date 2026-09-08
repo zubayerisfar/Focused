@@ -215,7 +215,7 @@ class _GroupScreenState extends State<GroupScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
-            content: Text('🎉 Auto-claimed +$claimed EXP into your balance!'),
+            content: Text('🎉 Auto-claimed +$claimed Gems into your balance!'),
           ),
         );
       }

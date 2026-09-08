@@ -214,7 +214,7 @@ class PartnerQuestCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // Gift 50 EXP Button
+              // Gift 50 Gems Button
               Expanded(
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
@@ -236,7 +236,7 @@ class PartnerQuestCard extends StatelessWidget {
                     height: 18,
                   ),
                   label: const Text(
-                    'Gift 50 EXP',
+                    'Gift 50 Gems',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),

@@ -392,6 +392,7 @@ class CloudSyncService {
         'unlockedBadgesCount': currentStats.unlockedBadgeIds.length,
         'unlockedBadgeIds': currentStats.unlockedBadgeIds,
         'xpPoints': currentStats.xpPoints,
+        'gems': currentStats.xpPoints,
         'lastSyncedAt': completedAt.toIso8601String(),
         'lastSyncedDeviceId': deviceId,
         if (deviceName != null) 'lastSyncedDeviceName': deviceName,
