@@ -61,7 +61,10 @@ class ProfileStreakXpBar extends StatelessWidget {
       debugForceDanger: userStats.debugSimulateStreakInDanger,
     );
     final isInDanger = streakDetails.isInDanger;
-    final streak = math.max(streakDetails.currentStreak, userStats.syncedStreakDays);
+    final streak = math.max(
+      streakDetails.currentStreak,
+      userStats.syncedStreakDays,
+    );
     final gems = userStats.gems;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -69,7 +72,9 @@ class ProfileStreakXpBar extends StatelessWidget {
     final chipPadding = EdgeInsets.symmetric(horizontal: compact ? 8 : 12);
     final chipGap = compact ? 5.0 : 8.0;
 
-    final streakColor = isInDanger ? const Color(0xFFEF4444) : const Color(0xFFFF9600);
+    final streakColor = isInDanger
+        ? const Color(0xFFEF4444)
+        : const Color(0xFFFF9600);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -96,11 +101,7 @@ class ProfileStreakXpBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SvgPicture.asset(
-                  'assets/icon/gem.svg',
-                  width: 18,
-                  height: 18,
-                ),
+                SvgPicture.asset('assets/icon/gem.svg', width: 18, height: 18),
                 const SizedBox(width: 5),
                 Text(
                   '$gems',

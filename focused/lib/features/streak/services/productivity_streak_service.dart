@@ -78,8 +78,7 @@ class ProductivityStreakService {
       for (final date in activityDates) _dateOnlyLocal(date),
       if (restoredDates != null)
         for (final date in restoredDates) _dateOnlyLocal(date),
-    }.toList()
-      ..sort();
+    }.toList()..sort();
 
     if (days.isEmpty) return 0;
 
@@ -210,13 +209,8 @@ class ProductivityStreakService {
   }
 }
 
-
 DateTime _dateOnlyLocal(DateTime value) {
   final local = value.isUtc ? value.toLocal() : value;
 
-  return DateTime(
-    local.year,
-    local.month,
-    local.day,
-  );
+  return DateTime(local.year, local.month, local.day);
 }

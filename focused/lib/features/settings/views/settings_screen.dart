@@ -16,6 +16,7 @@ import '../providers/notification_preferences_provider.dart';
 import '../../wellbeing/services/app_usage_summary_service.dart';
 import '../../../core/services/notification_access_service.dart';
 import '../../../core/widgets/profile_streak_xp_bar.dart';
+import '../../tasks/services/task_notification_service.dart';
 import '../../streak/providers/user_stats_provider.dart';
 import 'deactivate_account_sheet.dart';
 import 'delete_account_dialog.dart';
@@ -641,7 +642,10 @@ class SettingsScreen extends StatelessWidget {
                     secondary: const Text('⚠️', style: TextStyle(fontSize: 20)),
                     title: const Text(
                       'Simulate Streak In Danger (Test)',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                      ),
                     ),
                     subtitle: const Text(
                       'Forces the streak into frozen danger state to preview red badges, banners & restore buttons',

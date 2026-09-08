@@ -20,7 +20,8 @@ class HomeHeader extends StatelessWidget {
   final int xpPoints;
   final bool isInDanger;
 
-  const HomeHeader({super.key, 
+  const HomeHeader({
+    super.key,
     required this.streak,
     required this.photoUrl,
     required this.displayName,
@@ -32,7 +33,9 @@ class HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
-    final streakColor = isInDanger ? const Color(0xFFEF4444) : const Color(0xFFFF9600);
+    final streakColor = isInDanger
+        ? const Color(0xFFEF4444)
+        : const Color(0xFFFF9600);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 2),
@@ -100,7 +103,9 @@ class HomeHeader extends StatelessWidget {
                   color: streakColor.withValues(alpha: isDark ? 0.18 : 0.13),
                   borderRadius: BorderRadius.circular(19),
                   border: Border.all(
-                    color: streakColor.withValues(alpha: isInDanger ? 0.6 : 0.32),
+                    color: streakColor.withValues(
+                      alpha: isInDanger ? 0.6 : 0.32,
+                    ),
                     width: isInDanger ? 1.5 : 1.2,
                   ),
                 ),
@@ -149,4 +154,3 @@ class HomeHeader extends StatelessWidget {
     );
   }
 }
-

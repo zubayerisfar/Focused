@@ -59,7 +59,10 @@ class _StreakScreenState extends State<StreakScreen> {
       debugForceDanger: userStats.debugSimulateStreakInDanger,
     );
     final isInDanger = streakDetails.isInDanger;
-    final current = math.max(streakDetails.currentStreak, userStats.syncedStreakDays);
+    final current = math.max(
+      streakDetails.currentStreak,
+      userStats.syncedStreakDays,
+    );
     final longest = math.max(
       math.max(streakDetails.longestStreak, userStats.syncedLongestStreak),
       current,
@@ -102,21 +105,27 @@ class _StreakScreenState extends State<StreakScreen> {
         children: [
           if (isInDanger) ...[
             _StreakDangerRestoreCard(
-              missedDate: streakDetails.missedDate ?? now.subtract(const Duration(days: 1)),
+              missedDate:
+                  streakDetails.missedDate ??
+                  now.subtract(const Duration(days: 1)),
               gems: userStats.gems,
               isRestoring: _isRestoring,
               onWatchAdRestore: () {
                 setState(() => _isRestoring = true);
                 AdService.instance.showRewardedAd(
                   onUserEarnedReward: (reward) async {
-                    final targetDate = streakDetails.missedDate ?? now.subtract(const Duration(days: 1));
+                    final targetDate =
+                        streakDetails.missedDate ??
+                        now.subtract(const Duration(days: 1));
                     await userStats.restoreStreakWithAd(targetDate);
                     if (mounted) {
                       setState(() => _isRestoring = false);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           backgroundColor: Color(0xFF10B981),
-                          content: Text('🔥 Streak Restored Successfully! Yesterday repaired.'),
+                          content: Text(
+                            '🔥 Streak Restored Successfully! Yesterday repaired.',
+                          ),
                         ),
                       );
                     }
@@ -130,14 +139,20 @@ class _StreakScreenState extends State<StreakScreen> {
                 if (userStats.gems < UserStatsProvider.gemStreakRestoreCost) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Not enough gems. You need 500 gems to restore streak.'),
+                      content: Text(
+                        'Not enough gems. You need 500 gems to restore streak.',
+                      ),
                     ),
                   );
                   return;
                 }
                 setState(() => _isRestoring = true);
-                final targetDate = streakDetails.missedDate ?? now.subtract(const Duration(days: 1));
-                final success = await userStats.restoreStreakWithGems(targetDate);
+                final targetDate =
+                    streakDetails.missedDate ??
+                    now.subtract(const Duration(days: 1));
+                final success = await userStats.restoreStreakWithGems(
+                  targetDate,
+                );
                 if (mounted) {
                   setState(() => _isRestoring = false);
                   if (success) {
@@ -153,7 +168,11 @@ class _StreakScreenState extends State<StreakScreen> {
             ),
             const SizedBox(height: 20),
           ],
-          _StreakHero(current: current, longest: longest, isInDanger: isInDanger),
+          _StreakHero(
+            current: current,
+            longest: longest,
+            isInDanger: isInDanger,
+          ),
           const SizedBox(height: 24),
           _MonthCalendar(
             month: _visibleMonth,
@@ -271,7 +290,9 @@ class _StreakHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final primaryColor = isInDanger ? const Color(0xFFEF4444) : const Color(0xFFFF7A45);
+    final primaryColor = isInDanger
+        ? const Color(0xFFEF4444)
+        : const Color(0xFFFF7A45);
     final gradientColors = isInDanger
         ? const [Color(0xFFF87171), Color(0xFFDC2626)]
         : const [Color(0xFFFFD600), Color(0xFFFF7043)];
@@ -421,7 +442,9 @@ class _StreakDangerRestoreCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                        color: isDark
+                            ? const Color(0xFFFCA5A5)
+                            : const Color(0xFF991B1B),
                       ),
                     ),
                   ],
@@ -462,7 +485,9 @@ class _StreakDangerRestoreCard extends StatelessWidget {
                     )
                   : const Icon(Icons.play_circle_fill_rounded, size: 22),
               label: Text(
-                isRestoring ? 'Restoring Streak…' : 'Watch Ad to Restore Streak',
+                isRestoring
+                    ? 'Restoring Streak…'
+                    : 'Watch Ad to Restore Streak',
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 14.5,

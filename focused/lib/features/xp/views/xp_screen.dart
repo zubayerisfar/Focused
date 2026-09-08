@@ -93,7 +93,8 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
                 _InfoRow(
                   icon: FontAwesomeIcons.fire,
                   iconColor: Colors.deepOrange,
-                  text: 'Use 500 Gems to restore a broken or frozen productivity streak.',
+                  text:
+                      'Use 500 Gems to restore a broken or frozen productivity streak.',
                 ),
                 SizedBox(height: 12),
                 _InfoRow(
@@ -233,7 +234,9 @@ class _XpBalanceCard extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5)),
+        border: Border.all(
+          color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0284C7).withValues(alpha: 0.15),
@@ -569,11 +572,7 @@ class _StreakRestoreCard extends StatelessWidget {
           // Gem cost display
           Row(
             children: [
-              SvgPicture.asset(
-                'assets/icon/gem.svg',
-                width: 16,
-                height: 16,
-              ),
+              SvgPicture.asset('assets/icon/gem.svg', width: 16, height: 16),
               const SizedBox(width: 6),
               Text(
                 '$gemCost Gems required',

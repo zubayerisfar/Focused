@@ -152,7 +152,9 @@ class TodayRemindersSection extends StatelessWidget {
                             );
                             if (context.mounted) {
                               final stats = context.read<UserStatsProvider>();
-                              await stats.addGems(UserStatsProvider.gemReminderReward);
+                              await stats.addGems(
+                                UserStatsProvider.gemReminderReward,
+                              );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(

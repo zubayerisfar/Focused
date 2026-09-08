@@ -157,7 +157,9 @@ class TaskDetailsScreen extends StatelessWidget {
 
                 if (newCompleted && context.mounted) {
                   final stats = context.read<UserStatsProvider>();
-                  await stats.addGems(UserStatsProvider.gemTaskReward); // 20 Gems
+                  await stats.addGems(
+                    UserStatsProvider.gemTaskReward,
+                  ); // 20 Gems
 
                   // 5-second interstitial ad on task completion
                   AdService.instance.showInterstitialAd();
@@ -527,7 +529,10 @@ String _dateQuery(DateTime value) =>
     '${value.month.toString().padLeft(2, '0')}-'
     '${value.day.toString().padLeft(2, '0')}';
 
-void _showTaskCompletionRewardDialog(BuildContext context, UserStatsProvider stats) {
+void _showTaskCompletionRewardDialog(
+  BuildContext context,
+  UserStatsProvider stats,
+) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final scheme = Theme.of(context).colorScheme;
 
@@ -571,11 +576,7 @@ void _showTaskCompletionRewardDialog(BuildContext context, UserStatsProvider sta
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SvgPicture.asset(
-                  'assets/icon/gem.svg',
-                  width: 22,
-                  height: 22,
-                ),
+                SvgPicture.asset('assets/icon/gem.svg', width: 22, height: 22),
                 const SizedBox(width: 8),
                 const Text(
                   'EARNED +20 GEMS',
@@ -617,7 +618,9 @@ void _showTaskCompletionRewardDialog(BuildContext context, UserStatsProvider sta
                   'Claim 20',
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? const Color(0xFF64748B) : Colors.grey.shade600,
+                    color: isDark
+                        ? const Color(0xFF64748B)
+                        : Colors.grey.shade600,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -655,10 +658,7 @@ void _showTaskCompletionRewardDialog(BuildContext context, UserStatsProvider sta
                 icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
                 label: const Text(
                   'Double to 40',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13.5,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5),
                 ),
               ),
             ),

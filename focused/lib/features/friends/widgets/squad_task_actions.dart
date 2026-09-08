@@ -281,7 +281,9 @@ class SquadTaskActions {
                     'Claim 50 Gems',
                     style: TextStyle(
                       fontSize: 12.5,
-                      color: isDark ? const Color(0xFF64748B) : Colors.grey.shade600,
+                      color: isDark
+                          ? const Color(0xFF64748B)
+                          : Colors.grey.shade600,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -338,7 +340,11 @@ class SquadTaskActions {
                 ),
                 content: Row(
                   children: [
-                    SvgPicture.asset('assets/icon/gem.svg', width: 22, height: 22),
+                    SvgPicture.asset(
+                      'assets/icon/gem.svg',
+                      width: 22,
+                      height: 22,
+                    ),
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(

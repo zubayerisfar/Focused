@@ -57,7 +57,10 @@ class TodayScreen extends StatelessWidget {
       debugForceDanger: userStats.debugSimulateStreakInDanger,
     );
     final isInDanger = streakDetails.isInDanger;
-    final streak = math.max(streakDetails.currentStreak, userStats.syncedStreakDays);
+    final streak = math.max(
+      streakDetails.currentStreak,
+      userStats.syncedStreakDays,
+    );
 
     final localFocus = focusProvider.totalStoredFocusDuration;
     final effectiveFocus = localFocus > userStats.syncedFocusDuration
@@ -150,7 +153,8 @@ class TodayScreen extends StatelessWidget {
                   if (isInDanger) ...[
                     _StreakDangerBanner(
                       streak: streak,
-                      onRestoreTap: () => Navigator.of(context).pushNamed('/streak'),
+                      onRestoreTap: () =>
+                          Navigator.of(context).pushNamed('/streak'),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -200,10 +204,7 @@ class _StreakDangerBanner extends StatelessWidget {
   final int streak;
   final VoidCallback onRestoreTap;
 
-  const _StreakDangerBanner({
-    required this.streak,
-    required this.onRestoreTap,
-  });
+  const _StreakDangerBanner({required this.streak, required this.onRestoreTap});
 
   @override
   Widget build(BuildContext context) {
@@ -238,10 +239,7 @@ class _StreakDangerBanner extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: Text(
-                '⚠️',
-                style: TextStyle(fontSize: 22),
-              ),
+              child: Text('⚠️', style: TextStyle(fontSize: 22)),
             ),
           ),
           const SizedBox(width: 14),
@@ -267,7 +265,9 @@ class _StreakDangerBanner extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                    color: isDark
+                        ? const Color(0xFFFCA5A5)
+                        : const Color(0xFF991B1B),
                   ),
                 ),
               ],
@@ -286,10 +286,7 @@ class _StreakDangerBanner extends StatelessWidget {
             onPressed: () => context.push('/streak'),
             child: const Text(
               'Restore',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
             ),
           ),
         ],

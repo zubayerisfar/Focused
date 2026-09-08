@@ -191,7 +191,8 @@ class UserStatsProvider extends ChangeNotifier {
 
   /// Restore streak using XP (legacy method)
   Future<bool> restoreStreakWithXp([DateTime? missedDate]) async {
-    final targetDate = missedDate ?? DateTime.now().subtract(const Duration(days: 1));
+    final targetDate =
+        missedDate ?? DateTime.now().subtract(const Duration(days: 1));
     return restoreStreakWithGems(targetDate);
   }
 
