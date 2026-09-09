@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_initializing_formals
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -16,13 +17,13 @@ class CloudSyncProvider extends ChangeNotifier {
     required CloudSyncService syncService,
     required SyncMetadataStorageService metadataStorage,
     required Future<void> Function() refreshLocalProviders,
-    NetworkConnectivityService connectivityService =
-        const NetworkConnectivityService(),
+    NetworkConnectivityService? connectivityService,
   }) : _accountProvider = accountProvider,
        _syncService = syncService,
        _metadataStorage = metadataStorage,
        _refreshLocalProviders = refreshLocalProviders,
-       _connectivityService = connectivityService;
+       _connectivityService =
+           connectivityService ?? NetworkConnectivityService.instance;
 
   final AccountProvider _accountProvider;
   final CloudSyncService _syncService;
@@ -49,8 +50,7 @@ class CloudSyncProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isSyncing => _syncing;
   bool get isInitialized => _initialized;
-  bool get isOffline => _isOffline;
-  bool get canSync => _accountProvider.isSignedIn && !_syncing;
+  bool get canSync => _accountProvider.isSignedIn && !_syncing && !_isOffline;
   bool get isNewDevice => _isNewDevice;
   List<CloudDevice> get devices => List<CloudDevice>.unmodifiable(_devices);
 
@@ -63,8 +63,18 @@ class CloudSyncProvider extends ChangeNotifier {
     return 'Synced';
   }
 
+  void _onConnectivityChanged() {
+    final isOnline = _connectivityService.isOnlineNotifier.value;
+    if (_isOffline == isOnline) {
+      _isOffline = !isOnline;
+      notifyListeners();
+    }
+  }
+
   Future<void> initialize() async {
     if (_initialized) return;
+    _connectivityService.isOnlineNotifier.addListener(_onConnectivityChanged);
+    _isOffline = !_connectivityService.isOnlineNotifier.value;
     _deviceId = await _metadataStorage.getOrCreateDeviceId();
     _deviceName = await AndroidInstallationInfoService().friendlyDeviceName();
     _observedUid = _accountProvider.user?.uid;
@@ -211,6 +221,14 @@ class CloudSyncProvider extends ChangeNotifier {
       return;
     }
 
+    // Verify internet connection before contacting Firestore device registry
+    final hasInternet = await _connectivityService.hasInternetConnection();
+    if (!hasInternet) {
+      _isOffline = true;
+      notifyListeners();
+      return;
+    }
+
     try {
       final deviceId =
           _deviceId ?? await _metadataStorage.getOrCreateDeviceId();
@@ -221,6 +239,7 @@ class CloudSyncProvider extends ChangeNotifier {
       );
       _devices = await _syncService.loadDevices(uid: user.uid);
       _errorMessage = null;
+      _isOffline = false;
     } catch (error) {
       debugPrint('Could not inspect Focused device registry: $error');
     }
@@ -234,9 +253,16 @@ class CloudSyncProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    final hasInternet = await _connectivityService.hasInternetConnection();
+    if (!hasInternet) {
+      _isOffline = true;
+      notifyListeners();
+      return;
+    }
     try {
       _devices = await _syncService.loadDevices(uid: user.uid);
       _errorMessage = null;
+      _isOffline = false;
     } catch (error) {
       _errorMessage = _friendlyError(error);
     }
@@ -268,31 +294,41 @@ class CloudSyncProvider extends ChangeNotifier {
 
   /// Triggers a debounced background sync whenever tasks, habits, or settings change
   void triggerAutoSync() {
-    if (!_accountProvider.isSignedIn || _syncing) return;
+    if (!_accountProvider.isSignedIn || _syncing || _isOffline) return;
     _autoSyncTimer?.cancel();
-    _autoSyncTimer = Timer(const Duration(seconds: 2), () {
-      if (_accountProvider.isSignedIn && !_syncing) {
-        unawaited(
-          syncNow(mode: CloudSyncMode.uploadOnly, isManual: false).catchError((
-            e,
-          ) {
-            debugPrint('Automatic background sync: $e');
-            return _lastResult ??
-                CloudSyncResult(
-                  pushed: 0,
-                  pulled: 0,
-                  deleted: 0,
-                  syncedAt: DateTime.now(),
-                );
-          }),
-        );
+    _autoSyncTimer = Timer(const Duration(seconds: 2), () async {
+      if (!_accountProvider.isSignedIn || _syncing) return;
+      final hasInternet = await _connectivityService.hasInternetConnection();
+      if (!hasInternet) {
+        if (!_isOffline) {
+          _isOffline = true;
+          notifyListeners();
+        }
+        return;
       }
+      unawaited(
+        syncNow(mode: CloudSyncMode.uploadOnly, isManual: false).catchError((
+          e,
+        ) {
+          debugPrint('Automatic background sync: $e');
+          return _lastResult ??
+              CloudSyncResult(
+                pushed: 0,
+                pulled: 0,
+                deleted: 0,
+                syncedAt: DateTime.now(),
+              );
+        }),
+      );
     });
   }
 
   @override
   void dispose() {
     _autoSyncTimer?.cancel();
+    _connectivityService.isOnlineNotifier.removeListener(
+      _onConnectivityChanged,
+    );
     _accountProvider.removeListener(_handleAccountChanged);
     super.dispose();
   }

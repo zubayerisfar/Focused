@@ -121,9 +121,9 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
                     Text(
                       'Usage through the day',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -139,9 +139,9 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
                     Text(
                       'Last 7 days',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -155,7 +155,8 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
                     FutureBuilder<List<DailyUsageMetrics>>(
                       future: _dailyFuture,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const SizedBox(
                             height: 220,
                             child: Center(child: CircularProgressIndicator()),
@@ -173,7 +174,9 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
                             },
                           );
                         }
-                        return _DailyUsageChart(values: snapshot.data ?? const []);
+                        return _DailyUsageChart(
+                          values: snapshot.data ?? const [],
+                        );
                       },
                     ),
                   ],
@@ -181,9 +184,9 @@ class _AppUsageDetailsScreenState extends State<AppUsageDetailsScreen> {
                   Text(
                     'Apps',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   _AppActivityList(provider: usage),
@@ -263,7 +266,10 @@ class _OpenMetric extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               Text(
                 label,
@@ -354,52 +360,100 @@ class _DailyUsageChart extends StatelessWidget {
           ? const Center(child: Text('No measured daily usage yet.'))
           : Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: values.map((day) {
-                final fraction = maxSeconds <= 0
-                    ? 0.0
-                    : day.totalUsage.inSeconds / maxSeconds;
-                final label = _weekdayLabel(day.day.weekday);
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          day.measured ? _shortDuration(day.totalUsage) : '—',
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: FractionallySizedBox(
-                              heightFactor: day.measured
-                                  ? (fraction < 0.025 ? 0.025 : fraction)
-                                  : 0.025,
-                              child: Container(
-                                width: 22,
-                                decoration: BoxDecoration(
-                                  color: day.measured
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context).dividerColor,
-                                  borderRadius: BorderRadius.circular(8),
+              children: values
+                  .map((day) {
+                    final fraction = maxSeconds <= 0
+                        ? 0.0
+                        : day.totalUsage.inSeconds / maxSeconds;
+                    final now = DateTime.now();
+                    final isToday =
+                        day.day.year == now.year &&
+                        day.day.month == now.month &&
+                        day.day.day == now.day;
+                    final label = _weekdayLabel(day.day.weekday);
+                    final theme = Theme.of(context);
+                    final scheme = theme.colorScheme;
+
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              day.measured
+                                  ? _shortDuration(day.totalUsage)
+                                  : '—',
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: isToday
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
+                                color: isToday
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: FractionallySizedBox(
+                                  heightFactor: day.measured
+                                      ? (fraction < 0.025 ? 0.025 : fraction)
+                                      : 0.025,
+                                  child: Container(
+                                    width: 22,
+                                    decoration: BoxDecoration(
+                                      color: day.measured
+                                          ? (isToday
+                                                ? scheme.primary
+                                                : scheme.primary.withValues(
+                                                    alpha: 0.65,
+                                                  ))
+                                          : theme.dividerColor,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 7),
+                            Container(
+                              padding: isToday
+                                  ? const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 2,
+                                    )
+                                  : EdgeInsets.zero,
+                              decoration: isToday
+                                  ? BoxDecoration(
+                                      color: scheme.primary.withValues(
+                                        alpha: 0.14,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    )
+                                  : null,
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isToday
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
+                                  color: isToday
+                                      ? scheme.primary
+                                      : scheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 7),
-                        Text(label, style: const TextStyle(fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(growable: false),
+                      ),
+                    );
+                  })
+                  .toList(growable: false),
             ),
     );
   }
@@ -463,8 +517,9 @@ class _HourlyLineChart extends StatelessWidget {
                 values: minutes,
                 lineColor: Theme.of(context).colorScheme.primary,
                 gridColor: Theme.of(context).dividerColor,
-                fillColor:
-                    Theme.of(context).colorScheme.primary.withOpacity(0.10),
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withOpacity(0.10),
               ),
               child: const SizedBox.expand(),
             ),
@@ -636,9 +691,9 @@ class _AppActivityList extends StatelessWidget {
                             Text(
                               _categoryLabel(category),
                               style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w300,
                               ),
@@ -649,9 +704,7 @@ class _AppActivityList extends StatelessWidget {
                       const SizedBox(width: 12),
                       Text(
                         _formatDuration(entry.duration),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
@@ -696,13 +749,13 @@ class _ChangeBadge extends StatelessWidget {
     final color = up
         ? AppTheme.danger
         : down
-            ? AppTheme.success
-            : Theme.of(context).colorScheme.onSurfaceVariant;
+        ? AppTheme.success
+        : Theme.of(context).colorScheme.onSurfaceVariant;
     final icon = up
         ? Icons.arrow_upward_rounded
         : down
-            ? Icons.arrow_downward_rounded
-            : Icons.remove_rounded;
+        ? Icons.arrow_downward_rounded
+        : Icons.remove_rounded;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
@@ -772,10 +825,7 @@ class _UnavailableBody extends StatelessWidget {
             ),
             if (!unsupported) ...[
               const SizedBox(height: 18),
-              FilledButton(
-                onPressed: onAction,
-                child: const Text('Continue'),
-              ),
+              FilledButton(onPressed: onAction, child: const Text('Continue')),
             ],
           ],
         ),
@@ -803,7 +853,9 @@ String _weekdayLabel(int weekday) {
 String _shortDuration(Duration duration) {
   if (duration.inHours > 0) {
     final minutes = duration.inMinutes.remainder(60);
-    return minutes == 0 ? '${duration.inHours}h' : '${duration.inHours}h${minutes}m';
+    return minutes == 0
+        ? '${duration.inHours}h'
+        : '${duration.inHours}h${minutes}m';
   }
   return '${duration.inMinutes}m';
 }

@@ -7,14 +7,14 @@ import 'package:provider/provider.dart';
 import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/services/ad_service.dart';
 
-class XpScreen extends StatefulWidget {
-  const XpScreen({super.key});
+class GemsScreen extends StatefulWidget {
+  const GemsScreen({super.key});
 
   @override
-  State<XpScreen> createState() => _XpScreenState();
+  State<GemsScreen> createState() => _GemsScreenState();
 }
 
-class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
+class _GemsScreenState extends State<GemsScreen> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   bool _watchingAd = false;
@@ -75,7 +75,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Gem Balance Card ──────────────────────────────────
-            _XpBalanceCard(xp: gems, pulseAnimation: _pulseAnimation),
+            _GemBalanceCard(xp: gems, pulseAnimation: _pulseAnimation),
             const SizedBox(height: 24),
 
             // ── What are Gems? ──────────────────────────────────────
@@ -110,7 +110,7 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
             // ── Earn Gems Section ───────────────────────────────────
             _SectionLabel('Earn Gems Today'),
             const SizedBox(height: 10),
-            _EarnXpCard(
+            _EarnGemsCard(
               adsWatched: adsWatched,
               adsLeft: adsLeft,
               canWatch: canWatch && !_watchingAd,
@@ -216,11 +216,11 @@ class _XpScreenState extends State<XpScreen> with TickerProviderStateMixin {
 // Gem Balance Card
 // ─────────────────────────────────────────────────────────────
 
-class _XpBalanceCard extends StatelessWidget {
+class _GemBalanceCard extends StatelessWidget {
   final int xp;
   final Animation<double> pulseAnimation;
 
-  const _XpBalanceCard({required this.xp, required this.pulseAnimation});
+  const _GemBalanceCard({required this.xp, required this.pulseAnimation});
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +303,7 @@ class _XpBalanceCard extends StatelessWidget {
 // Earn XP Card
 // ─────────────────────────────────────────────────────────────
 
-class _EarnXpCard extends StatelessWidget {
+class _EarnGemsCard extends StatelessWidget {
   final int adsWatched;
   final int adsLeft;
   final bool canWatch;
@@ -312,7 +312,7 @@ class _EarnXpCard extends StatelessWidget {
   final Duration remainingCooldown;
   final VoidCallback onWatchAd;
 
-  const _EarnXpCard({
+  const _EarnGemsCard({
     required this.adsWatched,
     required this.adsLeft,
     required this.canWatch,
@@ -731,3 +731,5 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+typedef XpScreen = GemsScreen;

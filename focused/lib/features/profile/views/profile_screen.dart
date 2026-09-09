@@ -374,61 +374,105 @@ class ProfileScreen extends StatelessWidget {
                 }
 
                 if (isFollowing) {
+                  final canNudge = friendsProvider.canNudgeFriend(
+                    friendUser!.uid,
+                  );
+                  final hasNudged = friendsProvider.hasNudgedToday(
+                    friendUser!.uid,
+                  );
+
                   return Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: scheme.surfaceContainerHigh,
-                            side: BorderSide(color: scheme.outlineVariant),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          height: 52,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: scheme.surfaceContainerHigh,
+                              side: BorderSide(color: scheme.outlineVariant),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                          ),
-                          onPressed: () =>
-                              friendsProvider.unfollow(friendUser!.uid),
-                          icon: const Icon(
-                            Icons.check_rounded,
-                            color: Color(0xFF58CC02),
-                          ),
-                          label: const Text(
-                            'Following',
-                            style: TextStyle(fontWeight: FontWeight.w800),
+                            onPressed: () =>
+                                friendsProvider.unfollow(friendUser!.uid),
+                            icon: const Icon(
+                              Icons.check_rounded,
+                              color: Color(0xFF58CC02),
+                            ),
+                            label: const Text(
+                              'Following',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
+                      // Nudge button: Same width as Following button, icon only (no text), blocked if already nudged today
                       Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF1CB0F6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                          ),
-                          onPressed: () async {
-                            final ok = await friendsProvider.sendReminder(
-                              friendUser!.uid,
-                            );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    ok
-                                        ? '🔔 Reminder sent to ${friendUser!.displayName}!'
-                                        : 'Daily limit of 3 reminders reached.',
-                                  ),
-                                  behavior: SnackBarBehavior.floating,
+                        child: Tooltip(
+                          message: hasNudged
+                              ? 'Already nudged today (resets at midnight)'
+                              : (canNudge
+                                    ? 'Send Nudge'
+                                    : 'Daily limit of 5 reached'),
+                          child: SizedBox(
+                            height: 52,
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: canNudge
+                                    ? const Color(
+                                        0xFF1CB0F6,
+                                      ).withValues(alpha: 0.15)
+                                    : (isDark
+                                          ? const Color(0xFF24333D)
+                                          : const Color(0xFFF3F4F6)),
+                                disabledBackgroundColor: isDark
+                                    ? const Color(0xFF24333D)
+                                    : const Color(0xFFF3F4F6),
+                                side: BorderSide(
+                                  color: canNudge
+                                      ? const Color(
+                                          0xFF1CB0F6,
+                                        ).withValues(alpha: 0.5)
+                                      : (isDark
+                                            ? const Color(0xFF37464F)
+                                            : const Color(0xFFE5E7EB)),
                                 ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.waving_hand_rounded, size: 18),
-                          label: const Text(
-                            'Nudge',
-                            style: TextStyle(fontWeight: FontWeight.w800),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: EdgeInsets.zero,
+                              ),
+                              onPressed: canNudge
+                                  ? () async {
+                                      final ok = await friendsProvider
+                                          .sendReminder(friendUser!.uid);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              ok
+                                                  ? '🔔 Reminder sent to ${friendUser!.displayName}!'
+                                                  : 'Daily limit reached.',
+                                            ),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              child: Opacity(
+                                opacity: canNudge ? 1.0 : 0.35,
+                                child: SvgPicture.asset(
+                                  'assets/icon/hand_wave.svg',
+                                  width: 26,
+                                  height: 26,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -945,7 +989,7 @@ class _FriendStreaksStrip extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 26,
-                    backgroundColor: const Color(0xFF58CC02),
+                    backgroundColor: const Color(0xFF1CB0F6),
                     backgroundImage: item.photoUrl != null
                         ? NetworkImage(item.photoUrl!)
                         : null,

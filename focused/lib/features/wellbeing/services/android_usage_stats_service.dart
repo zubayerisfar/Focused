@@ -52,6 +52,9 @@ class AndroidUsageStatsService implements UsageStatsService {
     'com.mi.android.globallauncher',
     'com.oppo.launcher',
     'com.oneplus.launcher',
+    'com.bbk.launcher2',
+    'com.vivo.upslide',
+    'com.vivo.doubleinstance',
     'com.teslacoilsw.launcher',
     'com.microsoft.launcher',
     'com.android.launcher',
@@ -117,8 +120,9 @@ class AndroidUsageStatsService implements UsageStatsService {
   @override
   Future<List<AppUsageRecord>> queryUsageRecords(
     DateTime start,
-    DateTime end,
-  ) async {
+    DateTime end, {
+    bool reconcileWithDailyAggregates = true,
+  }) async {
     if (!isSupported) {
       return const [];
     }
@@ -176,11 +180,144 @@ class AndroidUsageStatsService implements UsageStatsService {
       events: points,
     );
 
-    if (normalized.isEmpty) {
+    // If aggregate reconciliation is disabled (e.g. for focus session windows where
+    // daily aggregates would falsely synthesize whole-day usage into a short session),
+    // or if the queried window is shorter than an hour (aggregates are daily buckets),
+    // rely purely on the normalized event stream.
+    if (!reconcileWithDailyAggregates ||
+        end.difference(start) < const Duration(hours: 1)) {
+      if (normalized.isEmpty) {
+        return const [];
+      }
+      final packages = normalized.map((record) => record.appId).toSet();
+      final labels = <String, String>{};
+      await Future.wait(
+        packages.map((packageName) async {
+          labels[packageName] = await _resolveAppName(packageName);
+        }),
+      );
+      return List.unmodifiable(
+        normalized.map(
+          (record) =>
+              record.copyWith(appName: labels[record.appId] ?? record.appId),
+        ),
+      );
+    }
+
+    // Reconcile with Android's system-level aggregate usage stats.
+    // Digital Wellbeing uses UsageStatsManager.queryUsageStats() which counts
+    // foreground time at the kernel level and does not lose time when OEMs (like Xiaomi)
+    // truncate or drop granular events.
+    final aggregateMap = await queryDailyAggregateUsage(start, end);
+
+    final finalRecords = <AppUsageRecord>[];
+    final normalizedByPackage = <String, List<AppUsageRecord>>{};
+    for (final r in normalized) {
+      normalizedByPackage.putIfAbsent(r.appId, () => []).add(r);
+    }
+
+    // Combine packages present in normalized events and in aggregate data
+    final allPackages = {...normalizedByPackage.keys, ...aggregateMap.keys};
+
+    for (final pkg in allPackages) {
+      if (effectiveIgnored.contains(pkg)) {
+        continue;
+      }
+
+      final records = normalizedByPackage[pkg] ?? const <AppUsageRecord>[];
+      final aggregateDuration = aggregateMap[pkg] ?? Duration.zero;
+
+      if (records.isEmpty) {
+        // App had foreground time according to the OS aggregate, but raw events
+        // were pruned/evicted by the OS. Synthesize a record matching the aggregate duration.
+        if (aggregateDuration > Duration.zero) {
+          final effectiveDuration = aggregateDuration > end.difference(start)
+              ? end.difference(start)
+              : aggregateDuration;
+          final recordStart = end.subtract(effectiveDuration);
+          final safeStart = recordStart.isBefore(start) ? start : recordStart;
+          final safeEnd = safeStart.add(effectiveDuration);
+          if (safeEnd.isAfter(safeStart)) {
+            finalRecords.add(
+              AppUsageRecord(
+                appId: pkg,
+                appName: pkg,
+                startTime: safeStart,
+                endTime: safeEnd.isAfter(end) ? end : safeEnd,
+              ),
+            );
+          }
+        }
+      } else {
+        // App has raw event intervals. Check if raw events severely undercounted
+        // compared to the OS aggregate.
+        final rawTotalSeconds = records.fold<int>(
+          0,
+          (sum, r) => sum + r.duration.inSeconds,
+        );
+        final aggSeconds = aggregateDuration.inSeconds;
+
+        if (aggSeconds > rawTotalSeconds && rawTotalSeconds > 0) {
+          // Proportionally scale the intervals to match the OS's canonical foreground count,
+          // but cap the ratio to 1.5x to prevent inflated counts on OEM ROMs where aggregate
+          // includes rolling 24h buckets instead of strict midnight-to-now.
+          final safeAggSeconds = aggSeconds > end.difference(start).inSeconds
+              ? end.difference(start).inSeconds
+              : aggSeconds;
+          final ratio = (safeAggSeconds / rawTotalSeconds).clamp(1.0, 1.5);
+          var lastEnd = start;
+          for (final r in records) {
+            final origDuration = r.duration;
+            final scaledDuration = Duration(
+              milliseconds: (origDuration.inMilliseconds * ratio).round(),
+            );
+            final newStart = r.startTime.isBefore(lastEnd)
+                ? lastEnd
+                : r.startTime;
+            var newEnd = newStart.add(scaledDuration);
+            if (newEnd.isAfter(end)) {
+              newEnd = end;
+            }
+            if (newEnd.isAfter(newStart)) {
+              finalRecords.add(
+                AppUsageRecord(
+                  appId: pkg,
+                  appName: pkg,
+                  startTime: newStart,
+                  endTime: newEnd,
+                ),
+              );
+              lastEnd = newEnd;
+            }
+          }
+        } else if (aggSeconds > 0 && rawTotalSeconds == 0) {
+          final effectiveDuration = aggregateDuration > end.difference(start)
+              ? end.difference(start)
+              : aggregateDuration;
+          final recordStart = end.subtract(effectiveDuration);
+          final safeStart = recordStart.isBefore(start) ? start : recordStart;
+          final safeEnd = safeStart.add(effectiveDuration);
+          if (safeEnd.isAfter(safeStart)) {
+            finalRecords.add(
+              AppUsageRecord(
+                appId: pkg,
+                appName: pkg,
+                startTime: safeStart,
+                endTime: safeEnd.isAfter(end) ? end : safeEnd,
+              ),
+            );
+          }
+        } else {
+          finalRecords.addAll(records);
+        }
+      }
+    }
+
+    if (finalRecords.isEmpty) {
       return const [];
     }
 
-    final packages = normalized.map((record) => record.appId).toSet();
+    final packages = finalRecords.map((record) => record.appId).toSet();
     final labels = <String, String>{};
 
     await Future.wait(
@@ -190,11 +327,51 @@ class AndroidUsageStatsService implements UsageStatsService {
     );
 
     return List.unmodifiable(
-      normalized.map(
+      finalRecords.map(
         (record) =>
             record.copyWith(appName: labels[record.appId] ?? record.appId),
       ),
     );
+  }
+
+  @override
+  Future<Map<String, Duration>> queryDailyAggregateUsage(
+    DateTime start,
+    DateTime end,
+  ) async {
+    if (!isSupported || !end.isAfter(start)) {
+      return const {};
+    }
+
+    final granted = await hasUsageAccess();
+    if (!granted) {
+      return const {};
+    }
+
+    try {
+      final effectiveIgnored = await _getEffectiveIgnoredPackages();
+      final aggregate = await UsageStats.queryAndAggregateUsageStats(
+        start,
+        end,
+      );
+      final result = <String, Duration>{};
+
+      for (final entry in aggregate.entries) {
+        final pkg = entry.key.trim();
+        if (pkg.isEmpty || effectiveIgnored.contains(pkg)) {
+          continue;
+        }
+
+        final ms = entry.value.totalTimeInForegroundMs;
+        if (ms != null && ms > 0) {
+          result[pkg] = Duration(milliseconds: ms);
+        }
+      }
+
+      return result;
+    } catch (_) {
+      return const {};
+    }
   }
 
   @override

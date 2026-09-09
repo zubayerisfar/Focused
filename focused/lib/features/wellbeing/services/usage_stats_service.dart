@@ -12,6 +12,16 @@ abstract class UsageStatsService {
 
   Future<List<AppUsageRecord>> queryUsageRecords(
     DateTime start,
+    DateTime end, {
+    bool reconcileWithDailyAggregates = true,
+  });
+
+  /// Queries the OS's cumulative foreground usage statistics for the given interval.
+  ///
+  /// Returns a map of packageId -> total foreground Duration as tracked by
+  /// Android's system daemon (the source for Digital Wellbeing).
+  Future<Map<String, Duration>> queryDailyAggregateUsage(
+    DateTime start,
     DateTime end,
   );
 
@@ -20,8 +30,5 @@ abstract class UsageStatsService {
   /// A new opening is emitted only when the foreground package changes from
   /// another package to this package. Activity navigation inside one package
   /// therefore does not inflate the count.
-  Future<List<AppOpenEvent>> queryAppOpenEvents(
-    DateTime start,
-    DateTime end,
-  );
+  Future<List<AppOpenEvent>> queryAppOpenEvents(DateTime start, DateTime end);
 }

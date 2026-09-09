@@ -530,7 +530,6 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
 
   @override
   Widget build(BuildContext context) {
-    final focus = context.watch<FocusProvider>();
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -575,13 +574,14 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
           separatorBuilder: (context, index) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final day = days[index];
-            final focused = focus.focusedDurationForDate(day.day);
             final dayTitle = _formatDayLabel(day.day);
             final formattedDate = DateFormat('MMM d').format(day.day);
             final isToday = dayTitle == 'Today';
 
             return Material(
-              color: isDark ? const Color(0xFF1E212B) : scheme.surface,
+              color: isToday
+                  ? (isDark ? const Color(0xFF192231) : const Color(0xFFEFF6FF))
+                  : (isDark ? const Color(0xFF1E212B) : scheme.surface),
               borderRadius: BorderRadius.circular(18),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
@@ -599,7 +599,7 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: isToday
-                          ? scheme.primary.withValues(alpha: 0.4)
+                          ? const Color(0xFF3B82F6).withValues(alpha: 0.45)
                           : theme.dividerColor.withValues(alpha: 0.7),
                       width: isToday ? 1.4 : 1.0,
                     ),
@@ -612,14 +612,16 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
                         height: 48,
                         decoration: BoxDecoration(
                           color: isToday
-                              ? scheme.primaryContainer
+                              ? (isDark
+                                    ? const Color(0xFF1E3A5F)
+                                    : const Color(0xFFDBEAFE))
                               : isDark
                               ? Colors.white.withValues(alpha: 0.06)
                               : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: isToday
-                                ? scheme.primary.withValues(alpha: 0.3)
+                                ? const Color(0xFF3B82F6).withValues(alpha: 0.4)
                                 : Colors.transparent,
                           ),
                         ),
@@ -633,7 +635,9 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 color: isToday
-                                    ? scheme.onPrimaryContainer
+                                    ? (isDark
+                                          ? const Color(0xFF93C5FD)
+                                          : const Color(0xFF1D4ED8))
                                     : scheme.onSurface,
                                 height: 1.1,
                               ),
@@ -646,7 +650,7 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,
                                 color: isToday
-                                    ? scheme.primary
+                                    ? const Color(0xFF3B82F6)
                                     : scheme.onSurfaceVariant,
                               ),
                             ),
@@ -655,118 +659,35 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
                       ),
                       const SizedBox(width: 14),
 
-                      // Day name and metrics pills
+                      // Day name and date
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Text(
-                                  dayTitle,
-                                  style: const TextStyle(
-                                    fontFamily: 'Quicksand',
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                if (!isToday) ...[
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    formattedDate,
-                                    style: TextStyle(
-                                      fontFamily: 'Quicksand',
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ],
+                            Text(
+                              dayTitle,
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                color: isToday
+                                    ? (isDark
+                                          ? const Color(0xFF93C5FD)
+                                          : const Color(0xFF1E40AF))
+                                    : null,
+                              ),
                             ),
-                            const SizedBox(height: 7),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                // Screen Time Pill
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.05)
-                                        : const Color(0xFFF3F4F6),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.phone_android_rounded,
-                                        size: 13,
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        day.measured
-                                            ? _duration(day.totalUsage)
-                                            : '—',
-                                        style: TextStyle(
-                                          fontFamily: 'Quicksand',
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Focus Time Pill
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: focused > Duration.zero
-                                        ? const Color(
-                                            0xFF10B981,
-                                          ).withValues(alpha: 0.12)
-                                        : isDark
-                                        ? Colors.white.withValues(alpha: 0.05)
-                                        : const Color(0xFFF3F4F6),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.center_focus_strong_rounded,
-                                        size: 13,
-                                        color: focused > Duration.zero
-                                            ? const Color(0xFF10B981)
-                                            : scheme.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _duration(focused),
-                                        style: TextStyle(
-                                          fontFamily: 'Quicksand',
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: focused > Duration.zero
-                                              ? const Color(0xFF10B981)
-                                              : scheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 2),
+                            Text(
+                              isToday
+                                  ? 'Today • $formattedDate'
+                                  : formattedDate,
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
                           ],
                         ),
@@ -775,7 +696,9 @@ class _LastSevenDaysCardState extends State<_LastSevenDaysCard> {
                       // Trailing chevron
                       Icon(
                         Icons.chevron_right_rounded,
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        color: isToday
+                            ? const Color(0xFF3B82F6)
+                            : scheme.onSurfaceVariant.withValues(alpha: 0.6),
                         size: 22,
                       ),
                     ],

@@ -39,9 +39,9 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
 
   Future<List<DailyUsageMetrics>> _load() {
     return context.read<UsageProvider>().loadDailyUsageHistory(
-          days: 14,
-          endDay: _endDay,
-        );
+      days: 14,
+      endDay: _endDay,
+    );
   }
 
   void _reload() {
@@ -144,20 +144,22 @@ class _WeeklyWellbeingScreenState extends State<WeeklyWellbeingScreen> {
             sessions: focusProvider.sessionHistory,
             analysesBySessionId: usageProvider.storedFocusAnalyses,
             activeTaskId: focusProvider.isRunning ? focusProvider.taskId : null,
-            activeOccurrenceDate:
-                focusProvider.isRunning ? focusProvider.taskOccurrenceDate : null,
-            activeSessionStartedAt:
-                focusProvider.isRunning ? focusProvider.sessionStartedAt : null,
-            activeTaskScheduledStart:
-                focusProvider.isRunning ? focusProvider.taskScheduledStart : null,
-            activeTaskScheduledEnd:
-                focusProvider.isRunning ? focusProvider.taskScheduledEnd : null,
+            activeOccurrenceDate: focusProvider.isRunning
+                ? focusProvider.taskOccurrenceDate
+                : null,
+            activeSessionStartedAt: focusProvider.isRunning
+                ? focusProvider.sessionStartedAt
+                : null,
+            activeTaskScheduledStart: focusProvider.isRunning
+                ? focusProvider.taskScheduledStart
+                : null,
+            activeTaskScheduledEnd: focusProvider.isRunning
+                ? focusProvider.taskScheduledEnd
+                : null,
             activeFocusIntervals: focusProvider.isRunning
                 ? focusProvider.currentFocusIntervalsSnapshot
                 : const [],
-            asOf: _sameDate(current.last.day, today)
-                ? DateTime.now()
-                : null,
+            asOf: _sameDate(current.last.day, today) ? DateTime.now() : null,
           );
           final previousExecution = _executionAnalyzer.summarizePeriod(
             startDay: previousStart,
@@ -319,17 +321,20 @@ class _AnalyticsSnapshot {
     final previousCoverage = usageProvider.coverageForDailyUsage(previous);
     final currentSessions = uniqueSessions(current);
     final previousSessions = uniqueSessions(previous);
-    final currentFocusCoverage =
-        usageProvider.focusAnalysisCoverageForSessions(currentSessions);
-    final previousFocusCoverage =
-        usageProvider.focusAnalysisCoverageForSessions(previousSessions);
+    final currentFocusCoverage = usageProvider.focusAnalysisCoverageForSessions(
+      currentSessions,
+    );
+    final previousFocusCoverage = usageProvider
+        .focusAnalysisCoverageForSessions(previousSessions);
     final currentFocus = sumFocus(current);
     final previousFocus = sumFocus(previous);
     final currentDistractedFocus = knownDistraction(current);
     final previousDistractedFocus = knownDistraction(previous);
 
     Duration effective(Duration focus, Duration distraction) {
-      final seconds = math.max(0, focus.inSeconds - distraction.inSeconds).toInt();
+      final seconds = math
+          .max(0, focus.inSeconds - distraction.inSeconds)
+          .toInt();
       return Duration(seconds: seconds);
     }
 
@@ -345,15 +350,16 @@ class _AnalyticsSnapshot {
       previous: previous,
       currentCoverage: currentCoverage,
       previousCoverage: previousCoverage,
-      usageComparisonAllowed:
-          usageProvider.canCompareUsagePeriods(current, previous),
+      usageComparisonAllowed: usageProvider.canCompareUsagePeriods(
+        current,
+        previous,
+      ),
       currentUsage: sumMetric(current, (day) => day.totalUsage),
       previousUsage: sumMetric(previous, (day) => day.totalUsage),
       currentProductive: sumMetric(current, (day) => day.productiveUsage),
       previousProductive: sumMetric(previous, (day) => day.productiveUsage),
       currentDistracting: sumMetric(current, (day) => day.distractingUsage),
-      previousDistracting:
-          sumMetric(previous, (day) => day.distractingUsage),
+      previousDistracting: sumMetric(previous, (day) => day.distractingUsage),
       currentFocus: currentFocus,
       previousFocus: previousFocus,
       currentEffectiveFocus: currentFocusCoverage.isComplete
@@ -362,14 +368,18 @@ class _AnalyticsSnapshot {
       previousEffectiveFocus: previousFocusCoverage.isComplete
           ? effective(previousFocus, previousDistractedFocus)
           : null,
-      currentInterruptions:
-          currentFocusCoverage.isComplete ? interruptionCount(current) : null,
-      previousInterruptions:
-          previousFocusCoverage.isComplete ? interruptionCount(previous) : null,
+      currentInterruptions: currentFocusCoverage.isComplete
+          ? interruptionCount(current)
+          : null,
+      previousInterruptions: previousFocusCoverage.isComplete
+          ? interruptionCount(previous)
+          : null,
       currentFocusCoverage: currentFocusCoverage,
       previousFocusCoverage: previousFocusCoverage,
-      topInterrupter:
-          usageProvider.topInterrupterForRange(currentStart, currentEnd),
+      topInterrupter: usageProvider.topInterrupterForRange(
+        currentStart,
+        currentEnd,
+      ),
     );
   }
 }
@@ -398,15 +408,15 @@ class _PeriodHeader extends StatelessWidget {
               Text(
                 'Last 7 days',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 3),
               Text(
                 '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -512,17 +522,17 @@ class _CoverageCard extends StatelessWidget {
                 ? 'Previous-period comparisons are enabled: both 7-day windows have at least 5 measured days. When coverage is incomplete, comparison percentages use the measured-day average instead of pretending missing days were zero.'
                 : 'Comparison withheld. Focused requires at least 5 measured days in both 7-day windows before showing a percentage change.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
           ),
           if (!comparisonAllowed) ...[
             const SizedBox(height: 5),
             Text(
               'Previous window: ${previous.measuredDays}/${previous.totalDays} measured.',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ],
@@ -584,9 +594,7 @@ class _MetricGrid extends StatelessWidget {
       return Duration(milliseconds: milliseconds ~/ count);
     }
 
-    double? usageChange(
-      Duration Function(DailyUsageMetrics day) selector,
-    ) {
+    double? usageChange(Duration Function(DailyUsageMetrics day) selector) {
       return provider.compareDurationsPercent(
         completeDayAverage(analytics.current, selector),
         completeDayAverage(analytics.previous, selector),
@@ -612,10 +620,7 @@ class _MetricGrid extends StatelessWidget {
         label: analytics.currentCoverage.isComplete
             ? 'Screen time'
             : 'Screen time avg',
-        value: usageValue(
-          analytics.currentUsage,
-          (day) => day.totalUsage,
-        ),
+        value: usageValue(analytics.currentUsage, (day) => day.totalUsage),
         change: usageChange((day) => day.totalUsage),
         icon: Icons.phone_android_rounded,
       ),
@@ -628,7 +633,7 @@ class _MetricGrid extends StatelessWidget {
           (day) => day.distractingUsage,
         ),
         change: usageChange((day) => day.distractingUsage),
-        icon: Icons.notifications_active_outlined,
+        icon: Icons.warning_amber_rounded,
       ),
       _MetricValue(
         label: analytics.currentCoverage.isComplete
@@ -639,16 +644,11 @@ class _MetricGrid extends StatelessWidget {
           (day) => day.productiveUsage,
         ),
         change: usageChange((day) => day.productiveUsage),
-        icon: Icons.auto_awesome_rounded,
       ),
       _MetricValue(
         label: 'Focused',
         value: _formatDuration(analytics.currentFocus),
-        change: _focusChange(
-          analytics.currentFocus,
-          analytics.previousFocus,
-        ),
-        icon: Icons.center_focus_strong_rounded,
+        change: _focusChange(analytics.currentFocus, analytics.previousFocus),
       ),
     ];
 
@@ -680,12 +680,12 @@ class _MetricValue {
   final String label;
   final String value;
   final double? change;
-  final IconData icon;
+  final IconData? icon;
   const _MetricValue({
     required this.label,
     required this.value,
     required this.change,
-    required this.icon,
+    this.icon,
   });
 }
 
@@ -709,8 +709,17 @@ class _MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(value.icon, color: scheme.primary),
-          const SizedBox(height: 14),
+          if (value.icon != null) ...[
+            Icon(
+              value.icon,
+              color: value.icon == Icons.warning_amber_rounded
+                  ? const Color(0xFFC77E7E)
+                  : scheme.primary,
+            ),
+            const SizedBox(height: 14),
+          ] else ...[
+            const SizedBox(height: 38),
+          ],
           Text(
             value.value,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
@@ -721,18 +730,18 @@ class _MetricCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             change == null ? 'Comparison unavailable' : _changeLabel(change),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -759,8 +768,8 @@ class _DailyTrendCard extends StatelessWidget {
         child: Text(
           'Daily screen-time history will appear here as Focused measures it on this device.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       );
     }
@@ -787,8 +796,8 @@ class _DailyTrendCard extends StatelessWidget {
           Text(
             'A simple view of your screen time across the week.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -797,6 +806,14 @@ class _DailyTrendCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: measuredDays.map((day) {
                 final ratio = day.totalUsage.inSeconds / maxSeconds;
+                final now = DateTime.now();
+                final isToday =
+                    day.day.year == now.year &&
+                    day.day.month == now.month &&
+                    day.day.day == now.day;
+                final theme = Theme.of(context);
+                final scheme = theme.colorScheme;
+
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -811,12 +828,11 @@ class _DailyTrendCard extends StatelessWidget {
                               child: Container(
                                 width: 22,
                                 decoration: BoxDecoration(
-                                  color: day.completeDay
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withOpacity(0.45),
+                                  color: isToday
+                                      ? scheme.primary
+                                      : day.completeDay
+                                      ? scheme.primary.withValues(alpha: 0.7)
+                                      : scheme.primary.withValues(alpha: 0.35),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
@@ -824,15 +840,30 @@ class _DailyTrendCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          DateFormat('E').format(day.day).substring(0, 1),
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        const SizedBox(height: 3),
-                        Icon(
-                          _provenanceIcon(day.provenance),
-                          size: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        Container(
+                          padding: isToday
+                              ? const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                )
+                              : EdgeInsets.zero,
+                          decoration: isToday
+                              ? BoxDecoration(
+                                  color: scheme.primary.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(6),
+                                )
+                              : null,
+                          child: Text(
+                            DateFormat('E').format(day.day),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: isToday
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: isToday
+                                  ? scheme.primary
+                                  : scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -867,17 +898,11 @@ class _FocusQualityCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.center_focus_strong_rounded, color: scheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Focus summary',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            ],
+          Text(
+            'Focus summary',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -911,10 +936,10 @@ class _FocusQualityCard extends StatelessWidget {
               'Effective focus ${_changeLabel(_focusChange(analytics.currentEffectiveFocus!, analytics.previousEffectiveFocus!) ?? 0.0)}. '
               'Interruptions ${_countComparisonLabel(analytics.currentInterruptions, analytics.previousInterruptions)}.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    height: 1.4,
-                  ),
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 8),
           ],
@@ -923,9 +948,9 @@ class _FocusQualityCard extends StatelessWidget {
                 ? 'Focus and interruption totals are available for this 7-day period.'
                 : 'Some focus sessions do not have interruption analysis yet, so effective-focus totals may be incomplete.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -961,8 +986,8 @@ class _SmallFocusMetric extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -970,15 +995,11 @@ class _SmallFocusMetric extends StatelessWidget {
   }
 }
 
-
 class _ScheduleExecutionCard extends StatelessWidget {
   final TaskExecutionPeriodSummary current;
   final TaskExecutionPeriodSummary previous;
 
-  const _ScheduleExecutionCard({
-    required this.current,
-    required this.previous,
-  });
+  const _ScheduleExecutionCard({required this.current, required this.previous});
 
   @override
   Widget build(BuildContext context) {
@@ -1008,15 +1029,15 @@ class _ScheduleExecutionCard extends StatelessWidget {
                     Text(
                       'Schedule execution',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Calendar plans compared with real focus starts',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -1027,7 +1048,8 @@ class _ScheduleExecutionCard extends StatelessWidget {
           _ExecutionRateRow(
             label: 'Scheduled tasks',
             value: '${current.scheduledCount}',
-            supporting: '${current.startedCount}/${current.startEligibleCount} started • ${current.completedCount}/${current.completionEligibleCount} completed',
+            supporting:
+                '${current.startedCount}/${current.startEligibleCount} started • ${current.completedCount}/${current.completionEligibleCount} completed',
           ),
           const SizedBox(height: 12),
           _ExecutionRateRow(
@@ -1050,7 +1072,8 @@ class _ScheduleExecutionCard extends StatelessWidget {
             supporting: _percentagePointChange(
               current.completionRatePercent,
               previous.completionRatePercent,
-              available: current.completionEligibleCount > 0 &&
+              available:
+                  current.completionEligibleCount > 0 &&
                   previous.completionEligibleCount > 0,
             ),
           ),
@@ -1093,18 +1116,18 @@ class _ScheduleExecutionCard extends StatelessWidget {
                 ? 'No scheduled task occurrences in this window.'
                 : 'Plan coverage ${current.planCoveragePercent.round()}%${current.effectiveCoveragePercent == null ? '' : ' • effective coverage ${current.effectiveCoveragePercent!.round()}%'}.',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.35,
-                ),
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
           ),
           if (!current.effectiveFocusAvailable && current.startedCount > 0) ...[
             const SizedBox(height: 7),
             Text(
               'Effective-focus totals are withheld until every linked completed focus session has a saved interruption analysis.',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
+                color: scheme.onSurfaceVariant,
+                height: 1.35,
+              ),
             ),
           ],
         ],
@@ -1139,8 +1162,8 @@ class _ExecutionRateRow extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -1178,8 +1201,8 @@ class _ExecutionTimeColumn extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -1221,10 +1244,7 @@ class _HabitConsistencyCard extends StatelessWidget {
   final HabitPeriodSummary current;
   final HabitPeriodSummary previous;
 
-  const _HabitConsistencyCard({
-    required this.current,
-    required this.previous,
-  });
+  const _HabitConsistencyCard({required this.current, required this.previous});
 
   @override
   Widget build(BuildContext context) {
@@ -1244,29 +1264,21 @@ class _HabitConsistencyCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.repeat_rounded, color: scheme.secondary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Habit consistency',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Completed scheduled habit occurrences',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
+              Text(
+                'Habit consistency',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Completed scheduled habit occurrences',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -1282,7 +1294,8 @@ class _HabitConsistencyCard extends StatelessWidget {
               Expanded(
                 child: _ExecutionTimeColumn(
                   label: 'Completed',
-                  value: '${current.completedOccurrences}/${current.scheduledOccurrences}',
+                  value:
+                      '${current.completedOccurrences}/${current.scheduledOccurrences}',
                 ),
               ),
               Expanded(
@@ -1303,17 +1316,17 @@ class _HabitConsistencyCard extends StatelessWidget {
                   )
                 : 'No completed-day habit occurrences in this window yet.',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.35,
-                ),
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
           ),
           const SizedBox(height: 7),
           Text(
             'The still-open current day is excluded from this weekly trend so unfinished habits today are not counted as historical failures.',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.35,
-                ),
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
           ),
         ],
       ),
@@ -1325,10 +1338,7 @@ class _DailyDataList extends StatelessWidget {
   final List<DailyUsageMetrics> days;
   final FocusProvider focusProvider;
 
-  const _DailyDataList({
-    required this.days,
-    required this.focusProvider,
-  });
+  const _DailyDataList({required this.days, required this.focusProvider});
 
   @override
   Widget build(BuildContext context) {
@@ -1473,7 +1483,8 @@ String _countComparisonLabel(int? current, int? previous) {
   return '${change < 0 ? '↓' : '↑'} $rounded% vs previous 7d';
 }
 
-DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 
 bool _sameDate(DateTime first, DateTime second) {
   return first.year == second.year &&

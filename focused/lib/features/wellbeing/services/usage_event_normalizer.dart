@@ -39,17 +39,17 @@ class UsageEventNormalizer {
         events.where((event) => !event.timestamp.isAfter(rangeEnd)).toList()
           ..sort(_compareEvents);
 
-    final activeComponents = <String, _ActiveComponent>{};
+    final activePackages = <String, DateTime>{};
     final rawRecords = <AppUsageRecord>[];
 
-    void closeComponent(String key, DateTime end) {
-      final active = activeComponents.remove(key);
-      if (active == null || !end.isAfter(active.startedAt)) {
+    void closePackage(String packageName, DateTime end) {
+      final startedAt = activePackages.remove(packageName);
+      if (startedAt == null || !end.isAfter(startedAt)) {
         return;
       }
 
-      final clippedStart = active.startedAt.isAfter(rangeStart)
-          ? active.startedAt
+      final clippedStart = startedAt.isAfter(rangeStart)
+          ? startedAt
           : rangeStart;
       final clippedEnd = end.isBefore(rangeEnd) ? end : rangeEnd;
 
@@ -59,8 +59,8 @@ class UsageEventNormalizer {
 
       rawRecords.add(
         AppUsageRecord(
-          appId: active.packageName,
-          appName: active.packageName,
+          appId: packageName,
+          appName: packageName,
           startTime: clippedStart,
           endTime: clippedEnd,
         ),
@@ -68,11 +68,11 @@ class UsageEventNormalizer {
     }
 
     void closeAll(DateTime end) {
-      final keys = activeComponents.keys.toList(growable: false);
-      for (final key in keys) {
-        closeComponent(key, end);
+      final packages = activePackages.keys.toList(growable: false);
+      for (final pkg in packages) {
+        closePackage(pkg, end);
       }
-      activeComponents.clear();
+      activePackages.clear();
     }
 
     for (final event in ordered) {
@@ -87,26 +87,17 @@ class UsageEventNormalizer {
             continue;
           }
 
-          // In Android, only one application is actively in the user's foreground at
-          // a time. When a new package enters foreground, any other package's components
-          // that missed a background event (e.g. system alarms, lockscreen dismissals,
-          // floating overlays) are closed at this timestamp to prevent phantom hours.
-          final otherPackageKeys = activeComponents.entries
-              .where((entry) => entry.value.packageName != packageName)
-              .map((entry) => entry.key)
+          // In Android, only one application is in the user's active foreground.
+          // When a new package enters foreground, close all other packages at this timestamp.
+          final otherPackages = activePackages.keys
+              .where((pkg) => pkg != packageName)
               .toList(growable: false);
-          for (final otherKey in otherPackageKeys) {
-            closeComponent(otherKey, event.timestamp);
+          for (final other in otherPackages) {
+            closePackage(other, event.timestamp);
           }
 
-          final key = _componentKey(packageName, event.className);
-          activeComponents.putIfAbsent(
-            key,
-            () => _ActiveComponent(
-              packageName: packageName,
-              startedAt: event.timestamp,
-            ),
-          );
+          // If this package was not already marked active, record its start time.
+          activePackages.putIfAbsent(packageName, () => event.timestamp);
           break;
 
         case UsageEventKind.background:
@@ -115,23 +106,7 @@ class UsageEventNormalizer {
             continue;
           }
 
-          final exactKey = _componentKey(packageName, event.className);
-          if (activeComponents.containsKey(exactKey)) {
-            closeComponent(exactKey, event.timestamp);
-            continue;
-          }
-
-          // Some Android builds omit class names on one side of a lifecycle
-          // transition. If exactly one component for this package is active,
-          // it is safe to close that component rather than losing the interval.
-          final matchingKeys = activeComponents.entries
-              .where((entry) => entry.value.packageName == packageName)
-              .map((entry) => entry.key)
-              .toList(growable: false);
-
-          if (matchingKeys.length == 1) {
-            closeComponent(matchingKeys.single, event.timestamp);
-          }
+          closePackage(packageName, event.timestamp);
           break;
 
         case UsageEventKind.screenNonInteractive:
@@ -141,7 +116,7 @@ class UsageEventNormalizer {
 
         case UsageEventKind.deviceStartup:
           // Never bridge a foreground interval across a runtime/device restart.
-          activeComponents.clear();
+          activePackages.clear();
           break;
 
         case UsageEventKind.screenInteractive:
@@ -151,7 +126,7 @@ class UsageEventNormalizer {
       }
     }
 
-    // Any activity still open at query end is considered foreground until the
+    // Any package still active at query end is considered foreground until the
     // end boundary. The end boundary is normally DateTime.now() for today.
     closeAll(rangeEnd);
 
@@ -180,15 +155,6 @@ class UsageEventNormalizer {
       case UsageEventKind.foreground:
         return 2;
     }
-  }
-
-  String _componentKey(String packageName, String? className) {
-    final normalizedClass = className?.trim();
-    if (normalizedClass == null || normalizedClass.isEmpty) {
-      return packageName;
-    }
-
-    return '$packageName::$normalizedClass';
   }
 
   List<AppUsageRecord> _mergePerPackage(List<AppUsageRecord> records) {
@@ -247,11 +213,4 @@ class UsageEventNormalizer {
     merged.sort((a, b) => a.startTime.compareTo(b.startTime));
     return List.unmodifiable(merged);
   }
-}
-
-class _ActiveComponent {
-  final String packageName;
-  final DateTime startedAt;
-
-  const _ActiveComponent({required this.packageName, required this.startedAt});
 }

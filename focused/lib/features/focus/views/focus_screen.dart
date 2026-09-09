@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/focus_session.dart';
 import '../providers/focus_provider.dart';
 import '../../../core/widgets/app_banner_ad_widget.dart';
-import '../../../core/widgets/profile_streak_xp_bar.dart';
+import '../../../core/widgets/profile_streak_gem_bar.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
@@ -37,7 +37,7 @@ class FocusScreen extends StatelessWidget {
           ),
         ),
         actions: const [
-          ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          ProfileStreakGemBar(showProfile: true, avatarRadius: 20),
           SizedBox(width: 18),
         ],
       ),

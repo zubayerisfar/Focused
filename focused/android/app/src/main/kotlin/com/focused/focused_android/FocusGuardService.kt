@@ -38,6 +38,26 @@ class FocusGuardService : Service() {
         private const val POLL_INTERVAL_MS = 2_000L
         private const val FOREGROUND_QUERY_LOOKBACK_MS = 24L * 60L * 60L * 1000L
         private const val FOREGROUND_NOTIFICATION_REFRESH_MS = 10_000L
+
+        private val KNOWN_LAUNCHER_PACKAGES = setOf(
+            "com.motorola.launcher3",
+            "com.motorola.launcher",
+            "com.motorola.gesture",
+            "com.google.android.apps.nexuslauncher",
+            "com.sec.android.app.launcher",
+            "com.miui.home",
+            "com.mi.android.globallauncher",
+            "com.oppo.launcher",
+            "com.oneplus.launcher",
+            "com.teslacoilsw.launcher",
+            "com.microsoft.launcher",
+            "com.android.launcher",
+            "com.android.launcher2",
+            "com.android.launcher3",
+            "com.android.settings",
+            "com.android.systemui",
+            "com.android.keyguard",
+        )
     }
 
     private lateinit var store: FocusGuardStateStore
@@ -197,7 +217,8 @@ class FocusGuardService : Service() {
         val allowedPackages = store.getAllowedPackages()
         val isAllowed = foregroundPackage == packageName ||
             foregroundPackage == "com.android.systemui" ||
-            allowedPackages.contains(foregroundPackage)
+            allowedPackages.contains(foregroundPackage) ||
+            isLauncherOrSystemPackage(foregroundPackage)
 
         if (isAllowed) {
             resetExcursion(
@@ -593,6 +614,21 @@ class FocusGuardService : Service() {
             packageManager.getApplicationLabel(info).toString().ifBlank { packageName }
         } catch (_: Throwable) {
             packageName
+        }
+    }
+
+    private fun isLauncherOrSystemPackage(pkg: String): Boolean {
+        if (KNOWN_LAUNCHER_PACKAGES.contains(pkg)) return true
+        return try {
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+            }
+            @Suppress("DEPRECATION")
+            val resolveInfo = packageManager.resolveActivity(intent, 0)
+            val currentLauncher = resolveInfo?.activityInfo?.packageName
+            currentLauncher != null && currentLauncher == pkg
+        } catch (_: Throwable) {
+            false
         }
     }
 

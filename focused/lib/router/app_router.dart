@@ -39,7 +39,7 @@ import '../features/wellbeing/views/usage_permission_screen.dart';
 import '../features/wellbeing/views/wellbeing_screen.dart';
 import '../features/wellbeing/views/wellbeing_summary_screen.dart';
 import '../features/wellbeing/views/weekly_wellbeing_screen.dart';
-import '../features/xp/views/xp_screen.dart';
+import '../features/gems/views/gems_screen.dart';
 
 GoRouter createAppRouter({
   required AccountProvider accountProvider,
@@ -134,7 +134,8 @@ GoRouter createAppRouter({
         path: '/ad-notice',
         builder: (context, state) => const AdNoticeScreen(),
       ),
-      GoRoute(path: '/xp', builder: (context, state) => const XpScreen()),
+      GoRoute(path: '/gems', builder: (context, state) => const GemsScreen()),
+      GoRoute(path: '/xp', redirect: (context, state) => '/gems'),
       GoRoute(
         path: '/profile',
         builder: (context, state) => ProfileScreen(

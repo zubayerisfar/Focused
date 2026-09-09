@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../models/exp_gift.dart';
+import '../models/gem_gift.dart';
 
-class ClaimExpBanner extends StatelessWidget {
-  final ExpGift gift;
+class ClaimGemBanner extends StatelessWidget {
+  final GemGift gift;
   final VoidCallback onClaim;
 
-  const ClaimExpBanner({super.key, required this.gift, required this.onClaim});
+  const ClaimGemBanner({super.key, required this.gift, required this.onClaim});
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +51,7 @@ class ClaimExpBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'EXP Received from ${gift.fromUsername}!',
+                  'Gems Received from ${gift.fromUsername}!',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -60,7 +60,7 @@ class ClaimExpBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '+${gift.amount} EXP mindset boost waiting for you',
+                  '+${gift.amount} Gems mindset boost waiting for you',
                   style: const TextStyle(
                     color: Color(0xFFC8E6C9),
                     fontSize: 12,
@@ -91,4 +91,4 @@ class ClaimExpBanner extends StatelessWidget {
   }
 }
 
-// ── PARTNER QUEST CARD ──
+typedef ClaimExpBanner = ClaimGemBanner;

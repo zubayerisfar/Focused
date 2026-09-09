@@ -563,227 +563,149 @@ class TaskMatesTab extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (sheetCtx) {
-        final scheme = Theme.of(sheetCtx).colorScheme;
-        final isCreator = group.isCreator(currentUid);
+        return Consumer<TaskMateProvider>(
+          builder: (ctx, provider, _) {
+            final liveGroup = provider.groups.firstWhere(
+              (g) => g.id == group.id,
+              orElse: () => group,
+            );
+            final scheme = Theme.of(ctx).colorScheme;
+            final isCreator = liveGroup.isCreator(currentUid);
 
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(ctx).height * 0.88,
-              ),
-              child: Column(
-                children: [
-                  // Handle bar
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF2B3D47)
-                          : scheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+            return StatefulBuilder(
+              builder: (ctx, setModalState) {
+                return ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(ctx).height * 0.88,
                   ),
-                  const SizedBox(height: 12),
+                  child: Column(
+                    children: [
+                      // Handle bar
+                      const SizedBox(height: 12),
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF2B3D47)
+                              : scheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
 
-                  // Sheet Header (Squad Name + Menu)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF1CB0F6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: SvgPicture.asset(
-                            'assets/icon/group_icon.svg',
-                            width: 20,
-                            height: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                group.name,
-                                style: TextStyle(
-                                  fontFamily: 'Quicksand',
-                                  color: isDark
-                                      ? Colors.white
-                                      : scheme.onSurface,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 19,
-                                ),
+                      // Sheet Header (Squad Name + Menu)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF1CB0F6),
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${group.members.length} members • ${group.activeTasks.length}/3 Tasks',
-                                style: TextStyle(
-                                  fontFamily: 'Quicksand',
-                                  color: isDark
-                                      ? const Color(0xFF77878F)
-                                      : scheme.onSurfaceVariant,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              child: SvgPicture.asset(
+                                'assets/icon/group_icon.svg',
+                                width: 20,
+                                height: 20,
                               ),
-                            ],
-                          ),
-                        ),
-                        PopupMenuButton<String>(
-                          icon: Icon(
-                            Icons.more_horiz_rounded,
-                            color: isDark
-                                ? const Color(0xFF77878F)
-                                : scheme.onSurfaceVariant,
-                          ),
-                          color: scheme.surfaceContainerHigh,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          onSelected: (action) {
-                            Navigator.pop(sheetCtx);
-                            if (action == 'delete') {
-                              taskMateProvider.leaveOrDeleteGroup(
-                                groupId: group.id,
-                                isCreator: true,
-                              );
-                            } else if (action == 'leave') {
-                              taskMateProvider.leaveOrDeleteGroup(
-                                groupId: group.id,
-                                isCreator: false,
-                              );
-                            }
-                          },
-                          itemBuilder: (popCtx) => [
-                            if (isCreator)
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text(
-                                  'Delete Squad',
-                                  style: TextStyle(
-                                    color: Colors.redAccent,
-                                    fontWeight: FontWeight.bold,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    liveGroup.name,
+                                    style: TextStyle(
+                                      fontFamily: 'Quicksand',
+                                      color: isDark
+                                          ? Colors.white
+                                          : scheme.onSurface,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 19,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${liveGroup.members.length} members • ${liveGroup.activeTasks.length}/3 Tasks',
+                                    style: TextStyle(
+                                      fontFamily: 'Quicksand',
+                                      color: isDark
+                                          ? const Color(0xFF77878F)
+                                          : scheme.onSurfaceVariant,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              icon: Icon(
+                                Icons.more_horiz_rounded,
+                                color: isDark
+                                    ? const Color(0xFF77878F)
+                                    : scheme.onSurfaceVariant,
+                              ),
+                              color: scheme.surfaceContainerHigh,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              onSelected: (action) {
+                                Navigator.pop(sheetCtx);
+                                if (action == 'delete') {
+                                  taskMateProvider.leaveOrDeleteGroup(
+                                    groupId: liveGroup.id,
+                                    isCreator: true,
+                                  );
+                                } else if (action == 'leave') {
+                                  taskMateProvider.leaveOrDeleteGroup(
+                                    groupId: liveGroup.id,
+                                    isCreator: false,
+                                  );
+                                }
+                              },
+                              itemBuilder: (popCtx) => [
+                                if (isCreator)
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text(
+                                      'Delete Squad',
+                                      style: TextStyle(
+                                        color: Colors.redAccent,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                const PopupMenuItem(
+                                  value: 'leave',
+                                  child: Text(
+                                    'Leave Squad',
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            const PopupMenuItem(
-                              value: 'leave',
-                              child: Text(
-                                'Leave Squad',
-                                style: TextStyle(
-                                  color: Colors.redAccent,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
 
-                  // Sheet Content: Tasks List & Details
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                      children: [
-                        // Members Row
-                        Text(
-                          'SQUAD MEMBERS',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: isDark
-                                ? const Color(0xFF77878F)
-                                : scheme.onSurfaceVariant,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: group.members.values.map((member) {
-                              final isMe = member.uid == currentUid;
-                              return Container(
-                                margin: const EdgeInsets.only(right: 12),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: scheme.surfaceContainerHigh,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isMe
-                                        ? const Color(0xFF1CB0F6)
-                                        : scheme.outlineVariant,
-                                    width: isMe ? 1.5 : 1.0,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 12,
-                                      backgroundColor: const Color(0xFF1CB0F6),
-                                      backgroundImage:
-                                          member.photoUrl != null &&
-                                              member.photoUrl!.isNotEmpty
-                                          ? NetworkImage(member.photoUrl!)
-                                          : null,
-                                      child:
-                                          member.photoUrl == null ||
-                                              member.photoUrl!.isEmpty
-                                          ? Text(
-                                              member.displayName.isNotEmpty
-                                                  ? member.displayName[0]
-                                                        .toUpperCase()
-                                                  : 'M',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      isMe ? 'You' : member.displayName,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark
-                                            ? Colors.white
-                                            : scheme.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Section Title & Add Task Button (shown when tasks already exist)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // Sheet Content: Tasks List & Details
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                           children: [
+                            // Members Row
                             Text(
-                              'SHARED TASKS (${group.activeTasks.length}/3)',
+                              'SQUAD MEMBERS',
                               style: TextStyle(
-                                fontFamily: 'Quicksand',
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w800,
                                 color: isDark
@@ -792,512 +714,654 @@ class TaskMatesTab extends StatelessWidget {
                                 letterSpacing: 0.5,
                               ),
                             ),
-                            if (group.activeTasks.isNotEmpty &&
-                                group.canAddMoreTasks)
-                              TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                                onPressed: () {
-                                  Navigator.pop(sheetCtx);
-                                  onAssignTask(group);
-                                },
-                                icon: const Icon(Icons.add_rounded, size: 16),
-                                label: const Text(
-                                  'Add Task',
-                                  style: TextStyle(
-                                    fontFamily: 'Quicksand',
-                                    color: Color(0xFF1CB0F6),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        if (group.activeTasks.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: scheme.surfaceContainerHigh,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: scheme.outlineVariant),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.assignment_outlined,
-                                  size: 38,
-                                  color: Color(0xFF1CB0F6),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'No Active Tasks',
-                                  style: TextStyle(
-                                    fontFamily: 'Quicksand',
-                                    color: isDark
-                                        ? Colors.white
-                                        : scheme.onSurface,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Upload up to 3 shared tasks/habits for the squad to conquer together and earn +50 Gems!',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: 'Quicksand',
-                                    color: isDark
-                                        ? const Color(0xFFAFBBC1)
-                                        : scheme.onSurfaceVariant,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                FilledButton.icon(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1CB0F6),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
+                            const SizedBox(height: 8),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: liveGroup.members.values.map((
+                                  member,
+                                ) {
+                                  final isMe = member.uid == currentUid;
+                                  return Container(
+                                    margin: const EdgeInsets.only(right: 12),
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
+                                      horizontal: 10,
+                                      vertical: 6,
                                     ),
-                                  ),
-                                  onPressed: () => onAssignTask(group),
-                                  icon: const Icon(Icons.add_rounded, size: 18),
-                                  label: const Text(
-                                    'Add Task',
-                                    style: TextStyle(
-                                      fontFamily: 'Quicksand',
-                                      fontWeight: FontWeight.w700,
+                                    decoration: BoxDecoration(
+                                      color: scheme.surfaceContainerHigh,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isMe
+                                            ? const Color(0xFF1CB0F6)
+                                            : scheme.outlineVariant,
+                                        width: isMe ? 1.5 : 1.0,
+                                      ),
                                     ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: const Color(
+                                            0xFF1CB0F6,
+                                          ),
+                                          backgroundImage:
+                                              member.photoUrl != null &&
+                                                  member.photoUrl!.isNotEmpty
+                                              ? NetworkImage(member.photoUrl!)
+                                              : null,
+                                          child:
+                                              member.photoUrl == null ||
+                                                  member.photoUrl!.isEmpty
+                                              ? Text(
+                                                  member.displayName.isNotEmpty
+                                                      ? member.displayName[0]
+                                                            .toUpperCase()
+                                                      : 'M',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                )
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          isMe ? 'You' : member.displayName,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark
+                                                ? Colors.white
+                                                : scheme.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Section Title & Add Task Button (shown when tasks already exist)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'SHARED TASKS (${liveGroup.activeTasks.length}/3)',
+                                  style: TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark
+                                        ? const Color(0xFF77878F)
+                                        : scheme.onSurfaceVariant,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
+                                if (liveGroup.activeTasks.isNotEmpty &&
+                                    liveGroup.canAddMoreTasks)
+                                  TextButton.icon(
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    onPressed: () {
+                                      onAssignTask(liveGroup);
+                                    },
+                                    icon: const Icon(
+                                      Icons.add_rounded,
+                                      size: 16,
+                                    ),
+                                    label: const Text(
+                                      'Add Task',
+                                      style: TextStyle(
+                                        fontFamily: 'Quicksand',
+                                        color: Color(0xFF1CB0F6),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
-                          )
-                        else
-                          for (
-                            int taskIdx = 0;
-                            taskIdx < group.activeTasks.length;
-                            taskIdx++
-                          ) ...[
-                            Builder(
-                              builder: (context) {
-                                final task = group.activeTasks[taskIdx];
-                                final isCompleted = task.isCompletedBy(
-                                  currentUid,
-                                );
-                                final mySchedule =
-                                    task.memberSchedules[currentUid];
-                                final myScheduledTime = task.scheduledTimeFor(
-                                  currentUid,
-                                );
-                                final isAssigner =
-                                    task.assignedByUid == currentUid ||
-                                    group.isCreator(currentUid);
+                            const SizedBox(height: 8),
 
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: scheme.surfaceContainerHigh,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: task.isHabit
-                                          ? const Color(
-                                              0xFF58CC02,
-                                            ).withValues(alpha: 0.5)
-                                          : const Color(
-                                              0xFF1CB0F6,
-                                            ).withValues(alpha: 0.5),
-                                      width: 1.5,
-                                    ),
+                            if (liveGroup.activeTasks.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerHigh,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: scheme.outlineVariant,
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(
+                                      Icons.assignment_outlined,
+                                      size: 38,
+                                      color: Color(0xFF1CB0F6),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'No Active Tasks',
+                                      style: TextStyle(
+                                        fontFamily: 'Quicksand',
+                                        color: isDark
+                                            ? Colors.white
+                                            : scheme.onSurface,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Upload up to 3 shared tasks/habits for the squad to conquer together and earn +50 Gems!',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: 'Quicksand',
+                                        color: isDark
+                                            ? const Color(0xFFAFBBC1)
+                                            : scheme.onSurfaceVariant,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    FilledButton.icon(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF1CB0F6,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 10,
+                                        ),
+                                      ),
+                                      onPressed: () => onAssignTask(liveGroup),
+                                      icon: const Icon(
+                                        Icons.add_rounded,
+                                        size: 18,
+                                      ),
+                                      label: const Text(
+                                        'Add Task',
+                                        style: TextStyle(
+                                          fontFamily: 'Quicksand',
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              for (
+                                int taskIdx = 0;
+                                taskIdx < liveGroup.activeTasks.length;
+                                taskIdx++
+                              ) ...[
+                                Builder(
+                                  builder: (context) {
+                                    final task = liveGroup.activeTasks[taskIdx];
+                                    final isCompleted = task.isCompletedBy(
+                                      currentUid,
+                                    );
+                                    final mySchedule =
+                                        task.memberSchedules[currentUid];
+                                    final myScheduledTime = task
+                                        .scheduledTimeFor(currentUid);
+                                    final isAssigner =
+                                        task.assignedByUid == currentUid ||
+                                        liveGroup.isCreator(currentUid);
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: scheme.surfaceContainerHigh,
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: task.isHabit
+                                              ? const Color(
+                                                  0xFF58CC02,
+                                                ).withValues(alpha: 0.5)
+                                              : const Color(
+                                                  0xFF1CB0F6,
+                                                ).withValues(alpha: 0.5),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(
-                                                0xFF0284C7,
-                                              ).withValues(alpha: 0.15),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                SvgPicture.asset(
-                                                  'assets/icon/gem.svg',
-                                                  width: 14,
-                                                  height: 14,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                const Text(
-                                                  '+50 Gems',
-                                                  style: TextStyle(
-                                                    color: Color(0xFF0284C7),
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          if (task.isHabit) ...[
-                                            const SizedBox(width: 6),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFF58CC02,
-                                                ).withValues(alpha: 0.2),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: const Text(
-                                                '🌱 Habit',
-                                                style: TextStyle(
-                                                  color: Color(0xFF58CC02),
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                          const Spacer(),
-                                          if (isAssigner)
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.close_rounded,
-                                                size: 18,
-                                                color: Colors.redAccent,
-                                              ),
-                                              tooltip: 'Remove Task',
-                                              onPressed: () {
-                                                taskMateProvider.removeTask(
-                                                  group.id,
-                                                  taskIndex: taskIdx,
-                                                );
-                                                Navigator.pop(sheetCtx);
-                                              },
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        task.title,
-                                        style: TextStyle(
-                                          fontSize: 17.5,
-                                          fontWeight: FontWeight.w900,
-                                          color: isDark
-                                              ? Colors.white
-                                              : scheme.onSurface,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Uploaded by ${task.uploaderDisplay}',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark
-                                              ? const Color(0xFFAFBBC1)
-                                              : scheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      const Divider(height: 1),
-                                      const SizedBox(height: 10),
-
-                                      // Members Schedule & Completion Status
-                                      ...group.members.values.map((member) {
-                                        final sched =
-                                            task.memberSchedules[member.uid];
-                                        final hasDone =
-                                            sched?.completed ?? false;
-                                        final hasSched =
-                                            sched?.scheduledTime != null;
-
-                                        return Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 5,
-                                          ),
-                                          child: Row(
+                                          Row(
                                             children: [
-                                              CircleAvatar(
-                                                radius: 14,
-                                                backgroundColor: const Color(
-                                                  0xFF58CC02,
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFF0284C7,
+                                                  ).withValues(alpha: 0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
-                                                backgroundImage:
-                                                    member.photoUrl != null &&
-                                                        member
-                                                            .photoUrl!
-                                                            .isNotEmpty
-                                                    ? NetworkImage(
-                                                        member.photoUrl!,
-                                                      )
-                                                    : null,
-                                                child:
-                                                    member.photoUrl == null ||
-                                                        member.photoUrl!.isEmpty
-                                                    ? Text(
-                                                        member
-                                                                .displayName
-                                                                .isNotEmpty
-                                                            ? member
-                                                                  .displayName[0]
-                                                                  .toUpperCase()
-                                                            : 'M',
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    SvgPicture.asset(
+                                                      'assets/icon/gem.svg',
+                                                      width: 14,
+                                                      height: 14,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    const Text(
+                                                      '+50 Gems',
+                                                      style: TextStyle(
+                                                        color: Color(
+                                                          0xFF0284C7,
                                                         ),
-                                                      )
-                                                    : null,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  member.uid == currentUid
-                                                      ? 'You'
-                                                      : member.displayName,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 15,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : scheme.onSurface,
-                                                  ),
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
-                                              if (hasDone)
+                                              if (task.isHabit) ...[
+                                                const SizedBox(width: 6),
                                                 Container(
                                                   padding:
                                                       const EdgeInsets.symmetric(
-                                                        horizontal: 10,
+                                                        horizontal: 8,
                                                         vertical: 4,
                                                       ),
                                                   decoration: BoxDecoration(
                                                     color: const Color(
                                                       0xFF58CC02,
-                                                    ).withValues(alpha: 0.18),
+                                                    ).withValues(alpha: 0.2),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           8,
                                                         ),
                                                   ),
                                                   child: const Text(
-                                                    'Done',
+                                                    '🌱 Habit',
                                                     style: TextStyle(
                                                       color: Color(0xFF58CC02),
                                                       fontWeight:
-                                                          FontWeight.w800,
-                                                      fontSize: 12,
+                                                          FontWeight.w900,
+                                                      fontSize: 11,
                                                     ),
                                                   ),
-                                                )
-                                              else if (hasSched)
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 3,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFF1CB0F6,
-                                                    ).withValues(alpha: 0.15),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
+                                                ),
+                                              ],
+                                              const Spacer(),
+                                              if (isAssigner)
+                                                IconButton(
+                                                  icon: const Icon(
+                                                    Icons.close_rounded,
+                                                    size: 18,
+                                                    color: Colors.redAccent,
                                                   ),
-                                                  child: Text(
-                                                    DateFormat('h:mm a').format(
-                                                      sched!.scheduledTime!,
-                                                    ),
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF1CB0F6),
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                )
-                                              else
-                                                Text(
-                                                  'No timer set',
-                                                  style: TextStyle(
-                                                    color: isDark
-                                                        ? const Color(
-                                                            0xFF77878F,
-                                                          )
-                                                        : scheme
-                                                              .onSurfaceVariant,
-                                                    fontSize: 12,
-                                                  ),
+                                                  tooltip: 'Remove Task',
+                                                  onPressed: () {
+                                                    taskMateProvider.removeTask(
+                                                      liveGroup.id,
+                                                      taskIndex: taskIdx,
+                                                    );
+                                                  },
                                                 ),
                                             ],
                                           ),
-                                        );
-                                      }),
-
-                                      const SizedBox(height: 14),
-
-                                      // Action Buttons for Current User
-                                      if (isCompleted)
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                mySchedule?.completedLate ==
-                                                    true
-                                                ? const Color(
-                                                    0xFFF59E0B,
-                                                  ).withValues(alpha: 0.15)
-                                                : const Color(
-                                                    0xFF58CC02,
-                                                  ).withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(
-                                              14,
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            task.title,
+                                            style: TextStyle(
+                                              fontSize: 17.5,
+                                              fontWeight: FontWeight.w900,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : scheme.onSurface,
                                             ),
                                           ),
-                                          child: Center(
-                                            child: Text(
-                                              mySchedule?.completedLate == true
-                                                  ? '⚠️ Completed (Late)'
-                                                  : '🎉 Completed',
-                                              style: TextStyle(
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Uploaded by ${task.uploaderDisplay}',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark
+                                                  ? const Color(0xFFAFBBC1)
+                                                  : scheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          const Divider(height: 1),
+                                          const SizedBox(height: 10),
+
+                                          // Members Schedule & Completion Status
+                                          ...liveGroup.members.values.map((
+                                            member,
+                                          ) {
+                                            final sched = task
+                                                .memberSchedules[member.uid];
+                                            final hasDone =
+                                                sched?.completed ?? false;
+                                            final hasSched =
+                                                sched?.scheduledTime != null;
+
+                                            return Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 5,
+                                                  ),
+                                              child: Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    radius: 14,
+                                                    backgroundColor:
+                                                        const Color(0xFF58CC02),
+                                                    backgroundImage:
+                                                        member.photoUrl !=
+                                                                null &&
+                                                            member
+                                                                .photoUrl!
+                                                                .isNotEmpty
+                                                        ? NetworkImage(
+                                                            member.photoUrl!,
+                                                          )
+                                                        : null,
+                                                    child:
+                                                        member.photoUrl ==
+                                                                null ||
+                                                            member
+                                                                .photoUrl!
+                                                                .isEmpty
+                                                        ? Text(
+                                                            member
+                                                                    .displayName
+                                                                    .isNotEmpty
+                                                                ? member
+                                                                      .displayName[0]
+                                                                      .toUpperCase()
+                                                                : 'M',
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 12,
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                          )
+                                                        : null,
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      member.uid == currentUid
+                                                          ? 'You'
+                                                          : member.displayName,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 15,
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : scheme.onSurface,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (hasDone)
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 4,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            const Color(
+                                                              0xFF58CC02,
+                                                            ).withValues(
+                                                              alpha: 0.18,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: const Text(
+                                                        'Done',
+                                                        style: TextStyle(
+                                                          color: Color(
+                                                            0xFF58CC02,
+                                                          ),
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  else if (hasSched)
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 3,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            const Color(
+                                                              0xFF1CB0F6,
+                                                            ).withValues(
+                                                              alpha: 0.15,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        DateFormat(
+                                                          'h:mm a',
+                                                        ).format(
+                                                          sched!.scheduledTime!,
+                                                        ),
+                                                        style: const TextStyle(
+                                                          color: Color(
+                                                            0xFF1CB0F6,
+                                                          ),
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  else
+                                                    Text(
+                                                      'No timer set',
+                                                      style: TextStyle(
+                                                        color: isDark
+                                                            ? const Color(
+                                                                0xFF77878F,
+                                                              )
+                                                            : scheme
+                                                                  .onSurfaceVariant,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            );
+                                          }),
+
+                                          const SizedBox(height: 14),
+
+                                          // Action Buttons for Current User
+                                          if (isCompleted)
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
                                                 color:
                                                     mySchedule?.completedLate ==
                                                         true
-                                                    ? const Color(0xFFF59E0B)
-                                                    : const Color(0xFF58CC02),
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 13.5,
+                                                    ? const Color(
+                                                        0xFFF59E0B,
+                                                      ).withValues(alpha: 0.15)
+                                                    : const Color(
+                                                        0xFF58CC02,
+                                                      ).withValues(alpha: 0.15),
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
                                               ),
-                                            ),
-                                          ),
-                                        )
-                                      else
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: OutlinedButton.icon(
-                                                style: OutlinedButton.styleFrom(
-                                                  side: BorderSide(
-                                                    color: isDark
-                                                        ? const Color(
-                                                            0xFF37464F,
-                                                          )
-                                                        : scheme.outlineVariant,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 11,
-                                                      ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.pop(sheetCtx);
-                                                  onPickTime(group, taskIdx);
-                                                },
-                                                icon: const Icon(
-                                                  Icons.schedule_rounded,
-                                                  size: 16,
-                                                  color: Color(0xFF1CB0F6),
-                                                ),
-                                                label: Text(
-                                                  myScheduledTime != null
-                                                      ? 'Change Timer'
-                                                      : 'Set My Timer',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Quicksand',
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: FilledButton(
-                                                style: FilledButton.styleFrom(
-                                                  backgroundColor: const Color(
-                                                    0xFF58CC02,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 11,
-                                                      ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.pop(sheetCtx);
-                                                  onStartTask(group, taskIdx);
-                                                },
-                                                child: const Text(
-                                                  'Start Task',
+                                              child: Center(
+                                                child: Text(
+                                                  mySchedule?.completedLate ==
+                                                          true
+                                                      ? '⚠️ Completed (Late)'
+                                                      : '🎉 Completed',
                                                   style: TextStyle(
-                                                    fontFamily: 'Quicksand',
+                                                    color:
+                                                        mySchedule
+                                                                ?.completedLate ==
+                                                            true
+                                                        ? const Color(
+                                                            0xFFF59E0B,
+                                                          )
+                                                        : const Color(
+                                                            0xFF58CC02,
+                                                          ),
                                                     fontWeight: FontWeight.w800,
-                                                    fontSize: 13,
+                                                    fontSize: 13.5,
                                                   ),
                                                 ),
                                               ),
+                                            )
+                                          else
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    style: OutlinedButton.styleFrom(
+                                                      side: BorderSide(
+                                                        color: isDark
+                                                            ? const Color(
+                                                                0xFF37464F,
+                                                              )
+                                                            : scheme
+                                                                  .outlineVariant,
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 11,
+                                                          ),
+                                                    ),
+                                                    onPressed: () {
+                                                      onPickTime(
+                                                        liveGroup,
+                                                        taskIdx,
+                                                      );
+                                                    },
+                                                    icon: const Icon(
+                                                      Icons.schedule_rounded,
+                                                      size: 16,
+                                                      color: Color(0xFF1CB0F6),
+                                                    ),
+                                                    label: Text(
+                                                      myScheduledTime != null
+                                                          ? 'Change Timer'
+                                                          : 'Set My Timer',
+                                                      style: const TextStyle(
+                                                        fontFamily: 'Quicksand',
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: FilledButton(
+                                                    style: FilledButton.styleFrom(
+                                                      backgroundColor:
+                                                          const Color(
+                                                            0xFF58CC02,
+                                                          ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 11,
+                                                          ),
+                                                    ),
+                                                    onPressed: () {
+                                                      onStartTask(
+                                                        liveGroup,
+                                                        taskIdx,
+                                                      );
+                                                    },
+                                                    child: const Text(
+                                                      'Start Task',
+                                                      style: TextStyle(
+                                                        fontFamily: 'Quicksand',
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                           ],
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );

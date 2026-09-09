@@ -187,8 +187,12 @@ class _MetricGrid extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(item.icon, color: item.color, size: 22),
-                        const SizedBox(height: 18),
+                        if (item.icon != null) ...[
+                          Icon(item.icon, color: item.color, size: 22),
+                          const SizedBox(height: 18),
+                        ] else ...[
+                          const SizedBox(height: 40),
+                        ],
                         Text(
                           item.value,
                           style: const TextStyle(
@@ -221,14 +225,14 @@ class _MetricGrid extends StatelessWidget {
 class _SummaryMetric {
   final String label;
   final String value;
-  final IconData icon;
-  final Color color;
+  final IconData? icon;
+  final Color? color;
 
   const _SummaryMetric({
     required this.label,
     required this.value,
-    required this.icon,
-    required this.color,
+    this.icon,
+    this.color,
   });
 }
 

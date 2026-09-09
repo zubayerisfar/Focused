@@ -755,6 +755,7 @@ class UsageProvider extends ChangeNotifier {
       final records = await _usageStatsService.queryUsageRecords(
         session.startedAt,
         session.endedAt,
+        reconcileWithDailyAggregates: false,
       );
       _ensureMetadataForRecords(records);
 

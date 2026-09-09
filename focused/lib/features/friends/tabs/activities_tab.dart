@@ -160,10 +160,6 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
     final isAtRisk = friend.isAtRisk;
     final hasInteracted = friend.hasInteractedInCurrentCycle;
 
-    final ringColor = isAtRisk
-        ? const Color(0xFFEF4444)
-        : (hasInteracted ? const Color(0xFF58CC02) : const Color(0xFF1CB0F6));
-
     final timeRemainingStr = isAtRisk
         ? _formatHoursMinutes(friend.riskTimeRemaining)
         : _formatHoursMinutes(friend.cycleTimeRemaining);
@@ -204,34 +200,25 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                 Row(
                   children: [
                     // Avatar
-                    Container(
-                      padding: const EdgeInsets.all(2.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: ringColor, width: 2.2),
-                      ),
-                      child: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: const Color(0xFF1CB0F6),
-                        backgroundImage:
-                            friend.photoUrl != null &&
-                                friend.photoUrl!.isNotEmpty
-                            ? NetworkImage(friend.photoUrl!)
-                            : null,
-                        child:
-                            friend.photoUrl == null || friend.photoUrl!.isEmpty
-                            ? Text(
-                                friend.displayName.isNotEmpty
-                                    ? friend.displayName[0].toUpperCase()
-                                    : 'F',
-                                style: const TextStyle(
-                                  fontFamily: 'Quicksand',
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : null,
-                      ),
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: const Color(0xFF1CB0F6),
+                      backgroundImage:
+                          friend.photoUrl != null && friend.photoUrl!.isNotEmpty
+                          ? NetworkImage(friend.photoUrl!)
+                          : null,
+                      child: friend.photoUrl == null || friend.photoUrl!.isEmpty
+                          ? Text(
+                              friend.displayName.isNotEmpty
+                                  ? friend.displayName[0].toUpperCase()
+                                  : 'F',
+                              style: const TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 14),
 

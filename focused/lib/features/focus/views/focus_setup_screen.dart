@@ -132,7 +132,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        padding: const EdgeInsets.fromLTRB(16, 2, 16, 32),
         children: [
           Text(
             'Plan your session',
@@ -141,7 +141,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           Text(
             'Choose what you want to work on and how you want to focus.',
@@ -150,14 +150,14 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             ),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 16),
 
           // =================================================
           // TASK
           // =================================================
           const _SectionTitle(title: 'Task'),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           _AppCard(
             child: ListTile(
@@ -205,14 +205,14 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             ),
           ),
 
-          const SizedBox(height: 26),
+          const SizedBox(height: 18),
 
           // =================================================
           // SESSION SETTINGS
           // =================================================
           const _SectionTitle(title: 'Session'),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           _AppCard(
             child: Column(
@@ -250,7 +250,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             ),
           ),
 
-          const SizedBox(height: 26),
+          const SizedBox(height: 18),
 
           // =================================================
           // SESSION PLAN
@@ -273,7 +273,7 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             ],
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           _AppCard(
             child: Column(

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../models/usage_access_status.dart';
 import '../providers/usage_provider.dart';
-import '../../../core/theme/app_theme.dart';
 
 class UsagePermissionScreen extends StatelessWidget {
   const UsagePermissionScreen({super.key});
@@ -13,110 +12,199 @@ class UsagePermissionScreen extends StatelessWidget {
     final usageProvider = context.watch<UsageProvider>();
     final status = usageProvider.accessStatus;
     final granted = status == UsageAccessStatus.granted;
-    final busy = status == UsageAccessStatus.checking || usageProvider.isRefreshing;
+    final busy =
+        status == UsageAccessStatus.checking || usageProvider.isRefreshing;
+
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Usage Access')),
+      appBar: AppBar(
+        title: const Text(
+          'App Activity',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Column(
             children: [
               Expanded(
                 child: ListView(
                   children: [
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+                    // Header Icon
                     Center(
                       child: Container(
-                        width: 92,
-                        height: 92,
+                        width: 80,
+                        height: 80,
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryBlue.withOpacity(0.10),
+                          color: granted
+                              ? const Color(0xFF58CC02).withValues(alpha: 0.14)
+                              : const Color(0xFF1CB0F6).withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           granted
-                              ? Icons.verified_user_outlined
-                              : Icons.shield_outlined,
-                          size: 44,
+                              ? Icons.check_circle_rounded
+                              : Icons.query_stats_rounded,
+                          size: 40,
                           color: granted
-                              ? const Color(0xFF34B27B)
-                              : AppTheme.primaryBlue,
+                              ? const Color(0xFF58CC02)
+                              : const Color(0xFF1CB0F6),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    // Title
                     Text(
-                      granted
-                          ? 'Usage Access is connected'
-                          : 'Understand your digital habits',
+                      granted ? 'Usage Access Enabled' : 'Enable Usage Access',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
                           ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
+                    // Subtitle
                     Text(
                       granted
-                          ? 'Focused can now read Android UsageStats and convert foreground activity into local app-usage intervals.'
-                          : 'Focused needs Android Usage Access to measure how long you use other apps and whether they interrupt focus sessions.',
+                          ? 'Focused is actively recording app screen time and focus distraction metrics locally.'
+                          : 'Grant Android permission so Focused can accurately calculate daily screen time and distraction sessions.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        height: 1.5,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.62),
+                        fontSize: 14,
+                        height: 1.45,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 28),
-                    const _PermissionFeature(
-                      icon: Icons.phone_android_rounded,
-                      title: 'Real daily app usage',
-                      description:
-                          'Read Android foreground-app events and build actual per-app usage for today and yesterday.',
+
+                    // Feature highlights (Clean & Minimal)
+                    _FeatureRow(
+                      icon: Icons.pie_chart_outline_rounded,
+                      title: 'Precise Screen Time',
+                      subtitle:
+                          'Track foreground duration for your apps with Digital Wellbeing accuracy.',
+                      scheme: scheme,
                     ),
-                    const SizedBox(height: 14),
-                    const _PermissionFeature(
-                      icon: Icons.compare_arrows_rounded,
-                      title: 'Usage comparisons',
-                      description:
-                          'Compare measured app usage with yesterday instead of using demo values.',
+                    const SizedBox(height: 12),
+                    _FeatureRow(
+                      icon: Icons.shield_outlined,
+                      title: 'Focus Guard & Limits',
+                      subtitle:
+                          'Detect when distracting apps are opened during active focus sessions.',
+                      scheme: scheme,
                     ),
-                    const SizedBox(height: 14),
-                    const _PermissionFeature(
-                      icon: Icons.timer_outlined,
-                      title: 'Focus interruption analysis',
-                      description:
-                          'Read app activity during the exact focus-session window so distracting time can be measured.',
+                    const SizedBox(height: 12),
+                    _FeatureRow(
+                      icon: Icons.lock_outline_rounded,
+                      title: '100% On-Device & Private',
+                      subtitle:
+                          'Your usage stats stay on your device and are never sold or shared.',
+                      scheme: scheme,
                     ),
+
                     const SizedBox(height: 24),
-                    const _PrivacyCard(),
-                    const SizedBox(height: 16),
-                    _PermissionStateCard(
-                      status: status,
-                      isRefreshing: usageProvider.isRefreshing,
-                      lastUpdatedAt: usageProvider.lastUpdatedAt,
-                      error: usageProvider.lastError,
+
+                    // Status Indicator Box
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? scheme.surfaceContainerHigh
+                            : scheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _statusColor(status, busy),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _statusTitle(status, busy),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                                if (usageProvider.lastUpdatedAt != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Synced ${_formatTimestamp(usageProvider.lastUpdatedAt!)}',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          if (granted)
+                            Icon(
+                              Icons.check_rounded,
+                              size: 18,
+                              color: _statusColor(status, busy),
+                            ),
+                        ],
+                      ),
                     ),
+
                     if (granted) ...[
-                      const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: busy
-                            ? null
-                            : usageProvider.openUsageAccessSettings,
-                        icon: const Icon(Icons.settings_outlined),
-                        label: const Text('Manage Usage Access in Android'),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton(
+                          onPressed: busy
+                              ? null
+                              : usageProvider.openUsageAccessSettings,
+                          child: Text(
+                            'Open system settings',
+                            style: TextStyle(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+
+              // Bottom Action Button
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
-                height: 54,
-                child: FilledButton.icon(
+                height: 52,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: granted
+                        ? const Color(0xFF58CC02) // Duo Green
+                        : const Color(0xFF1CB0F6), // Duo Vibrant Cyan
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
                   onPressed: busy || status == UsageAccessStatus.unsupported
                       ? null
                       : () async {
@@ -130,21 +218,37 @@ class UsagePermissionScreen extends StatelessWidget {
                                 .requestUsageAccess();
                           }
                         },
-                  icon: busy
+                  child: busy
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
                         )
-                      : Icon(
-                          granted
-                              ? Icons.refresh_rounded
-                              : Icons.open_in_new_rounded,
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              granted
+                                  ? Icons.refresh_rounded
+                                  : Icons.arrow_forward_rounded,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              granted
+                                  ? 'Refresh Usage Data'
+                                  : 'Allow Usage Access',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.5,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
                         ),
-                  label: Text(
-                    granted ? 'Refresh real usage' : 'Grant Usage Access',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
                 ),
               ),
             ],
@@ -153,55 +257,95 @@ class UsagePermissionScreen extends StatelessWidget {
       ),
     );
   }
+
+  Color _statusColor(UsageAccessStatus status, bool busy) {
+    if (busy) return const Color(0xFF1CB0F6);
+    switch (status) {
+      case UsageAccessStatus.granted:
+        return const Color(0xFF58CC02);
+      case UsageAccessStatus.denied:
+        return const Color(0xFFFF9600);
+      case UsageAccessStatus.error:
+        return const Color(0xFFFF4B4B);
+      case UsageAccessStatus.unsupported:
+        return Colors.grey;
+      case UsageAccessStatus.checking:
+      case UsageAccessStatus.unknown:
+        return const Color(0xFF1CB0F6);
+    }
+  }
+
+  String _statusTitle(UsageAccessStatus status, bool busy) {
+    if (busy) return 'Checking permission...';
+    switch (status) {
+      case UsageAccessStatus.granted:
+        return 'Access Granted';
+      case UsageAccessStatus.denied:
+        return 'Permission Required';
+      case UsageAccessStatus.error:
+        return 'Error checking permission';
+      case UsageAccessStatus.unsupported:
+        return 'Android Only';
+      case UsageAccessStatus.checking:
+      case UsageAccessStatus.unknown:
+        return 'Checking status...';
+    }
+  }
 }
 
-class _PermissionFeature extends StatelessWidget {
+class _FeatureRow extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String description;
+  final String subtitle;
+  final ColorScheme scheme;
 
-  const _PermissionFeature({
+  const _FeatureRow({
     required this.icon,
     required this.title,
-    required this.description,
+    required this.subtitle,
+    required this.scheme,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: isDark ? scheme.surfaceContainerHigh : scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withOpacity(0.10),
+              color: const Color(0xFF1CB0F6).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AppTheme.primaryBlue),
+            child: Icon(icon, size: 20, color: const Color(0xFF1CB0F6)),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
                 Text(
-                  description,
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
                   style: TextStyle(
                     fontSize: 12,
-                    height: 1.45,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.58),
+                    height: 1.35,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -211,175 +355,6 @@ class _PermissionFeature extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PrivacyCard extends StatelessWidget {
-  const _PrivacyCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF34B27B).withOpacity(0.09),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.lock_outline_rounded, color: Color(0xFF34B27B)),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Private by default',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Raw app-usage intervals are stored locally on this device. Focused does not upload them to Firebase in this stage.',
-                  style: TextStyle(fontSize: 12, height: 1.45),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PermissionStateCard extends StatelessWidget {
-  final UsageAccessStatus status;
-  final bool isRefreshing;
-  final DateTime? lastUpdatedAt;
-  final String? error;
-
-  const _PermissionStateCard({
-    required this.status,
-    required this.isRefreshing,
-    required this.lastUpdatedAt,
-    required this.error,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final presentation = _presentationFor(status, isRefreshing);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.circle, size: 10, color: presentation.color),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Permission status',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              Text(
-                presentation.label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: presentation.color,
-                ),
-              ),
-            ],
-          ),
-          if (lastUpdatedAt != null) ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Last real usage refresh: ${_formatTimestamp(lastUpdatedAt!)}',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.55),
-                ),
-              ),
-            ),
-          ],
-          if (error != null) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                error!,
-                style: const TextStyle(
-                  fontSize: 11,
-                  height: 1.35,
-                  color: Color(0xFFFF8A65),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  _PermissionPresentation _presentationFor(
-    UsageAccessStatus status,
-    bool refreshing,
-  ) {
-    if (refreshing) {
-      return const _PermissionPresentation(
-        label: 'Refreshing',
-        color: AppTheme.primaryBlue,
-      );
-    }
-
-    switch (status) {
-      case UsageAccessStatus.granted:
-        return const _PermissionPresentation(
-          label: 'Granted',
-          color: Color(0xFF34B27B),
-        );
-      case UsageAccessStatus.denied:
-        return const _PermissionPresentation(
-          label: 'Not granted',
-          color: Color(0xFFFF8A65),
-        );
-      case UsageAccessStatus.unsupported:
-        return const _PermissionPresentation(
-          label: 'Android only',
-          color: Colors.grey,
-        );
-      case UsageAccessStatus.error:
-        return const _PermissionPresentation(
-          label: 'Error',
-          color: Colors.redAccent,
-        );
-      case UsageAccessStatus.checking:
-      case UsageAccessStatus.unknown:
-        return const _PermissionPresentation(
-          label: 'Checking',
-          color: AppTheme.primaryBlue,
-        );
-    }
-  }
-}
-
-class _PermissionPresentation {
-  final String label;
-  final Color color;
-
-  const _PermissionPresentation({
-    required this.label,
-    required this.color,
-  });
 }
 
 String _formatTimestamp(DateTime value) {

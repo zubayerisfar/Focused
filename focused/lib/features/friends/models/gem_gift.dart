@@ -1,4 +1,4 @@
-class ExpGift {
+class GemGift {
   final String id;
   final String fromUid;
   final String fromName;
@@ -7,7 +7,7 @@ class ExpGift {
   final bool claimed;
   final DateTime? createdAt;
 
-  const ExpGift({
+  const GemGift({
     required this.id,
     required this.fromUid,
     required this.fromName,
@@ -29,8 +29,8 @@ class ExpGift {
     };
   }
 
-  factory ExpGift.fromMap(Map<String, dynamic> map, {String? docId}) {
-    return ExpGift(
+  factory GemGift.fromMap(Map<String, dynamic> map, {String? docId}) {
+    return GemGift(
       id: (docId ?? map['id'] ?? '').toString(),
       fromUid: (map['fromUid'] ?? '').toString(),
       fromName: (map['fromName'] ?? 'A Friend').toString(),
@@ -52,3 +52,5 @@ class ExpGift {
     );
   }
 }
+
+typedef ExpGift = GemGift;

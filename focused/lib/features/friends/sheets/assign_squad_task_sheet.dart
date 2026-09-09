@@ -29,6 +29,10 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
       builder: (ctx, setSheetState) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         final scheme = Theme.of(ctx).colorScheme;
+        final liveGroup = taskMateProvider.groups.firstWhere(
+          (g) => g.id == group.id,
+          orElse: () => group,
+        );
 
         String reminderText(int? mins) {
           if (mins == null) return 'No reminder';
@@ -66,7 +70,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                     const Text('👥', style: TextStyle(fontSize: 22)),
                     const SizedBox(width: 10),
                     Text(
-                      'Create Squad Task (${group.activeTasks.length}/3)',
+                      'Create Squad Task (${liveGroup.activeTasks.length}/3)',
                       style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
@@ -687,7 +691,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                           reminderMinutesBefore: selectedReminderMinutes,
                           taskTitle: title,
                           isHabit: isDaily,
-                          taskIndex: group.activeTasks.length,
+                          taskIndex: liveGroup.activeTasks.length,
                         );
                       }
 

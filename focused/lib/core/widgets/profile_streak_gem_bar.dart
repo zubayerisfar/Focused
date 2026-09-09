@@ -24,11 +24,11 @@ String _initials(String name) {
 }
 
 /// Reusable top-bar component that displays Gem chip, Streak chip, and profile avatar
-class ProfileStreakXpBar extends StatelessWidget {
+class ProfileStreakGemBar extends StatelessWidget {
   final bool showProfile;
   final double avatarRadius;
 
-  const ProfileStreakXpBar({
+  const ProfileStreakGemBar({
     super.key,
     this.showProfile = true,
     this.avatarRadius = 20,
@@ -83,7 +83,7 @@ class ProfileStreakXpBar extends StatelessWidget {
         // Gem chip
         InkWell(
           borderRadius: BorderRadius.circular(19),
-          onTap: () => context.push('/xp'),
+          onTap: () => context.push('/gems'),
           child: Container(
             height: 38,
             padding: chipPadding,
@@ -182,3 +182,5 @@ class ProfileStreakXpBar extends StatelessWidget {
     );
   }
 }
+
+typedef ProfileStreakXpBar = ProfileStreakGemBar;

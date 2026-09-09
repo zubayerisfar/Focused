@@ -472,7 +472,9 @@ class _QualityCard extends StatelessWidget {
         ? const Color(0xFF10B981)
         : quality >= 50
         ? const Color(0xFFF59E0B)
-        : const Color(0xFFEF4444);
+        : const Color(
+            0xFFFB7185,
+          ); // Softer, refined rose tone instead of harsh alarming red
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
@@ -482,8 +484,8 @@ class _QualityCard extends StatelessWidget {
             : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: ringColor.withValues(alpha: 0.25),
-          width: 1.2,
+          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.4 : 0.7),
+          width: 1.0,
         ),
       ),
       child: Row(
@@ -775,10 +777,6 @@ class _AdvancedAnalysisAdCard extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
-          width: 1.2,
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

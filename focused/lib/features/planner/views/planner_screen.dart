@@ -161,6 +161,11 @@ class PlannerScreenState extends State<PlannerScreen> {
             });
           },
           onPickDate: _pickDate,
+          onModeChanged: (mode) {
+            setState(() {
+              _calendarMode = mode;
+            });
+          },
           onBack: () {
             setState(() {
               _area = PlannerArea.hub;

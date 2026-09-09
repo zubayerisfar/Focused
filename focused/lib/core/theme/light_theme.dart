@@ -18,8 +18,8 @@ ThemeData buildLightTheme() {
       ).copyWith(
         primary: AppColors.primaryBlue,
         onPrimary: Colors.white,
-        primaryContainer: const Color(0xFFE8EAF5),
-        onPrimaryContainer: const Color(0xFF343B59),
+        primaryContainer: const Color(0xFFE1F5FE),
+        onPrimaryContainer: const Color(0xFF025687),
         secondary: AppColors.mist,
         secondaryContainer: const Color(0xFFE7EFEC),
         tertiary: AppColors.warning,
@@ -58,7 +58,7 @@ ThemeData buildLightTheme() {
     navigationBarTheme: NavigationBarThemeData(
       height: 68,
       backgroundColor: surface,
-      indicatorColor: const Color(0xFFE8EAF5),
+      indicatorColor: const Color(0xFFE1F5FE),
       indicatorShape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),

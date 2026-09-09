@@ -3,7 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../settings/providers/cloud_sync_provider.dart';
-import '../../../core/widgets/profile_streak_xp_bar.dart';
+import '../../../core/widgets/profile_streak_gem_bar.dart';
 import '../views/planner_hub_body.dart';
 
 enum PlannerCalendarMode { schedule, day, threeDays, week, month }
@@ -154,7 +154,7 @@ class PlannerHeader extends StatelessWidget {
             ),
             const SizedBox(width: 4),
           ],
-          const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          const ProfileStreakGemBar(showProfile: true, avatarRadius: 20),
           const SizedBox(width: 18),
         ],
       ),

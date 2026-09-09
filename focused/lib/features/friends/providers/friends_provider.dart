@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 
-import '../models/exp_gift.dart';
+import '../models/gem_gift.dart';
 import '../models/friend_user.dart';
-import '../models/partner_quest.dart';
 import '../models/best_friend.dart';
 import '../../../core/services/ad_service.dart';
 import '../services/friends_service.dart';
@@ -39,7 +38,6 @@ class FriendsProvider extends ChangeNotifier {
   List<BestFriend> _bestFriends = [];
   List<ExpGift> _unclaimedGifts = [];
   List<Map<String, dynamic>> _groupNotices = [];
-  PartnerQuest? _partnerQuest;
 
   // Search state
   bool _isSearching = false;
@@ -56,7 +54,6 @@ class FriendsProvider extends ChangeNotifier {
   StreamSubscription? _followersSub;
   StreamSubscription? _bestFriendsSub;
   StreamSubscription? _giftsSub;
-  StreamSubscription? _questSub;
   StreamSubscription? _incomingRemindersSub;
   StreamSubscription? _groupNoticesSub;
   StreamSubscription? _groupNoticesListSub;
@@ -68,7 +65,6 @@ class FriendsProvider extends ChangeNotifier {
   List<BestFriend> get bestFriends => _bestFriends;
   List<ExpGift> get unclaimedGifts => _unclaimedGifts;
   List<Map<String, dynamic>> get groupNotices => _groupNotices;
-  PartnerQuest? get partnerQuest => _partnerQuest;
   bool get isSearching => _isSearching;
   List<FriendUser> get searchResults => _searchResults;
 
@@ -188,7 +184,6 @@ class FriendsProvider extends ChangeNotifier {
       _following = [];
       _followers = [];
       _unclaimedGifts = [];
-      _partnerQuest = null;
       notifyListeners();
       return;
     }
@@ -285,14 +280,6 @@ class FriendsProvider extends ChangeNotifier {
       knownGiftIds = gifts.map((g) => g.id).toSet();
       _unclaimedGifts = gifts;
       notifyListeners();
-    });
-
-    // 5. Stream Partner Quest
-    _questSub = _friendsService.streamPartnerQuest(uid).listen((quest) {
-      if (quest != null) {
-        _partnerQuest = quest;
-        notifyListeners();
-      }
     });
 
     // 6. Listen for incoming reminders (nudges)
@@ -551,18 +538,24 @@ class FriendsProvider extends ChangeNotifier {
     if (!success) return false;
 
     final profile = _profileProvider.profile;
-    await _friendsService.sendExpGift(
-      currentUid: _currentUid,
-      fromName: profile.displayName,
-      fromUsername: profile.handle,
-      targetUid: targetUid,
-      amount: 50,
-    );
+    try {
+      await _friendsService.sendExpGift(
+        currentUid: _currentUid,
+        fromName: profile.displayName,
+        fromUsername: profile.handle,
+        targetUid: targetUid,
+        amount: 50,
+      );
 
-    _giftsSentToday++;
-    _giftedFriendUidsToday.add(targetUid);
-    notifyListeners();
-    return true;
+      _giftsSentToday++;
+      _giftedFriendUidsToday.add(targetUid);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error sending 50 gems gift: $e');
+      await _statsProvider.addXp(50);
+      return false;
+    }
   }
 
   Future<void> claimExp(ExpGift gift) async {
@@ -589,30 +582,6 @@ class FriendsProvider extends ChangeNotifier {
       totalClaimed += gift.amount;
     }
     return totalClaimed;
-  }
-
-  // ===========================================================================
-  // PARTNER PAIRING
-  // ===========================================================================
-
-  Future<void> pairWithFriend(FriendUser friend) async {
-    final quest = PartnerQuest(
-      partnerUid: friend.uid,
-      partnerName: friend.displayName,
-      partnerUsername: friend.username,
-      partnerPhotoUrl: friend.photoUrl,
-      goalTitle: 'Complete 10 Focus Sessions or Tasks Together',
-      totalTarget: 10,
-      myProgress: 0,
-      partnerProgress: 0,
-      hoursRemaining: 24,
-    );
-    _partnerQuest = quest;
-    notifyListeners();
-    await _friendsService.setPartnerQuest(
-      currentUid: _currentUid,
-      quest: quest,
-    );
   }
 
   // ===========================================================================
@@ -718,24 +687,30 @@ class FriendsProvider extends ChangeNotifier {
     if (!success) return false;
 
     final profile = _profileProvider.profile;
-    await _friendsService.sendExpGift(
-      currentUid: _currentUid,
-      fromName: profile.displayName,
-      fromUsername: profile.handle,
-      targetUid: friend.uid,
-      amount: 25,
-    );
+    try {
+      await _friendsService.sendExpGift(
+        currentUid: _currentUid,
+        fromName: profile.displayName,
+        fromUsername: profile.handle,
+        targetUid: friend.uid,
+        amount: 25,
+      );
 
-    // Record interaction for streak increment
-    await _friendsService.recordBestFriendInteraction(
-      currentUid: _currentUid,
-      friendUid: friend.uid,
-    );
+      // Record interaction for streak increment
+      await _friendsService.recordBestFriendInteraction(
+        currentUid: _currentUid,
+        friendUid: friend.uid,
+      );
 
-    _giftsSentToday++;
-    _giftedFriendUidsToday.add(friend.uid);
-    notifyListeners();
-    return true;
+      _giftsSentToday++;
+      _giftedFriendUidsToday.add(friend.uid);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error sending 25 gems gift: $e');
+      await _statsProvider.addXp(25);
+      return false;
+    }
   }
 
   /// Restores at-risk or broken best friend streak using a Rewarded Ad
@@ -762,7 +737,6 @@ class FriendsProvider extends ChangeNotifier {
     _followersSub?.cancel();
     _bestFriendsSub?.cancel();
     _giftsSub?.cancel();
-    _questSub?.cancel();
     _incomingRemindersSub?.cancel();
     _groupNoticesSub?.cancel();
     _groupNoticesListSub?.cancel();

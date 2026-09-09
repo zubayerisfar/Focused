@@ -10,7 +10,7 @@ import '../../tasks/providers/task_provider.dart';
 import '../../wellbeing/providers/usage_provider.dart';
 import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/services/home_widget_service.dart';
-import '../../../core/widgets/profile_streak_xp_bar.dart';
+import '../../../core/widgets/profile_streak_gem_bar.dart';
 import '../../streak/services/productivity_streak_service.dart';
 import '../widgets/daily_overview_card.dart';
 import '../widgets/daily_plan_section.dart';
@@ -137,7 +137,7 @@ class TodayScreen extends StatelessWidget {
           ),
         ),
         actions: const [
-          ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          ProfileStreakGemBar(showProfile: true, avatarRadius: 20),
           SizedBox(width: 18),
         ],
       ),

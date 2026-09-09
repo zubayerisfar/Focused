@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/network/network_connectivity_service.dart';
+import '../../../core/widgets/offline_blocked_card.dart';
 import '../../friends/providers/friends_provider.dart';
 import '../../friends/tabs/task_mates_tab.dart';
 import '../tabs/group_history_tab.dart';
@@ -9,7 +11,7 @@ import '../../friends/sheets/friend_notification_hub_sheet.dart';
 import '../../friends/sheets/create_squad_sheet.dart';
 import '../../friends/sheets/assign_squad_task_sheet.dart';
 import '../../friends/widgets/squad_task_actions.dart';
-import '../../../core/widgets/profile_streak_xp_bar.dart';
+import '../../../core/widgets/profile_streak_gem_bar.dart';
 
 class GroupScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -22,6 +24,9 @@ class GroupScreen extends StatefulWidget {
 class _GroupScreenState extends State<GroupScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isConnected =
+      NetworkConnectivityService.instance.isOnlineNotifier.value;
+  bool _isCheckingConnection = false;
 
   @override
   void initState() {
@@ -34,6 +39,33 @@ class _GroupScreenState extends State<GroupScreen>
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
+    NetworkConnectivityService.instance.isOnlineNotifier.addListener(
+      _onConnectivityChanged,
+    );
+    _checkConnectivity();
+  }
+
+  void _onConnectivityChanged() {
+    if (mounted) {
+      setState(() {
+        _isConnected =
+            NetworkConnectivityService.instance.isOnlineNotifier.value;
+      });
+    }
+  }
+
+  Future<void> _checkConnectivity() async {
+    if (_isCheckingConnection) return;
+    setState(() {
+      _isCheckingConnection = true;
+    });
+    final hasInternet = await NetworkConnectivityService.instance.checkNow();
+    if (mounted) {
+      setState(() {
+        _isConnected = hasInternet;
+        _isCheckingConnection = false;
+      });
+    }
   }
 
   @override
@@ -49,6 +81,9 @@ class _GroupScreenState extends State<GroupScreen>
 
   @override
   void dispose() {
+    NetworkConnectivityService.instance.isOnlineNotifier.removeListener(
+      _onConnectivityChanged,
+    );
     _tabController.dispose();
     super.dispose();
   }
@@ -123,83 +158,93 @@ class _GroupScreenState extends State<GroupScreen>
             ],
           ),
           const SizedBox(width: 4),
-          const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          const ProfileStreakGemBar(showProfile: true, avatarRadius: 20),
           const SizedBox(width: 18),
         ],
       ),
-      body: Column(
-        children: [
-          // 2 Tabs: Squads (collection) & History
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
-            child: Container(
-              height: 50,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                dividerColor: Colors.transparent,
-                dividerHeight: 0,
-                indicator: BoxDecoration(
-                  color: const Color(0xFF1CB0F6),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: Colors.white,
-                unselectedLabelColor: isDark
-                    ? const Color(0xFF77878F)
-                    : scheme.onSurfaceVariant,
-                labelStyle: const TextStyle(
-                  fontFamily: 'Quicksand',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14.5,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontFamily: 'Quicksand',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14.5,
-                ),
-                tabs: const [
-                  Tab(text: 'Squads'),
-                  Tab(text: 'History'),
-                ],
-              ),
-            ),
-          ),
-
-          // Tab Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
+      body: !_isConnected
+          ? OfflineBlockedCard(
+              title: "Oops, you're not connected!",
+              message:
+                  'Connect to the internet and retry again to access your squad groups.',
+              onRetry: _checkConnectivity,
+              isRetrying: _isCheckingConnection,
+            )
+          : Column(
               children: [
-                // Tab 1: Active Squads
-                TaskMatesTab(
-                  isDark: isDark,
-                  onCreateGroup: () => showCreateGroupDialog(context),
-                  onAssignTask: (group) => showAssignTaskSheet(context, group),
-                  onPickTime: (group, idx) => SquadTaskActions.pickScheduleTime(
-                    context,
-                    group,
-                    taskIndex: idx,
-                  ),
-                  onStartTask: (group, idx) => SquadTaskActions.startTask(
-                    context,
-                    group,
-                    taskIndex: idx,
+                // 2 Tabs: Squads (collection) & History
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
+                  child: Container(
+                    height: 50,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      dividerColor: Colors.transparent,
+                      dividerHeight: 0,
+                      indicator: BoxDecoration(
+                        color: const Color(0xFF1CB0F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: isDark
+                          ? const Color(0xFF77878F)
+                          : scheme.onSurfaceVariant,
+                      labelStyle: const TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                      ),
+                      tabs: const [
+                        Tab(text: 'Squads'),
+                        Tab(text: 'History'),
+                      ],
+                    ),
                   ),
                 ),
 
-                // Tab 2: Group Task History
-                GroupHistoryTab(isDark: isDark),
+                // Tab Views
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Tab 1: Active Squads
+                      TaskMatesTab(
+                        isDark: isDark,
+                        onCreateGroup: () => showCreateGroupDialog(context),
+                        onAssignTask: (group) =>
+                            showAssignTaskSheet(context, group),
+                        onPickTime: (group, idx) =>
+                            SquadTaskActions.pickScheduleTime(
+                              context,
+                              group,
+                              taskIndex: idx,
+                            ),
+                        onStartTask: (group, idx) => SquadTaskActions.startTask(
+                          context,
+                          group,
+                          taskIndex: idx,
+                        ),
+                      ),
+
+                      // Tab 2: Group Task History
+                      GroupHistoryTab(isDark: isDark),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 

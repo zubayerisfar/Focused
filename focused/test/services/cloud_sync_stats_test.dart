@@ -122,16 +122,22 @@ void main() {
 
     test('Offline network service reports false without crashing', () async {
       // Mock network service checking timeout / failure
-      final offlineResult = await const _MockOfflineNetworkService()
+      final offlineResult = await _MockOfflineNetworkService()
           .hasInternetConnection();
       expect(offlineResult, isFalse);
     });
   });
 }
 
-class _MockOfflineNetworkService implements NetworkConnectivityService {
-  const _MockOfflineNetworkService();
+class _MockOfflineNetworkService extends NetworkConnectivityService {
+  _MockOfflineNetworkService() : super(enablePolling: false);
 
   @override
   Future<bool> hasInternetConnection() async => false;
+
+  @override
+  Future<bool> checkNow() async {
+    isOnlineNotifier.value = false;
+    return false;
+  }
 }

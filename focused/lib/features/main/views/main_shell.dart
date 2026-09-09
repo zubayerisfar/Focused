@@ -12,6 +12,7 @@ import '../../planner/views/planner_hub_body.dart';
 import '../../planner/views/planner_screen.dart';
 import '../../settings/views/settings_screen.dart';
 import '../../today/views/today_screen.dart';
+import '../../../core/network/network_connectivity_service.dart';
 
 class MainShell extends StatefulWidget {
   final int initialIndex;
@@ -138,150 +139,166 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
             ),
-            child: NavigationBarTheme(
-              data: NavigationBarThemeData(
-                indicatorColor: Colors.transparent,
-                overlayColor: WidgetStateProperty.all(Colors.transparent),
-                height: 78,
-                labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
-                  states,
-                ) {
-                  final isSelected = states.contains(WidgetState.selected);
-                  return TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    letterSpacing: -0.1,
-                    color: isSelected
-                        ? (isDark ? Colors.white : const Color(0xFF1E293B))
-                        : (isDark
-                              ? Colors.white.withValues(alpha: 0.55)
-                              : const Color(0xFF64748B)),
-                  );
-                }),
-              ),
-              child: NavigationBar(
-                selectedIndex: _currentIndex,
-                height: 78,
-                elevation: 0,
-                shadowColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                onDestinationSelected: (index) {
-                  if (_currentIndex != index) {
-                    setState(() {
-                      _currentIndex = index;
-                    });
-                  }
-                },
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                destinations: const [
-                  NavigationDestination(
-                    icon: _NavIcon(
-                      assetName: 'nav_home.svg',
-                      fallbackIcon: Icons.home_outlined,
-                      color: Color(0xFFFF8228), // Orange
-                      isSelected: false,
-                      size: 32,
-                    ),
-                    selectedIcon: _NavIcon(
-                      assetName: 'nav_home.svg',
-                      fallbackIcon: Icons.home_rounded,
-                      color: Color(0xFFFF8228), // Orange
-                      isSelected: true,
-                      size: 32,
-                    ),
-                    label: 'Home',
+            child: ValueListenableBuilder<bool>(
+              valueListenable:
+                  NetworkConnectivityService.instance.isOnlineNotifier,
+              builder: (context, isOnline, _) {
+                return NavigationBarTheme(
+                  data: NavigationBarThemeData(
+                    indicatorColor: Colors.transparent,
+                    overlayColor: WidgetStateProperty.all(Colors.transparent),
+                    height: 78,
+                    labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
+                      states,
+                    ) {
+                      final isSelected = states.contains(WidgetState.selected);
+                      return TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                        letterSpacing: -0.1,
+                        color: isSelected
+                            ? (isDark ? Colors.white : const Color(0xFF1E293B))
+                            : (isDark
+                                  ? Colors.white.withValues(alpha: 0.55)
+                                  : const Color(0xFF64748B)),
+                      );
+                    }),
                   ),
-                  NavigationDestination(
-                    icon: _NavIcon(
-                      assetName: 'nav_planner.svg',
-                      fallbackIcon: Icons.view_timeline_outlined,
-                      color: Color(0xFF58CC02), // Green
-                      isSelected: false,
-                      size: 32,
-                    ),
-                    selectedIcon: _NavIcon(
-                      assetName: 'nav_planner.svg',
-                      fallbackIcon: Icons.view_timeline_rounded,
-                      color: Color(0xFF58CC02), // Green
-                      isSelected: true,
-                      size: 32,
-                    ),
-                    label: 'Planner',
+                  child: NavigationBar(
+                    selectedIndex: _currentIndex,
+                    height: 78,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    surfaceTintColor: Colors.transparent,
+                    onDestinationSelected: (index) {
+                      if (index == 3 || index == 4) {
+                        NetworkConnectivityService.instance.checkNow();
+                      }
+                      if (_currentIndex != index) {
+                        setState(() {
+                          _currentIndex = index;
+                        });
+                      }
+                    },
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.alwaysShow,
+                    destinations: [
+                      const NavigationDestination(
+                        icon: _NavIcon(
+                          assetName: 'nav_home.svg',
+                          fallbackIcon: Icons.home_outlined,
+                          color: Color(0xFFFF8228), // Orange
+                          isSelected: false,
+                          size: 32,
+                        ),
+                        selectedIcon: _NavIcon(
+                          assetName: 'nav_home.svg',
+                          fallbackIcon: Icons.home_rounded,
+                          color: Color(0xFFFF8228), // Orange
+                          isSelected: true,
+                          size: 32,
+                        ),
+                        label: 'Home',
+                      ),
+                      const NavigationDestination(
+                        icon: _NavIcon(
+                          assetName: 'nav_planner.svg',
+                          fallbackIcon: Icons.view_timeline_outlined,
+                          color: Color(0xFF58CC02), // Green
+                          isSelected: false,
+                          size: 32,
+                        ),
+                        selectedIcon: _NavIcon(
+                          assetName: 'nav_planner.svg',
+                          fallbackIcon: Icons.view_timeline_rounded,
+                          color: Color(0xFF58CC02), // Green
+                          isSelected: true,
+                          size: 32,
+                        ),
+                        label: 'Planner',
+                      ),
+                      const NavigationDestination(
+                        icon: _NavIcon(
+                          assetName: 'nav_focus.svg',
+                          fallbackIcon: Icons.center_focus_strong_outlined,
+                          color: Color(0xFFFF5252), // Red
+                          isSelected: false,
+                          size: 32,
+                        ),
+                        selectedIcon: _NavIcon(
+                          assetName: 'nav_focus.svg',
+                          fallbackIcon: Icons.center_focus_strong_rounded,
+                          color: Color(0xFFFF5252), // Red
+                          isSelected: true,
+                          size: 32,
+                        ),
+                        label: 'Focus',
+                      ),
+                      NavigationDestination(
+                        icon: _NavIcon(
+                          assetName: 'group_icon.svg',
+                          alternateAssetName: 'group_icon.svg',
+                          fallbackIcon: Icons.groups_outlined,
+                          color: const Color(0xFF1CB0F6), // Blue
+                          isSelected: false,
+                          size: 32,
+                          isGrayedOut: !isOnline,
+                        ),
+                        selectedIcon: _NavIcon(
+                          assetName: 'group_icon.svg',
+                          alternateAssetName: 'group_icon.svg',
+                          fallbackIcon: Icons.groups_rounded,
+                          color: const Color(0xFF1CB0F6), // Blue
+                          isSelected: true,
+                          size: 32,
+                          isGrayedOut: !isOnline,
+                        ),
+                        label: 'Groups',
+                      ),
+                      NavigationDestination(
+                        icon: _NavIcon(
+                          assetName: 'nav_friends.svg',
+                          alternateAssetName: 'friends_icon.svg',
+                          fallbackIcon: Icons.people_alt_outlined,
+                          color: const Color(0xFF9B51E0), // Purple
+                          isSelected: false,
+                          size: 32,
+                          isGrayedOut: !isOnline,
+                        ),
+                        selectedIcon: _NavIcon(
+                          assetName: 'nav_friends.svg',
+                          alternateAssetName: 'friends_icon.svg',
+                          fallbackIcon: Icons.people_alt_rounded,
+                          color: const Color(0xFF9B51E0), // Purple
+                          isSelected: true,
+                          size: 32,
+                          isGrayedOut: !isOnline,
+                        ),
+                        label: 'Friends',
+                      ),
+                      const NavigationDestination(
+                        icon: _NavIcon(
+                          assetName: 'nav_settings.svg',
+                          fallbackIcon: Icons.settings_outlined,
+                          color: Color(0xFF0EA5E9), // Bluish
+                          isSelected: false,
+                          size: 32,
+                        ),
+                        selectedIcon: _NavIcon(
+                          assetName: 'nav_settings.svg',
+                          fallbackIcon: Icons.settings_rounded,
+                          color: Color(0xFF0EA5E9), // Bluish
+                          isSelected: true,
+                          size: 32,
+                        ),
+                        label: 'Settings',
+                      ),
+                    ],
                   ),
-                  NavigationDestination(
-                    icon: _NavIcon(
-                      assetName: 'nav_focus.svg',
-                      fallbackIcon: Icons.center_focus_strong_outlined,
-                      color: Color(0xFFFF5252), // Red
-                      isSelected: false,
-                      size: 32,
-                    ),
-                    selectedIcon: _NavIcon(
-                      assetName: 'nav_focus.svg',
-                      fallbackIcon: Icons.center_focus_strong_rounded,
-                      color: Color(0xFFFF5252), // Red
-                      isSelected: true,
-                      size: 32,
-                    ),
-                    label: 'Focus',
-                  ),
-                  NavigationDestination(
-                    icon: _NavIcon(
-                      assetName: 'group_icon.svg',
-                      alternateAssetName: 'group_icon.svg',
-                      fallbackIcon: Icons.groups_outlined,
-                      color: Color(0xFF1CB0F6), // Blue
-                      isSelected: false,
-                      size: 32,
-                    ),
-                    selectedIcon: _NavIcon(
-                      assetName: 'group_icon.svg',
-                      alternateAssetName: 'group_icon.svg',
-                      fallbackIcon: Icons.groups_rounded,
-                      color: Color(0xFF1CB0F6), // Blue
-                      isSelected: true,
-                      size: 32,
-                    ),
-                    label: 'Groups',
-                  ),
-                  NavigationDestination(
-                    icon: _NavIcon(
-                      assetName: 'nav_friends.svg',
-                      alternateAssetName: 'friends_icon.svg',
-                      fallbackIcon: Icons.people_alt_outlined,
-                      color: Color(0xFF9B51E0), // Purple
-                      isSelected: false,
-                      size: 32,
-                    ),
-                    selectedIcon: _NavIcon(
-                      assetName: 'nav_friends.svg',
-                      alternateAssetName: 'friends_icon.svg',
-                      fallbackIcon: Icons.people_alt_rounded,
-                      color: Color(0xFF9B51E0), // Purple
-                      isSelected: true,
-                      size: 32,
-                    ),
-                    label: 'Friends',
-                  ),
-                  NavigationDestination(
-                    icon: _NavIcon(
-                      assetName: 'nav_settings.svg',
-                      fallbackIcon: Icons.settings_outlined,
-                      color: Color(0xFF0EA5E9), // Bluish
-                      isSelected: false,
-                      size: 32,
-                    ),
-                    selectedIcon: _NavIcon(
-                      assetName: 'nav_settings.svg',
-                      fallbackIcon: Icons.settings_rounded,
-                      color: Color(0xFF0EA5E9), // Bluish
-                      isSelected: true,
-                      size: 32,
-                    ),
-                    label: 'Settings',
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),
@@ -297,6 +314,7 @@ class _NavIcon extends StatelessWidget {
   final Color color;
   final bool isSelected;
   final double size;
+  final bool isGrayedOut;
 
   const _NavIcon({
     required this.assetName,
@@ -305,6 +323,7 @@ class _NavIcon extends StatelessWidget {
     required this.color,
     required this.isSelected,
     this.size = 24.0,
+    this.isGrayedOut = false,
   });
 
   static final Map<String, bool> _assetCache = {};
@@ -364,6 +383,34 @@ class _NavIcon extends StatelessWidget {
           );
         }
 
+        if (isGrayedOut) {
+          iconWidget = ColorFiltered(
+            colorFilter: const ColorFilter.matrix(<double>[
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0.45,
+              0,
+            ]),
+            child: iconWidget,
+          );
+        }
+
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
@@ -373,7 +420,9 @@ class _NavIcon extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: isSelected
-                ? color.withValues(alpha: isDark ? 0.22 : 0.12)
+                ? (isGrayedOut
+                      ? Colors.grey.withValues(alpha: 0.15)
+                      : color.withValues(alpha: isDark ? 0.22 : 0.12))
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),

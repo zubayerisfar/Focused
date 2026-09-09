@@ -3,9 +3,8 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-import '../models/exp_gift.dart';
+import '../models/gem_gift.dart';
 import '../models/friend_user.dart';
-import '../models/partner_quest.dart';
 import '../models/best_friend.dart';
 import '../../profile/models/user_profile.dart';
 
@@ -971,36 +970,6 @@ class FriendsService {
         .doc(giftId)
         .update({'claimed': true})
         .catchError((_) {});
-  }
-
-  // ===========================================================================
-  // PARTNER QUEST
-  // ===========================================================================
-
-  Stream<PartnerQuest?> streamPartnerQuest(String currentUid) {
-    if (currentUid.isEmpty) return Stream.value(null);
-    return _firestore
-        .collection('users')
-        .doc(currentUid)
-        .collection('partner_quest')
-        .doc('current')
-        .snapshots()
-        .map((doc) {
-          if (!doc.exists || doc.data() == null) return null;
-          return PartnerQuest.fromMap(doc.data()!);
-        });
-  }
-
-  Future<void> setPartnerQuest({
-    required String currentUid,
-    required PartnerQuest quest,
-  }) async {
-    await _firestore
-        .collection('users')
-        .doc(currentUid)
-        .collection('partner_quest')
-        .doc('current')
-        .set(quest.toMap(), SetOptions(merge: true));
   }
 
   // ===========================================================================

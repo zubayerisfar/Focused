@@ -20,6 +20,7 @@ class TaskCalendarBody extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
   final VoidCallback onPickDate;
+  final ValueChanged<PlannerCalendarMode>? onModeChanged;
   final VoidCallback? onBack;
 
   const TaskCalendarBody({
@@ -28,6 +29,7 @@ class TaskCalendarBody extends StatelessWidget {
     required this.selectedDate,
     required this.onDateSelected,
     required this.onPickDate,
+    this.onModeChanged,
     this.onBack,
   });
 
@@ -37,34 +39,48 @@ class TaskCalendarBody extends StatelessWidget {
       case PlannerCalendarMode.schedule:
         return _ScheduleView(
           selectedDate: selectedDate,
+          calendarMode: mode,
           onDateSelected: onDateSelected,
           onPickDate: onPickDate,
+          onModeChanged: onModeChanged,
           onBack: onBack,
         );
       case PlannerCalendarMode.day:
         return _DayView(
           selectedDate: selectedDate,
+          calendarMode: mode,
           onDateSelected: onDateSelected,
+          onPickDate: onPickDate,
+          onModeChanged: onModeChanged,
           onBack: onBack,
         );
       case PlannerCalendarMode.threeDays:
         return _MultiDayFlow(
           selectedDate: selectedDate,
+          calendarMode: mode,
           dayCount: 3,
           onDateSelected: onDateSelected,
+          onPickDate: onPickDate,
+          onModeChanged: onModeChanged,
           onBack: onBack,
         );
       case PlannerCalendarMode.week:
         return _MultiDayFlow(
           selectedDate: _weekStart(selectedDate),
+          calendarMode: mode,
           dayCount: 7,
           onDateSelected: onDateSelected,
+          onPickDate: onPickDate,
+          onModeChanged: onModeChanged,
           onBack: onBack,
         );
       case PlannerCalendarMode.month:
         return _MonthView(
           selectedDate: selectedDate,
+          calendarMode: mode,
           onDateSelected: onDateSelected,
+          onPickDate: onPickDate,
+          onModeChanged: onModeChanged,
           onBack: onBack,
         );
     }
@@ -75,12 +91,16 @@ class _ScheduleView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
   final VoidCallback onPickDate;
+  final PlannerCalendarMode? calendarMode;
+  final ValueChanged<PlannerCalendarMode>? onModeChanged;
   final VoidCallback? onBack;
 
   const _ScheduleView({
     required this.selectedDate,
     required this.onDateSelected,
     required this.onPickDate,
+    this.calendarMode,
+    this.onModeChanged,
     this.onBack,
   });
 
@@ -99,6 +119,8 @@ class _ScheduleView extends StatelessWidget {
           title: 'Create your plan',
           selectedDate: selectedDate,
           onPickDate: onPickDate,
+          calendarMode: calendarMode,
+          onModeChanged: onModeChanged,
           onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
@@ -147,11 +169,17 @@ class _ScheduleView extends StatelessWidget {
 class _DayView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onPickDate;
+  final PlannerCalendarMode? calendarMode;
+  final ValueChanged<PlannerCalendarMode>? onModeChanged;
   final VoidCallback? onBack;
 
   const _DayView({
     required this.selectedDate,
     required this.onDateSelected,
+    this.onPickDate,
+    this.calendarMode,
+    this.onModeChanged,
     this.onBack,
   });
 
@@ -167,17 +195,15 @@ class _DayView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 4, 18, 110),
       children: [
-        _WeekDateStrip(
-          selectedDate: selectedDate,
-          onDateSelected: onDateSelected,
-        ),
-        const SizedBox(height: 18),
         _CalendarModeIntro(
           title: _isToday(selectedDate)
               ? 'Today'
               : DateFormat('EEEE').format(selectedDate),
           subtitle: DateFormat('MMMM d, yyyy').format(selectedDate),
           selectedDate: selectedDate,
+          onPickDate: onPickDate,
+          calendarMode: calendarMode,
+          onModeChanged: onModeChanged,
           onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
@@ -200,6 +226,11 @@ class _DayView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
+        _WeekDateStrip(
+          selectedDate: selectedDate,
+          onDateSelected: onDateSelected,
+        ),
+        const SizedBox(height: 18),
         if (anytime.isNotEmpty) ...[
           _AnytimeCalendarStrip(date: selectedDate, tasks: anytime),
           const SizedBox(height: 14),
@@ -214,12 +245,18 @@ class _MultiDayFlow extends StatelessWidget {
   final DateTime selectedDate;
   final int dayCount;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onPickDate;
+  final PlannerCalendarMode? calendarMode;
+  final ValueChanged<PlannerCalendarMode>? onModeChanged;
   final VoidCallback? onBack;
 
   const _MultiDayFlow({
     required this.selectedDate,
     required this.dayCount,
     required this.onDateSelected,
+    this.onPickDate,
+    this.calendarMode,
+    this.onModeChanged,
     this.onBack,
   });
 
@@ -251,6 +288,9 @@ class _MultiDayFlow extends StatelessWidget {
               ? '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}'
               : '${DateFormat('MMM d').format(days.first)} – ${DateFormat('MMM d').format(days.last)}',
           selectedDate: selectedDate,
+          onPickDate: onPickDate,
+          calendarMode: calendarMode,
+          onModeChanged: onModeChanged,
           onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
@@ -288,11 +328,17 @@ class _MultiDayFlow extends StatelessWidget {
 class _MonthView extends StatelessWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onPickDate;
+  final PlannerCalendarMode? calendarMode;
+  final ValueChanged<PlannerCalendarMode>? onModeChanged;
   final VoidCallback? onBack;
 
   const _MonthView({
     required this.selectedDate,
     required this.onDateSelected,
+    this.onPickDate,
+    this.calendarMode,
+    this.onModeChanged,
     this.onBack,
   });
 
@@ -324,6 +370,9 @@ class _MonthView extends StatelessWidget {
           title: DateFormat('MMMM').format(selectedDate),
           subtitle: 'Tap any date to open its plan.',
           selectedDate: selectedDate,
+          onPickDate: onPickDate,
+          calendarMode: calendarMode,
+          onModeChanged: onModeChanged,
           onBack: onBack,
           action: FilledButton(
             style: FilledButton.styleFrom(
@@ -456,6 +505,8 @@ class _CalendarModeIntro extends StatelessWidget {
   final String? subtitle;
   final DateTime selectedDate;
   final VoidCallback? onPickDate;
+  final PlannerCalendarMode? calendarMode;
+  final ValueChanged<PlannerCalendarMode>? onModeChanged;
   final Widget? action;
   final VoidCallback? onBack;
 
@@ -464,6 +515,8 @@ class _CalendarModeIntro extends StatelessWidget {
     this.subtitle,
     required this.selectedDate,
     this.onPickDate,
+    this.calendarMode,
+    this.onModeChanged,
     this.action,
     this.onBack,
   });
@@ -499,60 +552,184 @@ class _CalendarModeIntro extends StatelessWidget {
             ),
           ],
         ),
-        if (onPickDate != null || action != null) ...[
+        if (onPickDate != null || onModeChanged != null || action != null) ...[
           const SizedBox(height: 12),
           Row(
             children: [
-              if (onPickDate != null)
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: onPickDate,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(
-                        alpha: isDark ? 0.20 : 0.08,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: scheme.primary.withValues(
-                          alpha: isDark ? 0.35 : 0.20,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.calendar_month_rounded,
-                          size: 18,
-                          color: scheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          DateFormat('MMMM yyyy').format(selectedDate),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: scheme.primary,
-                            letterSpacing: -0.2,
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (onPickDate != null)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: onPickDate,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withValues(
+                              alpha: isDark ? 0.20 : 0.08,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: scheme.primary.withValues(
+                                alpha: isDark ? 0.35 : 0.20,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_month_rounded,
+                                size: 16,
+                                color: scheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                DateFormat('MMM yyyy').format(selectedDate),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: scheme.primary,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: 18,
+                                color: scheme.primary,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_drop_down_rounded,
-                          size: 20,
-                          color: scheme.primary,
+                      ),
+                    if (onModeChanged != null && calendarMode != null)
+                      PopupMenuButton<PlannerCalendarMode>(
+                        tooltip: 'Change calendar view',
+                        initialValue: calendarMode,
+                        onSelected: onModeChanged,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                      ],
-                    ),
-                  ),
+                        itemBuilder: (context) {
+                          final modes = [
+                            (
+                              mode: PlannerCalendarMode.day,
+                              label: 'Daily',
+                              icon: Icons.view_day_outlined,
+                            ),
+                            (
+                              mode: PlannerCalendarMode.schedule,
+                              label: 'Weekly',
+                              icon: Icons.view_agenda_outlined,
+                            ),
+                            (
+                              mode: PlannerCalendarMode.month,
+                              label: 'Monthly',
+                              icon: Icons.calendar_month_outlined,
+                            ),
+                          ];
+                          return modes.map((item) {
+                            final isSelected = item.mode == calendarMode;
+                            return PopupMenuItem<PlannerCalendarMode>(
+                              value: item.mode,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    item.icon,
+                                    size: 18,
+                                    color: isSelected
+                                        ? scheme.primary
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      item.label,
+                                      style: TextStyle(
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? scheme.primary
+                                            : scheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_rounded,
+                                      size: 16,
+                                      color: scheme.primary,
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHighest.withValues(
+                              alpha: isDark ? 0.35 : 0.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: scheme.outlineVariant.withValues(
+                                alpha: isDark ? 0.4 : 0.6,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                calendarMode == PlannerCalendarMode.day
+                                    ? Icons.view_day_outlined
+                                    : calendarMode == PlannerCalendarMode.month
+                                    ? Icons.calendar_month_outlined
+                                    : Icons.view_agenda_outlined,
+                                size: 16,
+                                color: scheme.onSurface,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                calendarMode == PlannerCalendarMode.day
+                                    ? 'Daily'
+                                    : calendarMode == PlannerCalendarMode.month
+                                    ? 'Monthly'
+                                    : 'Weekly',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.onSurface,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: 18,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              const Spacer(),
-              ?action,
+              ),
+              if (action != null) ...[const SizedBox(width: 8), action!],
             ],
           ),
         ],
@@ -1120,7 +1297,7 @@ class _AnytimeCalendarStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.secondaryContainer.withOpacity(0.42),
+        color: scheme.secondaryContainer.withValues(alpha: 0.42),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -1200,9 +1377,9 @@ class _DayTimeGrid extends StatelessWidget {
 
   const _DayTimeGrid({required this.date, required this.occurrences});
 
-  static const double _hourHeight = 68;
-  static const double _timeWidth = 52;
-  static const double _topInset = 18;
+  static const double _minHourHeight = 64;
+  static const double _timeWidth = 54;
+  static const double _topInset = 12;
 
   @override
   Widget build(BuildContext context) {
@@ -1210,8 +1387,18 @@ class _DayTimeGrid extends StatelessWidget {
     final startHour = range.$1;
     final endHour = range.$2;
     final hourCount = endHour - startHour;
-    final gridHeight = _topInset + hourCount * _hourHeight;
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Group occurrences by their starting hour (clamped to [0, 23])
+    final Map<int, List<TaskOccurrence>> tasksByHour = {};
+    for (int h = startHour; h < endHour; h++) {
+      tasksByHour[h] = [];
+    }
+    for (final occ in occurrences) {
+      final h = occ.start.hour.clamp(startHour, endHour - 1);
+      tasksByHour[h]?.add(occ);
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -1221,87 +1408,113 @@ class _DayTimeGrid extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: SizedBox(
-          height: gridHeight,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: Padding(
+          padding: const EdgeInsets.only(top: _topInset, bottom: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: _timeWidth,
-                child: Stack(
-                  children: List.generate(hourCount, (index) {
-                    final hour = startHour + index;
-                    return Positioned(
-                      top: _topInset + index * _hourHeight - 7,
-                      left: 0,
-                      right: 7,
-                      child: Text(
-                        _hourLabel(hour),
-                        textAlign: TextAlign.right,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w700,
-                        ),
+              ...List.generate(hourCount, (index) {
+                final hour = startHour + index;
+                final hourTasks = tasksByHour[hour] ?? const [];
+                final isCurrentHourNow = _isCurrentHour(date, hour);
+
+                return Container(
+                  constraints: const BoxConstraints(minHeight: _minHourHeight),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.7),
+                        width: 0.8,
                       ),
-                    );
-                  }),
-                ),
-              ),
-              Expanded(
-                child: Stack(
-                  children: [
-                    ...List.generate(hourCount + 1, (index) {
-                      return Positioned(
-                        top: _topInset + index * _hourHeight,
-                        left: 0,
-                        right: 0,
-                        child: Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Theme.of(context).dividerColor,
-                        ),
-                      );
-                    }),
-                    ...occurrences.map((occurrence) {
-                      return _positionedGridTask(
-                        context,
-                        occurrence: occurrence,
-                        startHour: startHour,
-                        hourHeight: _hourHeight,
-                        topInset: _topInset,
-                        left: 8,
-                        right: 10,
-                      );
-                    }),
-                    if (_isToday(date))
-                      _currentTimeIndicator(
-                        context,
-                        date: date,
-                        startHour: startHour,
-                        endHour: endHour,
-                        hourHeight: _hourHeight,
-                        topInset: _topInset,
-                      ),
-                    if (occurrences.isEmpty)
-                      Center(
+                    ),
+                    color: isCurrentHourNow
+                        ? scheme.primary.withValues(alpha: isDark ? 0.08 : 0.04)
+                        : null,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Hour label column
+                      SizedBox(
+                        width: _timeWidth,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Text(
-                            'No timed tasks on this day.',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          padding: const EdgeInsets.only(top: 10, right: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                _hourLabel(hour),
+                                textAlign: TextAlign.right,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: isCurrentHourNow
+                                          ? scheme.primary
+                                          : scheme.onSurfaceVariant,
+                                      fontWeight: isCurrentHourNow
+                                          ? FontWeight.w800
+                                          : FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                              ),
+                              if (isCurrentHourNow) ...[
+                                const SizedBox(height: 4),
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: scheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
-                  ],
-                ),
-              ),
+                      // Vertical dividing separator
+                      Container(
+                        width: 1,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.5),
+                      ),
+                      // Hourly tasks area - bubbly sausage tiles side-by-side
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          child: hourTasks.isEmpty
+                              ? const SizedBox(height: _minHourHeight - 16)
+                              : Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: hourTasks.map((occurrence) {
+                                    return _BubblySausageTaskTile(
+                                      occurrence: occurrence,
+                                    );
+                                  }).toList(),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ],
           ),
         ),
       ),
     );
+  }
+
+  bool _isCurrentHour(DateTime targetDate, int hour) {
+    final now = DateTime.now();
+    return _sameDate(now, targetDate) && now.hour == hour;
   }
 }
 
@@ -1421,18 +1634,22 @@ class _MultiDayTimeGrid extends StatelessWidget {
                                 color: Theme.of(context).dividerColor,
                               ),
                             ),
-                            ...occurrences.map((occurrence) {
-                              return _positionedGridTask(
-                                context,
-                                occurrence: occurrence,
-                                startHour: startHour,
-                                hourHeight: _hourHeight,
-                                topInset: _topInset,
-                                left: 7,
-                                right: 7,
-                                compact: true,
-                              );
-                            }),
+                            ...() {
+                              final laneMap = _computeTaskLanes(occurrences);
+                              return occurrences.map((occurrence) {
+                                return _positionedGridTask(
+                                  context,
+                                  occurrence: occurrence,
+                                  startHour: startHour,
+                                  hourHeight: _hourHeight,
+                                  topInset: _topInset,
+                                  totalWidth: columnWidth,
+                                  horizontalPadding: 4,
+                                  laneInfo: laneMap[occurrence],
+                                  compact: true,
+                                );
+                              });
+                            }(),
                             if (_isToday(day))
                               _currentTimeIndicator(
                                 context,
@@ -1479,7 +1696,7 @@ class _MultiDayHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
         decoration: BoxDecoration(
           color: _isToday(date)
-              ? scheme.primaryContainer.withOpacity(0.48)
+              ? scheme.primaryContainer.withValues(alpha: 0.48)
               : scheme.surfaceContainerLow,
           border: Border(
             left: BorderSide(color: Theme.of(context).dividerColor),
@@ -1517,14 +1734,99 @@ class _MultiDayHeader extends StatelessWidget {
   }
 }
 
-Positioned _positionedGridTask(
+class _TaskLaneInfo {
+  final int laneIndex;
+  final int totalLanes;
+
+  const _TaskLaneInfo({required this.laneIndex, required this.totalLanes});
+}
+
+Map<TaskOccurrence, _TaskLaneInfo> _computeTaskLanes(
+  List<TaskOccurrence> occurrences,
+) {
+  if (occurrences.isEmpty) return const {};
+
+  final sorted = List<TaskOccurrence>.from(occurrences)
+    ..sort((a, b) {
+      final startCmp = a.start.compareTo(b.start);
+      if (startCmp != 0) return startCmp;
+      return b.end.compareTo(a.end);
+    });
+
+  // Group into overlapping clusters
+  final clusters = <List<TaskOccurrence>>[];
+  List<TaskOccurrence> currentCluster = [];
+  DateTime? clusterEnd;
+
+  for (final occ in sorted) {
+    // Treat zero-duration or 1-minute tasks as occupying at least 30 minutes for overlap purposes
+    final effectiveEnd = occ.end.difference(occ.start).inMinutes < 25
+        ? occ.start.add(const Duration(minutes: 25))
+        : occ.end;
+
+    if (clusterEnd == null || occ.start.isBefore(clusterEnd)) {
+      currentCluster.add(occ);
+      if (clusterEnd == null || effectiveEnd.isAfter(clusterEnd)) {
+        clusterEnd = effectiveEnd;
+      }
+    } else {
+      clusters.add(currentCluster);
+      currentCluster = [occ];
+      clusterEnd = effectiveEnd;
+    }
+  }
+  if (currentCluster.isNotEmpty) {
+    clusters.add(currentCluster);
+  }
+
+  final result = <TaskOccurrence, _TaskLaneInfo>{};
+
+  for (final cluster in clusters) {
+    // Greedy lane assignment
+    final laneEnds = <DateTime>[];
+    final clusterLaneIndices = <TaskOccurrence, int>{};
+
+    for (final occ in cluster) {
+      final effectiveEnd = occ.end.difference(occ.start).inMinutes < 25
+          ? occ.start.add(const Duration(minutes: 25))
+          : occ.end;
+
+      int assignedLane = -1;
+      for (int i = 0; i < laneEnds.length; i++) {
+        if (!occ.start.isBefore(laneEnds[i])) {
+          assignedLane = i;
+          laneEnds[i] = effectiveEnd;
+          break;
+        }
+      }
+      if (assignedLane == -1) {
+        assignedLane = laneEnds.length;
+        laneEnds.add(effectiveEnd);
+      }
+      clusterLaneIndices[occ] = assignedLane;
+    }
+
+    final totalLanes = laneEnds.length;
+    for (final occ in cluster) {
+      result[occ] = _TaskLaneInfo(
+        laneIndex: clusterLaneIndices[occ] ?? 0,
+        totalLanes: totalLanes,
+      );
+    }
+  }
+
+  return result;
+}
+
+Widget _positionedGridTask(
   BuildContext context, {
   required TaskOccurrence occurrence,
   required int startHour,
   required double hourHeight,
   required double topInset,
-  required double left,
-  required double right,
+  required double totalWidth,
+  double horizontalPadding = 8,
+  _TaskLaneInfo? laneInfo,
   bool compact = false,
 }) {
   final startMinutes = occurrence.start.hour * 60 + occurrence.start.minute;
@@ -1540,15 +1842,33 @@ Positioned _positionedGridTask(
   final durationMinutes = effectiveEnd.difference(occurrence.start).inMinutes;
   final rawHeight = durationMinutes / 60 * hourHeight;
   final height = rawHeight
-      .clamp(compact ? 24.0 : 30.0, compact ? 118.0 : 170.0)
+      .clamp(compact ? 26.0 : 34.0, compact ? 118.0 : 170.0)
       .toDouble();
+
+  final lane = laneInfo?.laneIndex ?? 0;
+  final totalLanes = (laneInfo?.totalLanes ?? 1).clamp(1, 10);
+  final usableWidth = (totalWidth - (horizontalPadding * 2)).clamp(
+    20.0,
+    double.infinity,
+  );
+  final laneSpacing = totalLanes > 1 ? 4.0 : 0.0;
+  final totalSpacing = laneSpacing * (totalLanes - 1);
+  final laneWidth = ((usableWidth - totalSpacing) / totalLanes).clamp(
+    16.0,
+    double.infinity,
+  );
+
+  final left = horizontalPadding + lane * (laneWidth + laneSpacing);
 
   return Positioned(
     top: topInset + rawTop.clamp(0.0, double.infinity).toDouble() + 3,
     left: left,
-    right: right,
+    width: laneWidth,
     height: height,
-    child: _GridTaskBlock(occurrence: occurrence, compact: compact),
+    child: _GridTaskBlock(
+      occurrence: occurrence,
+      compact: compact || totalLanes > 1,
+    ),
   );
 }
 
@@ -1609,8 +1929,8 @@ class _GridTaskBlock extends StatelessWidget {
     );
 
     return Material(
-      color: color.withOpacity(
-        Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.11,
+      color: color.withValues(
+        alpha: Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.11,
       ),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
@@ -1622,15 +1942,15 @@ class _GridTaskBlock extends StatelessWidget {
             context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final tiny = constraints.maxHeight < 39;
-            final showTime = constraints.maxHeight >= 45;
+            final tiny = constraints.maxHeight < 42;
+            final showTime = constraints.maxHeight >= 50;
 
             return Container(
               padding: EdgeInsets.fromLTRB(
-                compact ? 7 : 9,
-                tiny ? 3 : (compact ? 6 : 8),
-                compact ? 5 : 7,
-                tiny ? 3 : (compact ? 6 : 8),
+                compact ? 5 : 8,
+                tiny ? 2 : (compact ? 5 : 7),
+                compact ? 4 : 6,
+                tiny ? 2 : (compact ? 5 : 7),
               ),
               decoration: BoxDecoration(
                 border: Border(
@@ -1640,28 +1960,29 @@ class _GridTaskBlock extends StatelessWidget {
                         : inFocus
                         ? Theme.of(context).colorScheme.primary
                         : color,
-                    width: inFocus ? 4 : 3,
+                    width: inFocus ? 3.5 : 2.5,
                   ),
                 ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     task.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: compact ? 11.5 : 13,
-                      height: 1.05,
+                      fontSize: compact ? 11.0 : 12.5,
+                      height: 1.1,
                       fontWeight: FontWeight.w700,
                       decoration: occurrence.isCompleted
                           ? TextDecoration.lineThrough
                           : null,
                     ),
                   ),
-                  if (inFocus && constraints.maxHeight >= 42) ...[
+                  if (inFocus && constraints.maxHeight >= 46) ...[
                     const SizedBox(height: 2),
                     Text(
                       'IN FOCUS',
@@ -1697,30 +2018,139 @@ class _GridTaskBlock extends StatelessWidget {
   }
 }
 
-(int, int) _visibleHourRange(List<TaskOccurrence> occurrences) {
-  var startHour = 6;
-  var endHour = 22;
+class _BubblySausageTaskTile extends StatelessWidget {
+  final TaskOccurrence occurrence;
 
-  if (occurrences.isNotEmpty) {
-    final earliest = occurrences
-        .map((item) => item.start.hour)
-        .reduce((a, b) => a < b ? a : b);
-    final latest = occurrences
-        .map((item) {
-          if (!_sameDate(item.start, item.end)) {
-            return 24;
-          }
-          return item.end.minute == 0 ? item.end.hour : item.end.hour + 1;
-        })
-        .reduce((a, b) => a > b ? a : b);
+  const _BubblySausageTaskTile({required this.occurrence});
 
-    startHour = earliest < startHour ? earliest : startHour;
-    endHour = latest > endHour ? latest : endHour;
+  @override
+  Widget build(BuildContext context) {
+    final task = occurrence.task;
+    final color = _priorityColor(task.priority);
+    final focusProvider = context.watch<FocusProvider>();
+    final inFocus = focusProvider.isFocusingTaskOccurrence(
+      task.id,
+      occurrence.start,
+    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    // Bubbly sausage tile sizing: flexible pill width that wraps neatly
+    const double tileMaxWidth = 180.0;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => context.push(
+          '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(occurrence.start)}',
+        ),
+        onLongPress: () =>
+            context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
+        child: Container(
+          constraints: const BoxConstraints(
+            minWidth: 100,
+            maxWidth: tileMaxWidth,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDark ? 0.22 : 0.12),
+            borderRadius: BorderRadius.circular(22), // Sausage / pill capsule
+            border: Border.all(
+              color: occurrence.isCompleted
+                  ? AppTheme.success
+                  : inFocus
+                  ? scheme.primary
+                  : color.withValues(alpha: isDark ? 0.65 : 0.45),
+              width: inFocus ? 2.0 : 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (isDark ? Colors.black : color).withValues(alpha: 0.08),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Tiny priority / status pill dot
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: occurrence.isCompleted
+                      ? AppTheme.success
+                      : inFocus
+                      ? scheme.primary
+                      : color,
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Icon
+              SvgPicture.asset(
+                task.isSquadTask
+                    ? 'assets/icon/group_task.svg'
+                    : 'assets/icon/task_icon.svg',
+                width: 14,
+                height: 14,
+              ),
+              const SizedBox(width: 6),
+              // Title & time details
+              Flexible(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                        decoration: occurrence.isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${DateFormat('h:mm a').format(occurrence.start)}'
+                      '${occurrence.end != occurrence.start ? ' - ${DateFormat('h:mm a').format(occurrence.end)}' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10.0,
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (occurrence.isCompleted) ...[
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 14,
+                  color: AppTheme.success,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
+}
 
-  startHour = startHour.clamp(0, 23).toInt();
-  endHour = endHour.clamp(startHour + 1, 24).toInt();
-  return (startHour, endHour);
+(int, int) _visibleHourRange(List<TaskOccurrence> occurrences) {
+  return (0, 24);
 }
 
 String _hourLabel(int hour) {
@@ -1882,7 +2312,7 @@ class _MonthDayCell extends StatelessWidget {
                     ? Theme.of(context).colorScheme.onSurface
                     : Theme.of(
                         context,
-                      ).colorScheme.onSurfaceVariant.withOpacity(0.45),
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
               ),
             ),
             const Spacer(),

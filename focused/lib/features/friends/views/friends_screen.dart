@@ -3,15 +3,17 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/network/network_connectivity_service.dart';
+import '../../../core/widgets/offline_blocked_card.dart';
 import '../models/friend_user.dart';
 import '../../auth/providers/account_provider.dart';
 import '../providers/friends_provider.dart';
 import '../providers/task_mate_provider.dart';
-import '../../../core/widgets/profile_streak_xp_bar.dart';
+import '../../../core/widgets/profile_streak_gem_bar.dart';
 
 import '../tabs/activities_tab.dart';
 import '../tabs/friends_list_tab.dart';
-import '../widgets/claim_exp_banner.dart';
+import '../widgets/claim_gem_banner.dart';
 import '../sheets/friend_notification_hub_sheet.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -25,6 +27,9 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isConnected =
+      NetworkConnectivityService.instance.isOnlineNotifier.value;
+  bool _isCheckingConnection = false;
 
   bool _hasCheckedLoginGifts = false;
 
@@ -47,6 +52,33 @@ class _FriendsScreenState extends State<FriendsScreen>
       }
       _checkUnclaimedGiftsPopup();
     });
+    NetworkConnectivityService.instance.isOnlineNotifier.addListener(
+      _onConnectivityChanged,
+    );
+    _checkConnectivity();
+  }
+
+  void _onConnectivityChanged() {
+    if (mounted) {
+      setState(() {
+        _isConnected =
+            NetworkConnectivityService.instance.isOnlineNotifier.value;
+      });
+    }
+  }
+
+  Future<void> _checkConnectivity() async {
+    if (_isCheckingConnection) return;
+    setState(() {
+      _isCheckingConnection = true;
+    });
+    final hasInternet = await NetworkConnectivityService.instance.checkNow();
+    if (mounted) {
+      setState(() {
+        _isConnected = hasInternet;
+        _isCheckingConnection = false;
+      });
+    }
   }
 
   @override
@@ -159,6 +191,9 @@ class _FriendsScreenState extends State<FriendsScreen>
 
   @override
   void dispose() {
+    NetworkConnectivityService.instance.isOnlineNotifier.removeListener(
+      _onConnectivityChanged,
+    );
     _tabController.dispose();
     super.dispose();
   }
@@ -253,136 +288,148 @@ class _FriendsScreenState extends State<FriendsScreen>
             },
           ),
           const SizedBox(width: 4),
-          const ProfileStreakXpBar(showProfile: true, avatarRadius: 20),
+          const ProfileStreakGemBar(showProfile: true, avatarRadius: 20),
           const SizedBox(width: 18),
         ],
       ),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ── CLAIM EXP BUTTON (Shown ONLY when points received from friends!) ──
-                  if (unclaimedGifts.isNotEmpty) ...[
-                    ...unclaimedGifts.map(
-                      (gift) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: ClaimExpBanner(
-                          gift: gift,
-                          onClaim: () async {
-                            await friendsProvider.claimExp(gift);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: const Color(0xFF58CC02),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  content: Row(
-                                    children: [
-                                      const Text(
-                                        '🎉',
-                                        style: TextStyle(fontSize: 20),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '+${gift.amount} EXP received from ${gift.fromUsername}!',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
+      body: !_isConnected
+          ? OfflineBlockedCard(
+              title: "Oops, you're not connected!",
+              message:
+                  'Connect to the internet and retry again to view and interact with your friends.',
+              onRetry: _checkConnectivity,
+              isRetrying: _isCheckingConnection,
+            )
+          : NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ── CLAIM EXP BUTTON (Shown ONLY when points received from friends!) ──
+                        if (unclaimedGifts.isNotEmpty) ...[
+                          ...unclaimedGifts.map(
+                            (gift) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: ClaimExpBanner(
+                                gift: gift,
+                                onClaim: () async {
+                                  await friendsProvider.claimExp(gift);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: const Color(
+                                          0xFF58CC02,
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        content: Row(
+                                          children: [
+                                            const Text(
+                                              '🎉',
+                                              style: TextStyle(fontSize: 20),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '+${gift.amount} EXP received from ${gift.fromUsername}!',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
 
-                  // ── TABS: ACTIVITIES (FRONT), FOLLOWING & FOLLOWERS ──
-                  Container(
-                    height: 52,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: scheme.outlineVariant),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      dividerColor: Colors.transparent,
-                      dividerHeight: 0,
-                      indicator: BoxDecoration(
-                        color: const Color(0xFF1CB0F6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: isDark
-                          ? const Color(0xFF77878F)
-                          : scheme.onSurfaceVariant,
-                      labelStyle: const TextStyle(
-                        fontFamily: 'Quicksand',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14.5,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontFamily: 'Quicksand',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
-                      ),
-                      tabs: const [
-                        Tab(text: 'Activities'),
-                        Tab(text: 'Following'),
-                        Tab(text: 'Followers'),
+                        // ── TABS: ACTIVITIES (FRONT), FOLLOWING & FOLLOWERS ──
+                        Container(
+                          height: 52,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: scheme.outlineVariant),
+                          ),
+                          child: TabBar(
+                            controller: _tabController,
+                            dividerColor: Colors.transparent,
+                            dividerHeight: 0,
+                            indicator: BoxDecoration(
+                              color: const Color(0xFF1CB0F6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            labelColor: Colors.white,
+                            unselectedLabelColor: isDark
+                                ? const Color(0xFF77878F)
+                                : scheme.onSurfaceVariant,
+                            labelStyle: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14.5,
+                            ),
+                            unselectedLabelStyle: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14.5,
+                            ),
+                            tabs: const [
+                              Tab(text: 'Activities'),
+                              Tab(text: 'Following'),
+                              Tab(text: 'Followers'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                ),
+              ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  // 1. Activities Tab (FRONT)
+                  ActivitiesTab(
+                    isDark: isDark,
+                    onFindFriends: () => context.push('/friends/add'),
+                  ),
+
+                  // 2. Following Tab (with Search & Follow directly at top)
+                  _FollowingTab(
+                    following: following,
+                    isDark: isDark,
+                    scheme: scheme,
+                    friendsProvider: friendsProvider,
+                    onUnfollow: (f) => _confirmUnfollow(context, f),
+                  ),
+
+                  // 3. Followers Tab
+                  FriendsListTab(
+                    friends: followers,
+                    isFollowingTab: false,
+                    isDark: isDark,
+                    canSendReminder: friendsProvider.canSendReminder,
+                    canSendGift: false,
+                    onSendReminder: (_) {},
+                    onFollowBack: (f) => friendsProvider.follow(f),
+                    onUnfollow: (f) => _confirmUnfollow(context, f),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            // 1. Activities Tab (FRONT)
-            ActivitiesTab(
-              isDark: isDark,
-              onFindFriends: () => context.push('/friends/add'),
-            ),
-
-            // 2. Following Tab (with Search & Follow directly at top)
-            _FollowingTab(
-              following: following,
-              isDark: isDark,
-              scheme: scheme,
-              friendsProvider: friendsProvider,
-              onUnfollow: (f) => _confirmUnfollow(context, f),
-            ),
-
-            // 3. Followers Tab
-            FriendsListTab(
-              friends: followers,
-              isFollowingTab: false,
-              isDark: isDark,
-              canSendReminder: friendsProvider.canSendReminder,
-              canSendGift: false,
-              onSendReminder: (_) {},
-              onFollowBack: (f) => friendsProvider.follow(f),
-              onUnfollow: (f) => _confirmUnfollow(context, f),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

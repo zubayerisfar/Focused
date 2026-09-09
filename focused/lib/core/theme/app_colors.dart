@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Brand & Semantic Palette
-  static const Color primaryBlue = Color(0xFF7584B8);
+  static const Color primaryBlue = Color(0xFF1CB0F6);
   static const Color success = Color(0xFF789F8C);
   static const Color warning = Color(0xFFC79D6B);
   static const Color danger = Color(0xFFC77E7E);
