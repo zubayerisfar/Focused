@@ -8,7 +8,8 @@ class PlannerHubBody extends StatelessWidget {
   final ValueChanged<PlannerArea> onSelectArea;
   final VoidCallback onPickDate;
 
-  const PlannerHubBody({super.key, 
+  const PlannerHubBody({
+    super.key,
     required this.selectedDate,
     required this.onSelectArea,
     required this.onPickDate,
@@ -25,7 +26,7 @@ class PlannerHubBody extends StatelessWidget {
         _BigPlannerCard(
           title: 'Tasks & Schedule',
           subtitle: 'Daily agenda, time blocks, and calendar timeline',
-          svgAsset: 'assets/planner_page_icons/planner_task_creation.svg',
+          svgAsset: 'assets/planner_page_icons/task_icon.svg',
           fallbackIcon: Icons.calendar_today_rounded,
           accentColor: const Color(0xFF1CB0F6),
           gradientColors: isDark
@@ -40,7 +41,7 @@ class PlannerHubBody extends StatelessWidget {
         _BigPlannerCard(
           title: 'Reminders',
           subtitle: 'Scheduled notifications, alerts, and time alarms',
-          svgAsset: 'assets/planner_page_icons/planner_reminder_icon.svg',
+          svgAsset: 'assets/planner_page_icons/reminder_icon.svg',
           fallbackIcon: Icons.notifications_active_rounded,
           accentColor: const Color(0xFFFF9600),
           gradientColors: isDark
@@ -55,7 +56,7 @@ class PlannerHubBody extends StatelessWidget {
         _BigPlannerCard(
           title: 'Habits & Routines',
           subtitle: 'Daily streak building, recurring check-ins, and goals',
-          svgAsset: 'assets/planner_page_icons/planner_habit_icon.svg',
+          svgAsset: 'assets/planner_page_icons/habit_icon.svg',
           fallbackIcon: Icons.repeat_rounded,
           accentColor: const Color(0xFF9B51E0),
           gradientColors: isDark
@@ -67,8 +68,6 @@ class PlannerHubBody extends StatelessWidget {
     );
   }
 }
-
-
 
 class _BigPlannerCard extends StatelessWidget {
   final String title;
@@ -129,6 +128,7 @@ class _BigPlannerCard extends StatelessWidget {
               Container(
                 width: 64,
                 height: 64,
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: isDark ? 0.22 : 0.15),
                   shape: BoxShape.circle,
@@ -137,9 +137,9 @@ class _BigPlannerCard extends StatelessWidget {
                 child: svgAsset != null
                     ? SvgPicture.asset(
                         svgAsset!,
-                        width: 38,
-                        height: 38,
-                        fit: BoxFit.contain,
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.cover,
                         placeholderBuilder: (_) =>
                             Icon(fallbackIcon, color: accentColor, size: 30),
                       )
@@ -195,4 +195,3 @@ class _BigPlannerCard extends StatelessWidget {
     );
   }
 }
-

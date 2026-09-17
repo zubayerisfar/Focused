@@ -229,13 +229,15 @@ class AndroidUsageStatsService implements UsageStatsService {
 
       if (records.isEmpty) {
         // App had foreground time according to the OS aggregate, but raw events
-        // were pruned/evicted by the OS. Synthesize a record matching the aggregate duration.
+        // were pruned/evicted by the OS. Synthesize a non-overlapping record placed
+        // earlier in the window so multiple apps never stack at range end.
         if (aggregateDuration > Duration.zero) {
-          final effectiveDuration = aggregateDuration > end.difference(start)
-              ? end.difference(start)
+          final windowSpan = end.difference(start);
+          final effectiveDuration = aggregateDuration > windowSpan
+              ? windowSpan
               : aggregateDuration;
-          final recordStart = end.subtract(effectiveDuration);
-          final safeStart = recordStart.isBefore(start) ? start : recordStart;
+          // Place synthetic records starting from `start` forward, clamping to `end`
+          final safeStart = start;
           final safeEnd = safeStart.add(effectiveDuration);
           if (safeEnd.isAfter(safeStart)) {
             finalRecords.add(
@@ -249,22 +251,19 @@ class AndroidUsageStatsService implements UsageStatsService {
           }
         }
       } else {
-        // App has raw event intervals. Check if raw events severely undercounted
-        // compared to the OS aggregate.
+        // App has raw event intervals. Scale intervals to match OS aggregate if needed.
         final rawTotalSeconds = records.fold<int>(
           0,
           (sum, r) => sum + r.duration.inSeconds,
         );
         final aggSeconds = aggregateDuration.inSeconds;
 
-        if (aggSeconds > rawTotalSeconds && rawTotalSeconds > 0) {
-          // Proportionally scale the intervals to match the OS's canonical foreground count,
-          // but cap the ratio to 1.5x to prevent inflated counts on OEM ROMs where aggregate
-          // includes rolling 24h buckets instead of strict midnight-to-now.
-          final safeAggSeconds = aggSeconds > end.difference(start).inSeconds
-              ? end.difference(start).inSeconds
+        if (aggSeconds > 0 && rawTotalSeconds > 0) {
+          final windowSpanSeconds = end.difference(start).inSeconds;
+          final safeAggSeconds = aggSeconds > windowSpanSeconds
+              ? windowSpanSeconds
               : aggSeconds;
-          final ratio = (safeAggSeconds / rawTotalSeconds).clamp(1.0, 1.5);
+          final ratio = safeAggSeconds / rawTotalSeconds;
           var lastEnd = start;
           for (final r in records) {
             final origDuration = r.duration;
@@ -291,11 +290,11 @@ class AndroidUsageStatsService implements UsageStatsService {
             }
           }
         } else if (aggSeconds > 0 && rawTotalSeconds == 0) {
-          final effectiveDuration = aggregateDuration > end.difference(start)
-              ? end.difference(start)
+          final windowSpan = end.difference(start);
+          final effectiveDuration = aggregateDuration > windowSpan
+              ? windowSpan
               : aggregateDuration;
-          final recordStart = end.subtract(effectiveDuration);
-          final safeStart = recordStart.isBefore(start) ? start : recordStart;
+          final safeStart = start;
           final safeEnd = safeStart.add(effectiveDuration);
           if (safeEnd.isAfter(safeStart)) {
             finalRecords.add(

@@ -84,13 +84,27 @@ class FriendsListTab extends StatelessWidget {
         final friend = friends[i];
         return InkWell(
           onTap: () => context.push('/profile/view', extra: friend),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: scheme.outlineVariant),
+              color: isDark ? const Color(0xFF141622) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFE2E8F0),
+                width: 1.1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : const Color(0xFF64748B).withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -179,11 +193,9 @@ class FriendsListTab extends StatelessWidget {
                                         ? const Color(0xFF37464F)
                                         : scheme.outlineVariant,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  shape: const StadiumBorder(),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
+                                    horizontal: 14,
                                     vertical: 0,
                                   ),
                                 ),
@@ -199,11 +211,9 @@ class FriendsListTab extends StatelessWidget {
                             : FilledButton(
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFF1CB0F6),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  shape: const StadiumBorder(),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
+                                    horizontal: 14,
                                     vertical: 0,
                                   ),
                                 ),

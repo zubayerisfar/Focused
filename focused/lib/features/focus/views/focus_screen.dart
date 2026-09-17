@@ -23,7 +23,7 @@ class FocusScreen extends StatelessWidget {
     final recent = provider.sessionHistory.take(5).toList(growable: false);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

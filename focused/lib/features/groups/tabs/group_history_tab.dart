@@ -18,6 +18,16 @@ class _GroupHistoryTabState extends State<GroupHistoryTab> {
   bool _isSelecting = false;
   final Set<String> _selectedIds = {};
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<TaskMateProvider>().fetchHistory();
+      }
+    });
+  }
+
   void _toggleSelect(String id) {
     setState(() {
       if (_selectedIds.contains(id)) {
@@ -113,301 +123,320 @@ class _GroupHistoryTabState extends State<GroupHistoryTab> {
     final history = taskMateProvider.history;
 
     if (history.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF58CC02).withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.history_rounded,
-                    size: 38,
-                    color: Color(0xFF58CC02),
+      return RefreshIndicator(
+        onRefresh: () => taskMateProvider.fetchHistory(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.65,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF58CC02).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.history_rounded,
+                      size: 38,
+                      color: Color(0xFF58CC02),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'No Group History Yet',
-                style: TextStyle(
-                  fontFamily: 'Quicksand',
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: widget.isDark ? Colors.white : scheme.onSurface,
+                const SizedBox(height: 18),
+                Text(
+                  'No Group History Yet',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: widget.isDark ? Colors.white : scheme.onSurface,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'When all members of a task squad finish their daily tasks, they will be archived here automatically with full details.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Quicksand',
-                  color: widget.isDark
-                      ? const Color(0xFF77878F)
-                      : scheme.onSurfaceVariant,
-                  fontSize: 13.5,
-                  height: 1.4,
+                const SizedBox(height: 8),
+                Text(
+                  'When members of a task squad finish tasks, they will be archived here automatically with full details. Pull down to refresh.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    color: widget.isDark
+                        ? const Color(0xFF77878F)
+                        : scheme.onSurfaceVariant,
+                    fontSize: 13.5,
+                    height: 1.4,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return Column(
-      children: [
-        // Selection toolbar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-          child: Row(
-            children: [
-              Text(
-                _isSelecting
-                    ? '${_selectedIds.length} SELECTED'
-                    : 'COMPLETED SQUAD TASKS (${history.length})',
-                style: TextStyle(
-                  fontFamily: 'Quicksand',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: widget.isDark
-                      ? const Color(0xFF77878F)
-                      : scheme.onSurfaceVariant,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const Spacer(),
-              if (_isSelecting) ...[
-                TextButton(
-                  onPressed: () => _selectAll(history),
-                  child: Text(
-                    _selectedIds.length == history.length
-                        ? 'Deselect All'
-                        : 'Select All',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
+    return RefreshIndicator(
+      onRefresh: () => taskMateProvider.fetchHistory(),
+      child: Column(
+        children: [
+          // Selection toolbar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+            child: Row(
+              children: [
+                Text(
+                  _isSelecting
+                      ? '${_selectedIds.length} SELECTED'
+                      : 'COMPLETED SQUAD TASKS (${history.length})',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: widget.isDark
+                        ? const Color(0xFF77878F)
+                        : scheme.onSurfaceVariant,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Delete Selected',
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: Color(0xFFEF4444),
-                  ),
-                  onPressed: _selectedIds.isEmpty
-                      ? null
-                      : () =>
-                            _confirmDelete(context, taskMateProvider, history),
-                ),
-                IconButton(
-                  tooltip: 'Cancel',
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () {
-                    setState(() {
-                      _isSelecting = false;
-                      _selectedIds.clear();
-                    });
-                  },
-                ),
-              ] else ...[
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _isSelecting = true;
-                    });
-                  },
-                  icon: const Icon(Icons.checklist_rounded, size: 18),
-                  label: const Text(
-                    'Select',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-
-        // History List
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
-            itemCount: history.length,
-            itemBuilder: (ctx, index) {
-              final item = history[index];
-              final isSelected = _selectedIds.contains(item.id);
-              final groupColor = taskMateProvider.colorForGroupId(item.groupId);
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF1CB0F6)
-                        : Theme.of(context).dividerColor.withValues(
-                            alpha: widget.isDark ? 0.35 : 0.6,
-                          ),
-                    width: isSelected ? 2 : 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: widget.isDark ? 0.25 : 0.04,
+                const Spacer(),
+                if (_isSelecting) ...[
+                  TextButton(
+                    onPressed: () => _selectAll(history),
+                    child: Text(
+                      _selectedIds.length == history.length
+                          ? 'Deselect All'
+                          : 'Select All',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
                     ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
+                  ),
+                  IconButton(
+                    tooltip: 'Delete Selected',
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFEF4444),
+                    ),
+                    onPressed: _selectedIds.isEmpty
+                        ? null
+                        : () => _confirmDelete(
+                            context,
+                            taskMateProvider,
+                            history,
+                          ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cancel',
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () {
+                      setState(() {
+                        _isSelecting = false;
+                        _selectedIds.clear();
+                      });
+                    },
+                  ),
+                ] else ...[
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isSelecting = true;
+                      });
+                    },
+                    icon: const Icon(Icons.checklist_rounded, size: 18),
+                    label: const Text(
+                      'Select',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // History List
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+              itemCount: history.length,
+              itemBuilder: (ctx, index) {
+                final item = history[index];
+                final isSelected = _selectedIds.contains(item.id);
+                final groupColor = taskMateProvider.colorForGroupId(
+                  item.groupId,
+                );
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
                     borderRadius: BorderRadius.circular(20),
-                    onTap: () {
-                      if (_isSelecting) {
-                        _toggleSelect(item.id);
-                      } else {
-                        _showHistoryDetailsSheet(context, item, groupColor);
-                      }
-                    },
-                    onLongPress: () {
-                      if (!_isSelecting) {
-                        setState(() {
-                          _isSelecting = true;
-                          _selectedIds.add(item.id);
-                        });
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          if (_isSelecting) ...[
-                            Checkbox(
-                              value: isSelected,
-                              activeColor: const Color(0xFF1CB0F6),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              onChanged: (_) => _toggleSelect(item.id),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF1CB0F6)
+                          : Theme.of(context).dividerColor.withValues(
+                              alpha: widget.isDark ? 0.35 : 0.6,
                             ),
-                            const SizedBox(width: 8),
-                          ] else ...[
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: groupColor.withValues(
-                                  alpha: widget.isDark ? 0.28 : 0.14,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: widget.isDark ? 0.25 : 0.04,
+                        ),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        if (_isSelecting) {
+                          _toggleSelect(item.id);
+                        } else {
+                          _showHistoryDetailsSheet(context, item, groupColor);
+                        }
+                      },
+                      onLongPress: () {
+                        if (!_isSelecting) {
+                          setState(() {
+                            _isSelecting = true;
+                            _selectedIds.add(item.id);
+                          });
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            if (_isSelecting) ...[
+                              Checkbox(
+                                value: isSelected,
+                                activeColor: const Color(0xFF1CB0F6),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                borderRadius: BorderRadius.circular(13),
+                                onChanged: (_) => _toggleSelect(item.id),
                               ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.check_circle_rounded,
-                                  color: Color(0xFF58CC02),
-                                  size: 24,
+                              const SizedBox(width: 8),
+                            ] else ...[
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: groupColor.withValues(
+                                    alpha: widget.isDark ? 0.28 : 0.14,
+                                  ),
+                                  borderRadius: BorderRadius.circular(13),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                          ],
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: groupColor.withValues(
-                                          alpha: widget.isDark ? 0.25 : 0.12,
-                                        ),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        item.groupName,
-                                        style: TextStyle(
-                                          fontFamily: 'Quicksand',
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 0.5,
-                                          color: groupColor,
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      DateFormat(
-                                        'MMM d, yyyy • h:mm a',
-                                      ).format(item.completedAt),
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  item.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontFamily: 'Quicksand',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Color(0xFF58CC02),
+                                    size: 24,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.group_rounded,
-                                      size: 14,
-                                      color: Color(0xFF58CC02),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${item.memberCompletions.length} members completed',
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: scheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 14),
+                            ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 2.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: groupColor.withValues(
+                                            alpha: widget.isDark ? 0.25 : 0.12,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          item.groupName,
+                                          style: TextStyle(
+                                            fontFamily: 'Quicksand',
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.5,
+                                            color: groupColor,
+                                          ),
+                                        ),
                                       ),
+                                      const Spacer(),
+                                      Text(
+                                        DateFormat(
+                                          'MMM d, yyyy • h:mm a',
+                                        ).format(item.completedAt),
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    item.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Quicksand',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.group_rounded,
+                                        size: 14,
+                                        color: Color(0xFF58CC02),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${item.memberCompletions.length} members completed',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -540,6 +569,88 @@ class _GroupHistoryTabState extends State<GroupHistoryTab> {
                 ),
               );
             }),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(
+                    0xFFEF4444,
+                  ).withValues(alpha: 0.12),
+                  foregroundColor: const Color(0xFFEF4444),
+                  shape: const StadiumBorder(),
+                ),
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                label: const Text(
+                  'Delete from History',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
+                ),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dCtx) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      backgroundColor: widget.isDark
+                          ? const Color(0xFF1E293B)
+                          : Colors.white,
+                      title: const Text(
+                        'Delete from history?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
+                      ),
+                      content: const Text(
+                        'This will permanently delete this completed squad task from Firebase history.',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dCtx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFEF4444),
+                            foregroundColor: Colors.white,
+                            shape: const StadiumBorder(),
+                          ),
+                          onPressed: () => Navigator.pop(dCtx, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirmed == true && context.mounted) {
+                    Navigator.pop(ctx); // close bottom sheet
+                    final taskMateProvider = context.read<TaskMateProvider>();
+                    await taskMateProvider.deleteHistoryItems([item]);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: const Color(0xFFEF4444),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          content: const Text(
+                            'Task deleted from squad history.',
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
           ],
         ),
       ),

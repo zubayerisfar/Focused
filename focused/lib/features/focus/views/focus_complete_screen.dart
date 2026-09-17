@@ -69,28 +69,8 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 30),
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 30),
           children: [
-            Center(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF34B27B).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  session.completedNaturally
-                      ? Icons.check_rounded
-                      : Icons.stop_rounded,
-                  size: 44,
-                  color: const Color(0xFF34B27B),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
             Text(
               session.completedNaturally ? 'Nice work!' : 'Session ended',
               textAlign: TextAlign.center,
@@ -372,73 +352,95 @@ class _SessionResultsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         children: [
-          _ResultRow(
-            icon: Icons.timer_rounded,
-            title: 'Actual focused time',
-            value: _formatDuration(session.actualFocusDuration),
-            color: AppTheme.primaryBlue,
+          Text(
+            _formatDuration(session.actualFocusDuration),
+            style: const TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 42,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.primaryBlue,
+            ),
           ),
-
-          const Divider(height: 30),
-
-          _ResultRow(
-            icon: Icons.flag_outlined,
-            title: 'Planned focus',
+          const SizedBox(height: 2),
+          Text(
+            'Total focused time',
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const Divider(height: 28),
+          _CleanStatRow(
+            label: 'Planned focus',
             value: _formatDuration(session.plannedFocusDuration),
-            color: const Color(0xFF8E67D4),
           ),
-
-          const Divider(height: 30),
-
-          _ResultRow(
-            icon: Icons.check_circle_rounded,
-            title: 'Focus blocks',
+          const SizedBox(height: 12),
+          _CleanStatRow(
+            label: 'Focus blocks',
             value:
-                '${session.completedFocusBlocks}'
-                '/${session.totalFocusBlocks}',
-            color: const Color(0xFF34B27B),
+                '${session.completedFocusBlocks}/${session.totalFocusBlocks}',
           ),
-
           if (session.breakDuration.inMicroseconds > 0) ...[
-            const Divider(height: 30),
-
-            _ResultRow(
-              icon: Icons.free_breakfast_rounded,
-              title: 'Break time',
+            const SizedBox(height: 12),
+            _CleanStatRow(
+              label: 'Break time',
               value: _formatDuration(session.breakDuration),
-              color: const Color(0xFF34B27B),
             ),
           ],
-
           if (session.pausedDuration.inMicroseconds > 0) ...[
-            const Divider(height: 30),
-
-            _ResultRow(
-              icon: Icons.pause_circle_outline_rounded,
-              title: 'Paused time',
+            const SizedBox(height: 12),
+            _CleanStatRow(
+              label: 'Paused time',
               value: _formatDuration(session.pausedDuration),
-              color: Colors.blueGrey,
             ),
           ],
-
-          const Divider(height: 30),
-
-          _ResultRow(
-            icon: Icons.schedule_rounded,
-            title: 'Session elapsed',
-            value: _formatDuration(session.totalElapsedDuration),
-            color: Colors.orange,
-          ),
         ],
       ),
+    );
+  }
+}
+
+class _CleanStatRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _CleanStatRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Quicksand',
+            fontWeight: FontWeight.w600,
+            fontSize: 14.5,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Quicksand',
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -514,6 +516,7 @@ class _FocusQualityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final usageProvider = context.watch<UsageProvider>();
     final quality = analysis.focusQuality.round();
+    final hasDistraction = analysis.interruptionCount > 0;
     final distractionEntries = analysis.distractionByApp.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -537,7 +540,7 @@ class _FocusQualityCard extends StatelessWidget {
           );
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
@@ -548,24 +551,27 @@ class _FocusQualityCard extends StatelessWidget {
           Row(
             children: [
               SizedBox(
-                width: 76,
-                height: 76,
+                width: 72,
+                height: 72,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     SizedBox(
-                      width: 76,
-                      height: 76,
+                      width: 72,
+                      height: 72,
                       child: CircularProgressIndicator(
                         value: analysis.focusQuality / 100,
                         strokeWidth: 6,
                         backgroundColor: AppTheme.primaryBlue.withValues(
                           alpha: 0.12,
                         ),
-                        color: AppTheme.primaryBlue,
+                        color: quality >= 80
+                            ? const Color(0xFF34B27B)
+                            : quality >= 50
+                            ? Colors.orange
+                            : Colors.redAccent,
                       ),
                     ),
-
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Padding(
@@ -583,9 +589,7 @@ class _FocusQualityCard extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(width: 16),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,23 +597,21 @@ class _FocusQualityCard extends StatelessWidget {
                     const Text(
                       'Focus quality',
                       style: TextStyle(
+                        fontFamily: 'Quicksand',
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-
                     const SizedBox(height: 4),
-
                     Text(
-                      analysis.interruptionCount == 0
-                          ? 'No distracting app usage was detected during active focus time.'
-                          : '${analysis.interruptionCount} distracting app interruption${analysis.interruptionCount == 1 ? '' : 's'} detected.',
+                      !hasDistraction
+                          ? 'Zero distracting apps opened during focus.'
+                          : '${analysis.interruptionCount} distraction${analysis.interruptionCount == 1 ? '' : 's'} detected (${_formatDuration(analysis.distractedDuration)})',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontFamily: 'Quicksand',
+                        fontSize: 13,
                         height: 1.4,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.55),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -617,63 +619,34 @@ class _FocusQualityCard extends StatelessWidget {
               ),
             ],
           ),
-
-          const Divider(height: 32),
-
-          _AnalysisRow(
-            label: 'Timer focus',
-            value: _formatDuration(session.actualFocusDuration),
-          ),
-
-          const SizedBox(height: 14),
-
-          _AnalysisRow(
-            label: 'Effective focus',
-            value: _formatDuration(analysis.effectiveFocusDuration),
-          ),
-
-          const SizedBox(height: 14),
-
-          _AnalysisRow(
-            label: 'Distracted',
-            value: _formatDuration(analysis.distractedDuration),
-          ),
-
-          const SizedBox(height: 14),
-
-          _AnalysisRow(
-            label: 'Interruptions',
-            value: '${analysis.interruptionCount}',
-          ),
-
-          const SizedBox(height: 14),
-
-          _AnalysisRow(
-            label: 'Top interrupter',
-            value: topInterrupterName ?? 'None',
-          ),
-
-          const SizedBox(height: 14),
-
-          _AnalysisRow(
-            label: 'Attention retained',
-            value: '${analysis.attentionRetention.round()}%',
-          ),
-
-          const SizedBox(height: 14),
-
-          _AnalysisRow(
-            label: 'Plan completion',
-            value: '${analysis.completionRate.round()}%',
-          ),
-
+          if (hasDistraction) ...[
+            const Divider(height: 28),
+            _CleanStatRow(
+              label: 'Effective focus',
+              value: _formatDuration(analysis.effectiveFocusDuration),
+            ),
+            const SizedBox(height: 12),
+            _CleanStatRow(
+              label: 'Distracted time',
+              value: _formatDuration(analysis.distractedDuration),
+            ),
+            if (topInterrupterName != null) ...[
+              const SizedBox(height: 12),
+              _CleanStatRow(
+                label: 'Main interrupter',
+                value: topInterrupterName,
+              ),
+            ],
+          ],
           if (analysis.distractionByApp.isNotEmpty) ...[
-            const Divider(height: 32),
+            const Divider(height: 28),
             Text(
               'Distracting apps',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             ...distractionEntries.take(5).map((entry) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -733,76 +706,6 @@ class _DistractionAppRow extends StatelessWidget {
         Text(
           _formatDuration(duration),
           style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ],
-    );
-  }
-}
-
-class _AnalysisRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _AnalysisRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-            ),
-          ),
-        ),
-
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
-      ],
-    );
-  }
-}
-
-class _ResultRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-  final Color color;
-
-  const _ResultRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color),
-        ),
-
-        const SizedBox(width: 14),
-
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-
-        Text(
-          value,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
       ],
     );

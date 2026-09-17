@@ -14,24 +14,18 @@ object AppUsageSummaryScheduler {
     private const val REQUEST_CODE_11PM = 9102
 
     fun isEnabled(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_ENABLED, true) // Enabled by default
+        return false // Permanently disabled
     }
 
     fun setEnabled(context: Context, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()
-
-        if (enabled) {
-            scheduleDailySummaries(context)
-        } else {
-            cancelDailySummaries(context)
-        }
+        prefs.edit().putBoolean(KEY_ENABLED, false).apply()
+        cancelDailySummaries(context)
     }
 
     fun scheduleDailySummaries(context: Context) {
-        scheduleNextSlot(context, targetHour = 17, targetMinute = 0, requestCode = REQUEST_CODE_5PM, slotName = "5PM")
-        scheduleNextSlot(context, targetHour = 23, targetMinute = 0, requestCode = REQUEST_CODE_11PM, slotName = "11PM")
+        // Feature permanently disabled: ensure all alarms are cancelled
+        cancelDailySummaries(context)
     }
 
     fun cancelDailySummaries(context: Context) {

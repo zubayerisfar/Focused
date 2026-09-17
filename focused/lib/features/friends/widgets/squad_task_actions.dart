@@ -266,33 +266,14 @@ class SquadTaskActions {
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          Row(
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Smaller, slightly grayed button
-              Expanded(
-                flex: 4,
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: () => Navigator.pop(dialogCtx, false),
-                  child: Text(
-                    'Claim 50 Gems',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: isDark
-                          ? const Color(0xFF64748B)
-                          : Colors.grey.shade600,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Prominent bold button to double
-              Expanded(
-                flex: 6,
+              // Prominent bold button to double (Top)
+              SizedBox(
+                width: double.infinity,
+                height: 48,
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF0284C7),
@@ -300,15 +281,35 @@ class SquadTaskActions {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   onPressed: () => Navigator.pop(dialogCtx, true),
                   icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
                   label: const Text(
                     'Double to 100',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Normal claim button (Bottom)
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(dialogCtx, false),
+                  child: Text(
+                    'Claim 50 Gems',
                     style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13.5,
+                      fontSize: 13,
+                      color: isDark
+                          ? const Color(0xFF8B949E)
+                          : Colors.grey.shade600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

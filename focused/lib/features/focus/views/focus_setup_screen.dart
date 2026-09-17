@@ -119,9 +119,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     }
     selectedTask ??= taskProvider.nextTask();
 
-    final selectedOccurrence = selectedTask == null
-        ? null
-        : taskProvider.occurrenceForTaskOnDate(selectedTask, _occurrenceDate);
     final sessionPlan = _buildSessionPlan();
 
     return Scaffold(
@@ -147,61 +144,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
             'Choose what you want to work on and how you want to focus.',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // =================================================
-          // TASK
-          // =================================================
-          const _SectionTitle(title: 'Task'),
-
-          const SizedBox(height: 8),
-
-          _AppCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              onTap: _showTaskPicker,
-              leading: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  selectedTask == null
-                      ? Icons.bolt_rounded
-                      : Icons.task_alt_rounded,
-                  color: AppTheme.primaryBlue,
-                ),
-              ),
-              title: Text(
-                selectedTask?.title ?? 'Quick Focus Session',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text(
-                selectedTask == null
-                    ? 'Automatically added to your daily planner'
-                    : '${_taskDurationLabel(selectedTask)} • ${selectedTask.priority.label}${selectedOccurrence == null ? '' : ' • ${_occurrenceLabel(selectedOccurrence.start, selectedOccurrence.end)}'}',
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (selectedTask != null)
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      tooltip: 'Unlink task',
-                      onPressed: () {
-                        setState(() {
-                          _selectedTaskId = '';
-                        });
-                      },
-                    ),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
-              ),
             ),
           ),
 
@@ -445,172 +387,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
   }
 
   // =========================================================
-  // TASK PICKER
-  // =========================================================
-
-  void _showTaskPicker() {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-    final taskProvider = context.read<TaskProvider>();
-    final tasks = widget.initialOccurrenceDate != null
-        ? taskProvider.tasksForDate(_occurrenceDate, includeCompleted: false)
-        : taskProvider.incompleteTasks
-              .where(
-                (task) =>
-                    !taskProvider.isTaskCompletedForDate(task, _occurrenceDate),
-              )
-              .toList();
-
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final scheme = Theme.of(sheetContext).colorScheme;
-
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            children: [
-              Text(
-                'Choose task',
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Option 1: Quick Focus (No task linked)
-              ListTile(
-                leading: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1CB0F6).withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.bolt_rounded,
-                    color: Color(0xFF1CB0F6),
-                  ),
-                ),
-                title: const Text(
-                  'Quick Focus (No task linked)',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text('Focus freely without attaching a task'),
-                trailing: _selectedTaskId == null || _selectedTaskId!.isEmpty
-                    ? const Icon(Icons.check_rounded, color: Color(0xFF1CB0F6))
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _selectedTaskId = '';
-                  });
-                  Navigator.pop(sheetContext);
-                },
-              ),
-
-              const Divider(height: 12),
-
-              if (tasks.isEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline_rounded,
-                        size: 40,
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No unfinished tasks found',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton.icon(
-                        onPressed: () {
-                          Navigator.pop(sheetContext);
-                          context.push('/task/new');
-                        },
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Create a New Task'),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                ...tasks.map((task) {
-                  final selected = task.id == _selectedTaskId;
-
-                  return ListTile(
-                    leading: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: _taskColor(
-                          task.priority,
-                        ).withValues(alpha: 0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.task_alt_rounded,
-                        color: _taskColor(task.priority),
-                      ),
-                    ),
-                    title: Text(
-                      task.title,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      '${_taskDurationLabel(task)} • ${task.priority.label}',
-                    ),
-                    trailing: selected
-                        ? const Icon(
-                            Icons.check_rounded,
-                            color: AppTheme.primaryBlue,
-                          )
-                        : null,
-                    onTap: () {
-                      setState(() {
-                        _selectedTaskId = task.id;
-                        if (widget.initialOccurrenceDate == null) {
-                          _occurrenceDate = _executionDateForTask(
-                            taskProvider,
-                            task,
-                          );
-                        }
-
-                        _totalMinutes = _focusMinutesForTask(task);
-                      });
-
-                      Navigator.pop(sheetContext);
-                    },
-                  );
-                }),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    context.push('/task/new');
-                  },
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Create Another Task'),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // =========================================================
   // DURATION PICKERS
   // =========================================================
 
@@ -747,26 +523,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     return task.defaultFocusMinutes;
   }
 
-  String _taskDurationLabel(Task task) {
-    final scheduledMinutes = task.scheduledDurationMinutes;
-
-    if (scheduledMinutes == null) {
-      return 'Flexible duration';
-    }
-
-    return _formatDuration(scheduledMinutes);
-  }
-
-  String _occurrenceLabel(DateTime start, DateTime end) {
-    final now = DateTime.now();
-    final day = DateTime(start.year, start.month, start.day);
-    final today = DateTime(now.year, now.month, now.day);
-    final dayLabel = day == today ? 'Today' : '${day.month}/${day.day}';
-    final startText = TimeOfDay.fromDateTime(start).format(context);
-    final endText = TimeOfDay.fromDateTime(end).format(context);
-    return '$dayLabel $startText–$endText';
-  }
-
   String _formatDuration(int minutes) {
     if (minutes < 60) {
       return '$minutes min';
@@ -781,19 +537,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
     }
 
     return '${hours}h ${remainingMinutes}m';
-  }
-
-  Color _taskColor(TaskPriority priority) {
-    switch (priority) {
-      case TaskPriority.critical:
-        return const Color(0xFFFF6B5E);
-
-      case TaskPriority.important:
-        return AppTheme.primaryBlue;
-
-      case TaskPriority.growth:
-        return const Color(0xFF34B27B);
-    }
   }
 }
 

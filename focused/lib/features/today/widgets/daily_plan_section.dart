@@ -4,17 +4,28 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../tasks/models/task.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/glass_container.dart';
 import 'next_today_task.dart';
 
 Color _priorityColor(TaskPriority priority) {
   switch (priority) {
     case TaskPriority.critical:
-      return AppTheme.danger;
+      return const Color(0xFFEF4444);
     case TaskPriority.important:
-      return AppTheme.primaryBlue;
+      return const Color(0xFFF59E0B);
     case TaskPriority.growth:
-      return AppTheme.success;
+      return const Color(0xFF10B981);
+  }
+}
+
+String _priorityLabel(TaskPriority priority) {
+  switch (priority) {
+    case TaskPriority.critical:
+      return 'High';
+    case TaskPriority.important:
+      return 'Medium';
+    case TaskPriority.growth:
+      return 'Low';
   }
 }
 
@@ -39,83 +50,71 @@ class DailyPlanSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final allDone =
         totalTasksCount > 0 && completedTasksCount == totalTasksCount;
     final progressLabel = totalTasksCount == 0
         ? 'No tasks planned'
         : (allDone
-              ? 'All $totalTasksCount done 🎉'
+              ? 'All $totalTasksCount done'
               : '$completedTasksCount of $totalTasksCount done');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: SvgPicture.asset(
-                'assets/planner_page_icons/planner_task_creation.svg',
-                width: 24,
-                height: 24,
+            SvgPicture.asset(
+              'assets/today_screen_icons/task_icon_today_screen.svg',
+              width: 26,
+              height: 26,
+              colorFilter: ColorFilter.mode(
+                isDark ? Colors.white : const Color(0xFF1E293B),
+                BlendMode.srcIn,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Daily plan',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        next == null ? 'Overview' : 'Next task',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: allDone
-                              ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                              : scheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          progressLabel,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: allDone
-                                ? const Color(0xFF10B981)
-                                : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              child: Text(
+                'Today\'s Plan',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: allDone
+                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    : (isDark
+                          ? Colors.white.withValues(alpha: 0.10)
+                          : const Color(0xFFEDE9FE)),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                progressLabel,
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: allDone
+                      ? const Color(0xFF10B981)
+                      : (isDark ? Colors.white70 : const Color(0xFF6366F1)),
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        if (next == null)
+        if (allDone)
+          const _AllCompletedCard()
+        else if (next == null)
           _EmptyPlanCard(date: date)
         else
           _NextTaskCard(next: next!),
@@ -131,101 +130,157 @@ class _NextTaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final task = next.task;
     final isSquad = task.isSquadTask;
-    const squadColor = Color(0xFF2563EB); // Calming royal oceanic blue
+    const squadColor = Color(0xFF2563EB);
     final color = isSquad ? squadColor : _priorityColor(task.priority);
+    final priorityText = isSquad ? 'Squad' : _priorityLabel(task.priority);
 
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: () => context.push(
-          '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(next.date)}',
-        ),
-        onLongPress: () =>
-            context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
-        child: Padding(
-          padding: const EdgeInsets.all(17),
-          child: Row(
+    return GlassContainer(
+      padding: const EdgeInsets.all(18),
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => context.push(
+        '/task/${Uri.encodeComponent(task.id)}?date=${_dateQuery(next.date)}',
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Priority Capsule Pill
               Container(
-                width: 5,
-                height: 58,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(10),
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  priorityText,
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+              if (task.scheduledStart != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 13,
+                        color: isDark
+                            ? Colors.white60
+                            : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        DateFormat('h:mm a').format(task.scheduledStart!),
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF475569),
                         ),
-                        if (isSquad) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: squadColor.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.groups_rounded,
-                                  size: 13,
-                                  color: squadColor,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Squad',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: squadColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            task.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+              color: isDark ? Colors.white : const Color(0xFF1E293B),
+            ),
+          ),
+          if (task.description.trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              task.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.play_arrow_rounded,
+                      size: 16,
+                      color: Color(0xFF6366F1),
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      next.occurrence == null
-                          ? 'Anytime today'
-                          : '${DateFormat('h:mm a').format(next.occurrence!.start)} – ${DateFormat('h:mm a').format(next.occurrence!.end)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w300,
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Focus Now',
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF6366F1),
                       ),
                     ),
                   ],
                 ),
               ),
+              const Spacer(),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+              ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -238,26 +293,105 @@ class _EmptyPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassContainer(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
+      borderRadius: BorderRadius.circular(24),
+      child: Column(
         children: [
-          const Icon(Icons.check_circle_outline_rounded),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'No unfinished tasks for ${DateFormat('EEEE').format(date)}.',
+          Text(
+            'No tasks planned yet',
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tap below to add your first priority for today',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 12.5,
+              color: isDark ? Colors.white60 : const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              shape: const StadiumBorder(),
+              backgroundColor: const Color(0xFF6366F1),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            ),
+            onPressed: () => context.push('/task/new'),
+            child: const Text(
+              'Add Task',
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontFamily: 'Quicksand',
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AllCompletedCard extends StatelessWidget {
+  const _AllCompletedCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassContainer(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      borderRadius: BorderRadius.circular(24),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF10B981),
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'All tasks completed!',
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'You have crushed all your scheduled tasks for today.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Quicksand',
+                fontSize: 12.5,
+                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

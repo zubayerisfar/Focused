@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/models/task_recurrence.dart';
 import '../../tasks/providers/task_provider.dart';
+import '../../../core/widgets/glass_container.dart';
 
 class ReminderEditScreen extends StatefulWidget {
   final String? reminderId;
@@ -100,210 +101,218 @@ class _ReminderEditScreenState extends State<ReminderEditScreen> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _navigateToPlanner();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          leading: BackButton(onPressed: _navigateToPlanner),
-          title: Text(
-            widget.isEditing ? 'Edit Reminder' : 'New Reminder',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+      child: GlassScaffoldBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: BackButton(onPressed: _navigateToPlanner),
+            title: Text(
+              widget.isEditing ? 'Edit Reminder' : 'New Reminder',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            actions: [
+              if (widget.isEditing)
+                IconButton(
+                  tooltip: 'Delete reminder',
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  onPressed: _isSaving ? null : _deleteReminder,
+                ),
+              const SizedBox(width: 8),
+            ],
           ),
-          actions: [
-            if (widget.isEditing)
-              IconButton(
-                tooltip: 'Delete reminder',
-                icon: const Icon(Icons.delete_outline_rounded),
-                onPressed: _isSaving ? null : _deleteReminder,
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
+            children: [
+              Text(
+                widget.isEditing ? 'Update your reminder' : 'Set a reminder',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
-          children: [
-            Text(
-              widget.isEditing ? 'Update your reminder' : 'Set a reminder',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _titleController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(hintText: 'Reminder title'),
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descriptionController,
-              minLines: 3,
-              maxLines: 5,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                hintText: 'Add a description...',
-                alignLabelWithHint: true,
+              const SizedBox(height: 18),
+              TextField(
+                controller: _titleController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(hintText: 'Reminder title'),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            const _SectionTitle('Schedule & Timing'),
-            const SizedBox(height: 12),
-            _SettingsCard(
-              children: [
-                _SettingRow(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Date',
-                  value: _dateLabel(_scheduledDate),
-                  onTap: _pickScheduledDate,
+              const SizedBox(height: 12),
+              TextField(
+                controller: _descriptionController,
+                minLines: 3,
+                maxLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: 'Add a description...',
+                  alignLabelWithHint: true,
                 ),
-                const Divider(height: 1),
-                _SettingRow(
-                  icon: Icons.schedule_outlined,
-                  title: 'Time',
-                  value: _startTime.format(context),
-                  onTap: _pickStartTime,
-                ),
-                const Divider(height: 1),
-                _SettingRow(
-                  icon: Icons.repeat_rounded,
-                  title: 'Repeat',
-                  value: _recurrence.label,
-                  onTap: _showRecurrencePicker,
-                ),
-                const Divider(height: 1),
-                _SettingRow(
-                  icon: Icons.notifications_active_outlined,
-                  title: 'Alarm alert',
-                  value: _reminderLabel(_reminderMinutesBefore),
-                  onTap: _showReminderPicker,
-                ),
-                const Divider(height: 1),
-                SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.alarm_off_outlined),
-                  title: const Text(
-                    'Late reminder if delayed',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+              const SizedBox(height: 24),
+              const _SectionTitle('Schedule & Timing'),
+              const SizedBox(height: 12),
+              _SettingsCard(
+                children: [
+                  _SettingRow(
+                    icon: Icons.calendar_today_outlined,
+                    title: 'Date',
+                    value: _dateLabel(_scheduledDate),
+                    onTap: _pickScheduledDate,
                   ),
-                  subtitle: Text(
-                    _enableLateReminder
-                        ? 'Remind $_lateReminderMinutes min after scheduled time'
-                        : 'No notification if overdue',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  value: _enableLateReminder,
-                  onChanged: (val) {
-                    setState(() => _enableLateReminder = val);
-                  },
-                ),
-                if (_enableLateReminder) ...[
                   const Divider(height: 1),
                   _SettingRow(
-                    icon: Icons.timer_outlined,
-                    title: 'Late delay',
-                    value: '$_lateReminderMinutes min after',
-                    onTap: _showLateDelayPicker,
+                    icon: Icons.schedule_outlined,
+                    title: 'Time',
+                    value: _startTime.format(context),
+                    onTap: _pickStartTime,
                   ),
-                ],
-              ],
-            ),
-            if (_recurrence == TaskRecurrence.customDays) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Repeat on',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                  const Divider(height: 1),
+                  _SettingRow(
+                    icon: Icons.repeat_rounded,
+                    title: 'Repeat',
+                    value: _recurrence.label,
+                    onTap: _showRecurrencePicker,
+                  ),
+                  const Divider(height: 1),
+                  _SettingRow(
+                    icon: Icons.notifications_active_outlined,
+                    title: 'Alarm alert',
+                    value: _reminderLabel(_reminderMinutesBefore),
+                    onTap: _showReminderPicker,
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile.adaptive(
+                    secondary: const Icon(Icons.alarm_off_outlined),
+                    title: const Text(
+                      'Late reminder if delayed',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (
-                          var weekday = DateTime.monday;
-                          weekday <= DateTime.sunday;
-                          weekday++
-                        )
-                          FilterChip(
-                            label: Text(_weekdayLabel(weekday)),
-                            selected: _customWeekdays.contains(weekday),
-                            onSelected: (selected) {
-                              setState(() {
-                                if (selected) {
-                                  _customWeekdays.add(weekday);
-                                } else {
-                                  _customWeekdays.remove(weekday);
-                                }
-                              });
-                            },
-                          ),
-                      ],
+                    subtitle: Text(
+                      _enableLateReminder
+                          ? 'Remind $_lateReminderMinutes min after scheduled time'
+                          : 'No notification if overdue',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    value: _enableLateReminder,
+                    onChanged: (val) {
+                      setState(() => _enableLateReminder = val);
+                    },
+                  ),
+                  if (_enableLateReminder) ...[
+                    const Divider(height: 1),
+                    _SettingRow(
+                      icon: Icons.timer_outlined,
+                      title: 'Late delay',
+                      value: '$_lateReminderMinutes min after',
+                      onTap: _showLateDelayPicker,
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-            const SizedBox(height: 32),
-            SizedBox(
-              height: 58,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9600),
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: _isSaving ? null : _saveReminder,
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        widget.isEditing
-                            ? 'Update Reminder'
-                            : 'Create Reminder',
-                        style: const TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
+              if (_recurrence == TaskRecurrence.customDays) ...[
+                const SizedBox(height: 12),
+                GlassContainer(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  borderRadius: BorderRadius.circular(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Repeat on',
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-              ),
-            ),
-            if (widget.isEditing) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 52,
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (
+                            var weekday = DateTime.monday;
+                            weekday <= DateTime.sunday;
+                            weekday++
+                          )
+                            FilterChip(
+                              label: Text(_weekdayLabel(weekday)),
+                              selected: _customWeekdays.contains(weekday),
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _customWeekdays.add(weekday);
+                                  } else {
+                                    _customWeekdays.remove(weekday);
+                                  }
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
-                  onPressed: _isSaving ? null : _deleteReminder,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text(
-                    'Delete Reminder',
-                    style: TextStyle(
-                      fontFamily: 'Quicksand',
-                      fontWeight: FontWeight.w700,
+                ),
+              ],
+              const SizedBox(height: 32),
+              SizedBox(
+                height: 58,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF9600),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _isSaving ? null : _saveReminder,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          widget.isEditing
+                              ? 'Update Reminder'
+                              : 'Create Reminder',
+                          style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+              if (widget.isEditing) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    onPressed: _isSaving ? null : _deleteReminder,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text(
+                      'Delete Reminder',
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -596,11 +605,8 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return GlassContainer(
+      borderRadius: BorderRadius.circular(22),
       child: Column(children: children),
     );
   }

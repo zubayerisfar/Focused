@@ -16,18 +16,24 @@ class GroupTaskHistoryMemberCompletion {
   });
 
   factory GroupTaskHistoryMemberCompletion.fromMap(
-    Map<String, dynamic> map, {
+    Map<dynamic, dynamic> map, {
     String? fallbackUid,
   }) {
+    DateTime? parsedDate;
+    final rawComp = map['completedAt'];
+    if (rawComp is Timestamp) {
+      parsedDate = rawComp.toDate();
+    } else if (rawComp is int) {
+      parsedDate = DateTime.fromMillisecondsSinceEpoch(rawComp);
+    } else if (rawComp is String) {
+      parsedDate = DateTime.tryParse(rawComp);
+    }
+
     return GroupTaskHistoryMemberCompletion(
       uid: map['uid']?.toString() ?? fallbackUid ?? '',
       displayName: map['displayName']?.toString() ?? 'Member',
       photoUrl: map['photoUrl'] as String?,
-      completedAt: (map['completedAt'] is Timestamp)
-          ? (map['completedAt'] as Timestamp).toDate()
-          : (map['completedAt'] is String
-                ? DateTime.tryParse(map['completedAt'])
-                : null),
+      completedAt: parsedDate,
       isLate: map['isLate'] as bool? ?? map['completedLate'] as bool? ?? false,
     );
   }
@@ -66,31 +72,48 @@ class GroupTaskHistory {
     this.memberCompletions = const {},
   });
 
-  factory GroupTaskHistory.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final data = doc.data() ?? {};
-    final rawMembers = data['memberCompletions'] as Map<String, dynamic>? ?? {};
-    final completions = rawMembers.map(
-      (k, v) => MapEntry(
-        k,
-        GroupTaskHistoryMemberCompletion.fromMap(
-          v is Map<String, dynamic> ? v : Map<String, dynamic>.from(v as Map),
-          fallbackUid: k,
-        ),
-      ),
-    );
+  factory GroupTaskHistory.fromFirestore(DocumentSnapshot doc) {
+    final rawData = doc.data();
+    final Map<String, dynamic> data = rawData is Map
+        ? Map<String, dynamic>.from(rawData)
+        : <String, dynamic>{};
+
+    final Map<String, GroupTaskHistoryMemberCompletion> completions = {};
+    final rawMembersData = data['memberCompletions'];
+    if (rawMembersData is Map) {
+      rawMembersData.forEach((key, val) {
+        if (val is Map) {
+          final safeMap = Map<String, dynamic>.from(val);
+          completions[key
+              .toString()] = GroupTaskHistoryMemberCompletion.fromMap(
+            safeMap,
+            fallbackUid: key.toString(),
+          );
+        }
+      });
+    }
+
+    DateTime parsedDate = DateTime.now();
+    final completedAtRaw = data['completedAt'];
+    final completedAtDateRaw = data['completedAtDate'];
+    if (completedAtRaw is Timestamp) {
+      parsedDate = completedAtRaw.toDate();
+    } else if (completedAtDateRaw is Timestamp) {
+      parsedDate = completedAtDateRaw.toDate();
+    } else if (completedAtRaw is int) {
+      parsedDate = DateTime.fromMillisecondsSinceEpoch(completedAtRaw);
+    } else if (completedAtRaw is String) {
+      parsedDate = DateTime.tryParse(completedAtRaw) ?? DateTime.now();
+    }
 
     return GroupTaskHistory(
       id: doc.id,
       groupId: data['groupId']?.toString() ?? '',
       groupName: (data['groupName']?.toString() ?? 'TASK SQUAD').toUpperCase(),
-      title: data['title']?.toString() ?? '',
+      title: data['title']?.toString() ?? 'Squad Task',
       category: data['category'] as String?,
       isHabit: data['isHabit'] as bool? ?? false,
-      completedAt: (data['completedAt'] is Timestamp)
-          ? (data['completedAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      completedAt: parsedDate,
       memberCompletions: completions,
     );
   }

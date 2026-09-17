@@ -21,7 +21,7 @@ class UsageAnalyzer {
     // -------------------------------------------------------
 
     final Map<String, List<_TimeRange>> rangesByApp = {};
-
+    final Map<String, String> namesByAppId = {};
     final List<_TimeRange> allRanges = [];
 
     for (final record in records) {
@@ -45,8 +45,8 @@ class UsageAnalyzer {
         continue;
       }
 
-      rangesByApp.putIfAbsent(record.appName, () => []).add(clipped);
-
+      rangesByApp.putIfAbsent(record.appId, () => []).add(clipped);
+      namesByAppId[record.appId] = record.appName;
       allRanges.add(clipped);
     }
 
@@ -58,15 +58,18 @@ class UsageAnalyzer {
     // -------------------------------------------------------
 
     final Map<String, List<_TimeRange>> normalizedRangesByApp = {};
-
     final Map<String, Duration> dailyAppUsage = {};
 
     for (final entry in rangesByApp.entries) {
       final merged = _mergeRanges(entry.value);
-
       normalizedRangesByApp[entry.key] = merged;
-
-      dailyAppUsage[entry.key] = _sumRanges(merged);
+      final duration = _sumRanges(merged);
+      // Key by both appId and appName so callers looking up by either succeed
+      dailyAppUsage[entry.key] = duration;
+      final name = namesByAppId[entry.key];
+      if (name != null && name.isNotEmpty && name != entry.key) {
+        dailyAppUsage[name] = duration;
+      }
     }
 
     // -------------------------------------------------------

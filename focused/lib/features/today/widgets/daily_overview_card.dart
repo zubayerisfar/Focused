@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
-import '../../wellbeing/models/app_usage_app_entry.dart';
-import '../../focus/providers/focus_provider.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_icon.dart';
+import '../../../core/widgets/glass_container.dart';
 
 String _formatDuration(Duration duration) {
   final hours = duration.inHours;
@@ -17,696 +12,244 @@ String _formatDuration(Duration duration) {
   return '${duration.inMinutes}m';
 }
 
+/// Glossy Glass Daily Focus & Progress Card (Without digital wellbeing / app usage)
 class DailyOverviewCard extends StatelessWidget {
   final Duration focusedToday;
   final double? focusComparisonPercent;
-  final Duration? usageToday;
-  final double? comparisonPercent;
-  final List<AppUsageAppEntry> topApps;
-  final bool usageConnected;
+  final int completedTasksCount;
+  final int totalTasksCount;
 
   const DailyOverviewCard({
     super.key,
     required this.focusedToday,
     required this.focusComparisonPercent,
-    required this.usageToday,
-    required this.comparisonPercent,
-    required this.topApps,
-    required this.usageConnected,
+    this.completedTasksCount = 0,
+    this.totalTasksCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? scheme.surface : Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.3)
-                : const Color(0xFF1E293B).withValues(alpha: 0.08),
-            blurRadius: 20,
-            spreadRadius: isDark ? 0 : 1,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
+    final double completionPercent = totalTasksCount > 0
+        ? (completedTasksCount / totalTasksCount).clamp(0.0, 1.0)
+        : (completedTasksCount > 0 ? 1.0 : 0.0);
+
+    return GlassContainer(
+      padding: const EdgeInsets.all(20),
+      borderRadius: BorderRadius.circular(28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Today at a glance',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontSize: 23,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: _OverviewMetricCard(
-                    title: 'Focused',
-                    value: _formatDuration(focusedToday),
-                    customIcon: SvgPicture.asset(
-                      'assets/icon/focus_icon.svg',
-                      width: 34,
-                      height: 34,
-                    ),
-                    accent: const Color(0xFFFF5B5B),
-                    trendPercent: focusComparisonPercent,
-                    isHigherBetter: true,
-                    onTap: () => _showFocusAnalysisSheet(context),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _OverviewMetricCard(
-                    title: 'App Usage',
-                    value: usageToday == null
-                        ? (usageConnected ? 'No data' : 'Connect')
-                        : _formatDuration(usageToday!),
-                    customIcon: SvgPicture.asset(
-                      'assets/icon/app_usage_icon.svg',
-                      width: 34,
-                      height: 34,
-                    ),
-                    accent: const Color(0xFF6C5CE7),
-                    trendPercent: usageToday == null ? null : comparisonPercent,
-                    isHigherBetter: false,
-                    onTap: () => context.push('/wellbeing'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (topApps.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Most used apps',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Text(
-                  'Top apps today',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _TopAppsCompactList(
-              entries: topApps.take(3).toList(growable: false),
-              onOpenApp: (entry) {
-                final id = Uri.encodeComponent(entry.appId);
-                final name = Uri.encodeQueryComponent(entry.appName);
-                context.push('/wellbeing/app/$id?name=$name');
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _showFocusAnalysisSheet(BuildContext context) {
-    final focusProvider = context.read<FocusProvider>();
-    final now = DateTime.now();
-    final todayDuration = focusProvider.focusedDurationForDate(now);
-    final todaySessions = focusProvider.sessionsForDate(now);
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomSheetContext) {
-        final theme = Theme.of(bottomSheetContext);
-        final scheme = theme.colorScheme;
-        final isDark = theme.brightness == Brightness.dark;
-
-        return Container(
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(color: theme.dividerColor),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 24,
-            top: 14,
-            left: 20,
-            right: 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4.5,
-                  decoration: BoxDecoration(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF5B5B).withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.insights_rounded,
-                      color: Color(0xFFFF5B5B),
-                      size: 24,
+                  Text(
+                    "Today's Progress",
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Focus Analysis',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    totalTasksCount == 0
+                        ? "Plan tasks to track progress"
+                        : "$completedTasksCount of $totalTasksCount tasks completed",
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.of(bottomSheetContext).pop(),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              if (todaySessions.isEmpty || todayDuration.inMinutes == 0) ...[
-                Container(
+              // Circular progress ring
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 54,
+                    height: 54,
+                    child: CircularProgressIndicator(
+                      value: totalTasksCount > 0 ? completionPercent : 0.05,
+                      strokeWidth: 5.5,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : const Color(0xFFE2E8F0),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        completionPercent >= 1.0
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFF8B5CF6),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${(completionPercent * 100).round()}%',
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          // Metric chips in glossy capsule row
+          Row(
+            children: [
+              Expanded(
+                child: Container(
                   padding: const EdgeInsets.symmetric(
-                    vertical: 36,
-                    horizontal: 20,
+                    horizontal: 14,
+                    vertical: 12,
                   ),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? scheme.surfaceContainerHighest.withValues(alpha: 0.3)
-                        : Colors.grey.shade50,
+                        ? const Color(0xFF8B5CF6).withValues(alpha: 0.14)
+                        : const Color(0xFFEDE9FE),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: theme.dividerColor.withValues(alpha: 0.7),
+                      color: isDark
+                          ? const Color(0xFF8B5CF6).withValues(alpha: 0.3)
+                          : const Color(0xFFC4B5FD).withValues(alpha: 0.6),
                     ),
                   ),
-                  child: Column(
+                  child: Row(
                     children: [
-                      Icon(
-                        Icons.hourglass_empty_rounded,
-                        size: 52,
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No focus information available for now',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF8B5CF6),
+                          shape: BoxShape.circle,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Start a focus session today to analyze your productivity blocks, flow rate, and deep work time.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: scheme.onSurfaceVariant,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFFFF5B5B,
-                          ).withValues(alpha: isDark ? 0.16 : 0.08),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(
-                              0xFFFF5B5B,
-                            ).withValues(alpha: 0.25),
+                        alignment: Alignment.center,
+                        child: SvgPicture.asset(
+                          'assets/icon/focus_icon.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Time Focused',
+                              'Focused',
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatDuration(todayDuration),
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFFFF5B5B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFF1CB0F6,
-                          ).withValues(alpha: isDark ? 0.16 : 0.08),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(
-                              0xFF1CB0F6,
-                            ).withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Sessions',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${todaySessions.length}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1CB0F6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "Today's Sessions",
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 220),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: todaySessions.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final session = todaySessions[index];
-                      final duration = session.actualFocusDuration;
-                      final name = session.taskName.trim().isEmpty
-                          ? 'Quick Focus'
-                          : session.taskName;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? scheme.surfaceContainerHighest.withValues(
-                                  alpha: 0.35,
-                                )
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 18,
-                              color: Color(0xFFFF5B5B),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              _formatDuration(duration),
-                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: scheme.onSurfaceVariant,
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF6B21A8),
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(focusedToday),
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF4C1D95),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.of(bottomSheetContext).pop();
-                  context.push('/focus/setup');
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: scheme.primary,
-                  foregroundColor: scheme.onPrimary,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                label: const Text(
-                  'Start Focus Session',
-                  style: TextStyle(
-                    fontFamily: 'Quicksand',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OverviewMetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final Widget? customIcon;
-  final Color accent;
-  final double? trendPercent;
-  final bool isHigherBetter;
-  final VoidCallback? onTap;
-
-  const _OverviewMetricCard({
-    required this.title,
-    required this.value,
-    this.customIcon,
-    required this.accent,
-    this.trendPercent,
-    this.isHigherBetter = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final trend = trendPercent;
-    final isClickable = onTap != null;
-
-    // Solid, opaque, non-transparent colors with high contrast and clarity
-    final Color solidLightColor;
-    final Color solidDarkColor;
-    if (accent.toARGB32() == const Color(0xFFFF5B5B).toARGB32()) {
-      solidLightColor = const Color(0xFFFFECEC); // Solid soft pastel coral/red
-      solidDarkColor = const Color(0xFF2C1E20);
-    } else if (accent.toARGB32() == const Color(0xFF6C5CE7).toARGB32()) {
-      solidLightColor = const Color(
-        0xFFEEECFF,
-      ); // Solid soft pastel purple/indigo
-      solidDarkColor = const Color(0xFF1E1E2E);
-    } else {
-      solidLightColor = Color.alphaBlend(
-        accent.withValues(alpha: 0.18),
-        Colors.white,
-      );
-      solidDarkColor = Color.alphaBlend(
-        accent.withValues(alpha: 0.22),
-        const Color(0xFF1C1D22),
-      );
-    }
-
-    final cardBgColor = isClickable
-        ? (isDark ? solidDarkColor : solidLightColor)
-        : (isDark ? const Color(0xFF1E2024) : const Color(0xFFF1F0EC));
-
-    final content = Container(
-      constraints: const BoxConstraints(minHeight: 142),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardBgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              if (isClickable) ...[
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: accent.withValues(alpha: 0.8),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (customIcon != null)
-                Container(
-                  width: 42,
-                  height: 42,
-                  margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Center(child: customIcon),
-                ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
                       ),
-                    ),
-                    if (trend != null) ...[
-                      const SizedBox(height: 4),
-                      _TrendText(value: trend, isHigherBetter: isHigherBetter),
                     ],
-                  ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF10B981).withValues(alpha: 0.14)
+                        : const Color(0xFFD1FAE5),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                          : const Color(0xFF6EE7B7).withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Completed',
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF047857),
+                              ),
+                            ),
+                            Text(
+                              '$completedTasksCount Tasks',
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF065F46),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ],
-      ),
-    );
-
-    if (onTap == null) return content;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        splashColor: accent.withValues(alpha: 0.15),
-        highlightColor: accent.withValues(alpha: 0.08),
-        onTap: onTap,
-        child: content,
-      ),
-    );
-  }
-}
-
-class _TrendText extends StatelessWidget {
-  final double value;
-  final bool isHigherBetter;
-
-  const _TrendText({required this.value, this.isHigherBetter = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final down = value < 0;
-    final flat = value.abs() < 0.5;
-
-    final isPositive = isHigherBetter ? !down : down;
-    final color = flat
-        ? Theme.of(context).colorScheme.onSurfaceVariant
-        : isPositive
-        ? AppTheme.success
-        : AppTheme.danger;
-
-    final icon = flat
-        ? Icons.remove_rounded
-        : down
-        ? Icons.south_east_rounded
-        : Icons.north_east_rounded;
-
-    final statusText = flat
-        ? '0% change'
-        : '${value.abs().round()}% ${down ? 'less' : 'more'}';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: 3),
-            Text(
-              statusText,
-              style: TextStyle(
-                fontSize: 11.5,
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 1),
-        Text(
-          'vs yesterday',
-          style: TextStyle(
-            fontSize: 10.5,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TopAppsCompactList extends StatelessWidget {
-  const _TopAppsCompactList({required this.entries, required this.onOpenApp});
-
-  final List<AppUsageAppEntry> entries;
-  final ValueChanged<AppUsageAppEntry> onOpenApp;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: isDark ? scheme.surfaceContainerLowest : const Color(0xFFF6F5F0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: List.generate(entries.length, (index) {
-          final entry = entries[index];
-
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 5,
-            ),
-            leading: AppIcon(
-              iconBytes: entry.iconBytes,
-              appName: entry.appName,
-              size: 40,
-            ),
-            title: Text(
-              entry.appName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15.5,
-              ),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _formatDuration(entry.duration),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: scheme.outline,
-                ),
-              ],
-            ),
-            onTap: () => onOpenApp(entry),
-          );
-        }),
       ),
     );
   }

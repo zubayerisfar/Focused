@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../core/widgets/glass_container.dart';
 
 class GemsScreen extends StatefulWidget {
   const GemsScreen({super.key});
@@ -14,24 +15,13 @@ class GemsScreen extends StatefulWidget {
   State<GemsScreen> createState() => _GemsScreenState();
 }
 
-class _GemsScreenState extends State<GemsScreen> with TickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+class _GemsScreenState extends State<GemsScreen> {
   bool _watchingAd = false;
-  bool _restoringStreak = false;
   Timer? _cooldownTimer;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
     // Periodic timer to tick remaining cooldown every second
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final stats = context.read<UserStatsProvider>();
@@ -43,7 +33,6 @@ class _GemsScreenState extends State<GemsScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _cooldownTimer?.cancel();
     super.dispose();
   }
@@ -54,81 +43,153 @@ class _GemsScreenState extends State<GemsScreen> with TickerProviderStateMixin {
     final gems = stats.gems;
     final adsWatched = stats.xpAdsWatchedToday;
     final canWatch = stats.canWatchXpAdToday;
-    final canRestore = gems >= UserStatsProvider.gemStreakRestoreCost;
     final isCooldown = stats.isXpAdInCooldown;
     final remainingCooldown = stats.xpAdRemainingCooldown;
     final adsLeft = isCooldown
         ? 0
         : (UserStatsProvider.xpAdsPerDay - adsWatched);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gems & Rewards'),
-        centerTitle: false,
-        titleTextStyle: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+    return GlassScaffoldBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: const Text('Gems & Rewards'),
+          centerTitle: false,
+          titleTextStyle: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Clean Gem Balance Card ────────────────────────────
+              _GemBalanceCard(
+                gems: gems,
+                onWhatAreGemsTap: () => _showWhatAreGemsModal(context),
+              ),
+              const SizedBox(height: 28),
+
+              // ── Earn Gems Section ─────────────────────────────────
+              const _SectionLabel('Earn Gems Today'),
+              const SizedBox(height: 10),
+              _EarnGemsCard(
+                adsWatched: adsWatched,
+                adsLeft: adsLeft,
+                canWatch: canWatch && !_watchingAd,
+                isLoading: _watchingAd,
+                isCooldown: isCooldown,
+                remainingCooldown: remainingCooldown,
+                onWatchAd: _onWatchAd,
+              ),
+            ],
+          ),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+    );
+  }
+
+  void _showWhatAreGemsModal(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF161D24) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(
+            color: isDark ? const Color(0xFF283845) : const Color(0xFFE5E7EB),
+          ),
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Gem Balance Card ──────────────────────────────────
-            _GemBalanceCard(xp: gems, pulseAnimation: _pulseAnimation),
-            const SizedBox(height: 24),
-
-            // ── What are Gems? ──────────────────────────────────────
-            _SectionLabel('What are Gems?'),
-            const SizedBox(height: 10),
-            _InfoCard(
-              children: const [
-                _InfoRow(
-                  icon: FontAwesomeIcons.gem,
-                  iconColor: Color(0xFF1CB0F6),
-                  text:
-                      'Gems are earned by finishing tasks, habits, and watching reward video ads.',
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                SizedBox(height: 12),
-                _InfoRow(
-                  icon: FontAwesomeIcons.fire,
-                  iconColor: Colors.deepOrange,
-                  text:
-                      'Use 500 Gems to restore a broken or frozen productivity streak.',
-                ),
-                SizedBox(height: 12),
-                _InfoRow(
-                  icon: FontAwesomeIcons.circleCheck,
-                  iconColor: Colors.green,
-                  text:
-                      'Earn 100 Gems per ad · Watch 2 ads, then unlock again after a 6-hour break.',
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                SvgPicture.asset('assets/icon/gem.svg', width: 28, height: 28),
+                const SizedBox(width: 10),
+                Text(
+                  'What are Gems?',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : scheme.onSurface,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 28),
-
-            // ── Earn Gems Section ───────────────────────────────────
-            _SectionLabel('Earn Gems Today'),
             const SizedBox(height: 10),
-            _EarnGemsCard(
-              adsWatched: adsWatched,
-              adsLeft: adsLeft,
-              canWatch: canWatch && !_watchingAd,
-              isLoading: _watchingAd,
-              isCooldown: isCooldown,
-              remainingCooldown: remainingCooldown,
-              onWatchAd: _onWatchAd,
+            Text(
+              'Gems are productivity rewards earned by staying focused and consistent.',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark
+                    ? const Color(0xFF9BA8B4)
+                    : scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
             ),
-            const SizedBox(height: 28),
-
-            // ── Streak Restore Section ────────────────────
-            _SectionLabel('Streak Restore'),
-            const SizedBox(height: 10),
-            _StreakRestoreCard(
-              xp: gems,
-              canRestore: canRestore && !_restoringStreak,
-              isLoading: _restoringStreak,
-              onRestore: _onRestoreStreak,
+            const SizedBox(height: 20),
+            _PopupInfoTile(
+              icon: Icons.check_circle_outline_rounded,
+              iconColor: const Color(0xFF58CC02),
+              title: 'Complete Tasks & Habits',
+              description:
+                  'Earn gems by finishing scheduled tasks and keeping habits consistent.',
+              isDark: isDark,
+            ),
+            const SizedBox(height: 12),
+            _PopupInfoTile(
+              icon: Icons.timer_outlined,
+              iconColor: const Color(0xFF1CB0F6),
+              title: 'Focus Sessions',
+              description:
+                  'Earn gems every time you complete deep focus sessions without leaving.',
+              isDark: isDark,
+            ),
+            const SizedBox(height: 12),
+            _PopupInfoTile(
+              icon: Icons.play_circle_outline_rounded,
+              iconColor: const Color(0xFFFF9600),
+              title: 'Reward Video Ads',
+              description:
+                  'Earn 100 Gems per ad · Watch 2 ads, then unlock again after a 6-hour break.',
+              isDark: isDark,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1CB0F6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Got it',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              ),
             ),
           ],
         ),
@@ -146,58 +207,12 @@ class _GemsScreenState extends State<GemsScreen> with TickerProviderStateMixin {
       onUserEarnedReward: (reward) {
         if (!mounted) return;
         stats.recordXpAdWatched();
-        _showSnack('+${UserStatsProvider.gemsPerXpPageAd} Gems earned! 🎉');
+        _showSnack('+${UserStatsProvider.gemsPerXpPageAd} Gems earned!');
       },
       onAdDismissed: () {
         if (mounted) setState(() => _watchingAd = false);
       },
     );
-  }
-
-  void _onRestoreStreak() async {
-    final stats = context.read<UserStatsProvider>();
-    if (stats.gems < UserStatsProvider.gemStreakRestoreCost) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Row(
-          children: [
-            Text('🔥', style: TextStyle(fontSize: 24)),
-            SizedBox(width: 8),
-            Text('Restore Streak?'),
-          ],
-        ),
-        content: Text(
-          'This will spend 500 Gems to restore your productivity streak. '
-          'You currently have ${stats.gems} Gems.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Spend 500 Gems'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _restoringStreak = true);
-    final success = await stats.restoreStreakWithXp();
-    if (!mounted) return;
-    setState(() => _restoringStreak = false);
-
-    if (success) {
-      _showSnack('🔥 Streak restored! −500 Gems spent.');
-    } else {
-      _showSnack('Not enough Gems.');
-    }
   }
 
   void _showSnack(String message) {
@@ -217,80 +232,76 @@ class _GemsScreenState extends State<GemsScreen> with TickerProviderStateMixin {
 // ─────────────────────────────────────────────────────────────
 
 class _GemBalanceCard extends StatelessWidget {
-  final int xp;
-  final Animation<double> pulseAnimation;
+  final int gems;
+  final VoidCallback onWhatAreGemsTap;
 
-  const _GemBalanceCard({required this.xp, required this.pulseAnimation});
+  const _GemBalanceCard({required this.gems, required this.onWhatAreGemsTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    return GlassContainer(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFE0F2FE), Color(0xFFBAE6FD)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: 0.15),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      borderRadius: BorderRadius.circular(26),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       child: Column(
         children: [
-          ScaleTransition(
-            scale: pulseAnimation,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0284C7),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0369A1).withValues(alpha: 0.35),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/icon/gem.svg',
-                  width: 44,
-                  height: 44,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
+          SvgPicture.asset('assets/icon/gem.svg', width: 52, height: 52),
+          const SizedBox(height: 14),
           Text(
-            '$xp',
-            style: const TextStyle(
+            '$gems',
+            style: TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF0C4A6E),
+              color: isDark ? Colors.white : scheme.onSurface,
               letterSpacing: -1.5,
               height: 1,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Gems',
+          Text(
+            'Total Gems',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF0369A1),
-              letterSpacing: 0.5,
+              color: isDark ? const Color(0xFF8B949E) : scheme.onSurfaceVariant,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Clickable "What are Gems?" text
+          InkWell(
+            onTap: onWhatAreGemsTap,
+            borderRadius: BorderRadius.circular(20),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 15,
+                    color: Color(0xFF1CB0F6),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'What are Gems?',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1CB0F6),
+                    ),
+                  ),
+                  SizedBox(width: 2),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: Color(0xFF1CB0F6),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -339,13 +350,9 @@ class _EarnGemsCard extends StatelessWidget {
         ? 1.0
         : (adsWatched / UserStatsProvider.xpAdsPerDay).clamp(0.0, 1.0);
 
-    return Container(
+    return GlassContainer(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+      borderRadius: BorderRadius.circular(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -355,8 +362,8 @@ class _EarnGemsCard extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: isCooldown
-                      ? Colors.orange.withOpacity(0.12)
-                      : const Color(0xFF1A73E8).withOpacity(0.12),
+                      ? Colors.orange.withValues(alpha: 0.12)
+                      : const Color(0xFF1A73E8).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: FaIcon(
@@ -453,6 +460,10 @@ class _EarnGemsCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
               onPressed: canWatch ? onWatchAd : null,
               icon: isLoading
                   ? const SizedBox(
@@ -488,155 +499,6 @@ class _EarnGemsCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Streak Restore Card
-// ─────────────────────────────────────────────────────────────
-
-class _StreakRestoreCard extends StatelessWidget {
-  final int xp;
-  final bool canRestore;
-  final bool isLoading;
-  final VoidCallback onRestore;
-
-  const _StreakRestoreCard({
-    required this.xp,
-    required this.canRestore,
-    required this.isLoading,
-    required this.onRestore,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final gemCost = UserStatsProvider.gemStreakRestoreCost;
-    final deficit = (gemCost - xp).clamp(0, gemCost);
-    final canAfford = xp >= gemCost;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: canAfford
-            ? const Color(0xFFFFF3E0)
-            : scheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: canAfford
-              ? const Color(0xFFFFCA28).withOpacity(0.5)
-              : scheme.outlineVariant,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.deepOrange.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const FaIcon(
-                  FontAwesomeIcons.fire,
-                  color: Colors.deepOrange,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Restore Streak',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      canAfford
-                          ? 'Tap to spend $gemCost Gems and recover your streak'
-                          : 'Need $deficit more Gems to unlock',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-
-          // Gem cost display
-          Row(
-            children: [
-              SvgPicture.asset('assets/icon/gem.svg', width: 16, height: 16),
-              const SizedBox(width: 6),
-              Text(
-                '$gemCost Gems required',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF5D4037),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'Your balance: $xp Gems',
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-
-          if (!canAfford) ...[
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: xp / gemCost,
-                minHeight: 7,
-                backgroundColor: scheme.outlineVariant,
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF0284C7)),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: canAfford ? Colors.deepOrange : null,
-              ),
-              onPressed: canRestore ? onRestore : null,
-              icon: isLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const FaIcon(FontAwesomeIcons.fire, size: 14),
-              label: Text(
-                isLoading
-                    ? 'Restoring…'
-                    : canAfford
-                    ? 'Restore Streak (−$gemCost Gems)'
-                    : 'Not Enough Gems',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
 // Shared helpers
 // ─────────────────────────────────────────────────────────────
 
@@ -656,78 +518,70 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _InfoCard extends StatelessWidget {
-  final List<Widget> children;
-  const _InfoCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: scheme.outlineVariant.withOpacity(0.55),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final FaIconData icon;
+class _PopupInfoTile extends StatelessWidget {
+  final IconData icon;
   final Color iconColor;
-  final String text;
+  final String title;
+  final String description;
+  final bool isDark;
 
-  const _InfoRow({
+  const _PopupInfoTile({
     required this.icon,
     required this.iconColor,
-    required this.text,
+    required this.title,
+    required this.description,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.12),
-            shape: BoxShape.circle,
-          ),
-          child: FaIcon(icon, size: 13, color: iconColor),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF202A34) : const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2B3947) : const Color(0xFFEEF0F2),
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: onSurface.withOpacity(0.88),
-              height: 1.45,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? const Color(0xFF9BA8B4) : Colors.black54,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

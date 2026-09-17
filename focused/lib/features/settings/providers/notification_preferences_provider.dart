@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationPreferencesProvider extends ChangeNotifier {
@@ -6,7 +6,8 @@ class NotificationPreferencesProvider extends ChangeNotifier {
   static const String _keySquadInvites = 'notif_pref_squad_invites';
   static const String _keyFriendNudgesAndGifts = 'notif_pref_nudges_gifts';
   static const String _keyPartnerCompletions = 'notif_pref_partner_completions';
-  static const String _keyOccasionalReminders = 'notif_pref_occasional_reminders';
+  static const String _keyOccasionalReminders =
+      'notif_pref_occasional_reminders';
   static const String _keyOccasionalHour = 'notif_pref_occasional_hour';
   static const String _keyOccasionalMinute = 'notif_pref_occasional_minute';
 
@@ -15,7 +16,7 @@ class NotificationPreferencesProvider extends ChangeNotifier {
   bool _friendNudgesAndGifts = true;
   bool _partnerCompletions = true;
   bool _occasionalReminders = true;
-  int _occasionalHour = 20; // 8:00 PM default
+  int _occasionalHour = 22; // 10:00 PM default
   int _occasionalMinute = 0;
 
   bool _loaded = false;
@@ -25,8 +26,10 @@ class NotificationPreferencesProvider extends ChangeNotifier {
   bool get friendNudgesAndGifts => _friendNudgesAndGifts;
   bool get partnerCompletions => _partnerCompletions;
   bool get occasionalReminders => _occasionalReminders;
+  bool get dailySummaryEnabled => _occasionalReminders;
   TimeOfDay get occasionalTime =>
       TimeOfDay(hour: _occasionalHour, minute: _occasionalMinute);
+  TimeOfDay get dailySummaryTime => occasionalTime;
   bool get isLoaded => _loaded;
 
   Future<void> loadPreferences() async {
@@ -36,7 +39,7 @@ class NotificationPreferencesProvider extends ChangeNotifier {
     _friendNudgesAndGifts = prefs.getBool(_keyFriendNudgesAndGifts) ?? true;
     _partnerCompletions = prefs.getBool(_keyPartnerCompletions) ?? true;
     _occasionalReminders = prefs.getBool(_keyOccasionalReminders) ?? true;
-    _occasionalHour = prefs.getInt(_keyOccasionalHour) ?? 20;
+    _occasionalHour = prefs.getInt(_keyOccasionalHour) ?? 22;
     _occasionalMinute = prefs.getInt(_keyOccasionalMinute) ?? 0;
     _loaded = true;
     notifyListeners();

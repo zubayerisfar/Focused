@@ -4,20 +4,17 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../wellbeing/models/usage_access_status.dart';
 import '../../auth/providers/account_provider.dart';
 import '../providers/cloud_sync_provider.dart';
 import '../../../core/providers/theme_provider.dart';
-import '../../wellbeing/providers/usage_provider.dart';
 import '../../profile/models/user_profile.dart';
 import '../../profile/providers/user_profile_provider.dart';
 import '../../friends/providers/friends_provider.dart';
 import '../providers/notification_preferences_provider.dart';
-import '../../wellbeing/services/app_usage_summary_service.dart';
 import '../../../core/services/notification_access_service.dart';
 import '../../../core/widgets/profile_streak_gem_bar.dart';
 import '../../tasks/services/task_notification_service.dart';
-import '../../streak/providers/user_stats_provider.dart';
+import '../../tasks/providers/task_provider.dart';
 import 'deactivate_account_sheet.dart';
 import 'delete_account_dialog.dart';
 
@@ -49,213 +46,6 @@ class SettingsScreen extends StatelessWidget {
         ),
       );
     }
-  }
-
-  Future<void> _openDailySummariesDialog(BuildContext context) async {
-    const service = AppUsageSummaryService();
-    final isEnabled = await service.isEnabled();
-
-    if (!context.mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        var enabled = isEnabled;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final scheme = Theme.of(context).colorScheme;
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: scheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: scheme.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.notifications_active_rounded,
-                          color: scheme.primary,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Daily App Summaries',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Get two quick notifications each day showing how much time you spent on your phone.',
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 13.5,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: scheme.outlineVariant),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(7),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFFFB300,
-                                ).withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.wb_sunny_rounded,
-                                color: Color(0xFFFFB300),
-                                size: 16,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    '5:00 PM — Afternoon check',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Screen time so far today and your most-used app.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 18),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(7),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF6366F1,
-                                ).withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.nightlight_round,
-                                color: Color(0xFF6366F1),
-                                size: 16,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    '11:00 PM — Night wrap-up',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Total screen time for the whole day before bedtime.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Material(
-                    color: Colors.transparent,
-                    child: SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text(
-                        'Send daily notifications',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                      subtitle: Text(
-                        enabled
-                            ? 'You will receive updates at 5:00 PM and 11:00 PM'
-                            : 'Notifications are turned off',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      value: enabled,
-                      onChanged: (val) async {
-                        setState(() => enabled = val);
-                        await service.setEnabled(val);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   Future<void> _openNotificationPreferencesDialog(BuildContext context) async {
@@ -338,125 +128,285 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const FaIcon(
-                        FontAwesomeIcons.userPlus,
-                        size: 18,
-                      ),
-                      title: const Text(
-                        'Follower alerts',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            secondary: const FaIcon(
+                              FontAwesomeIcons.userPlus,
+                              size: 18,
+                            ),
+                            title: const Text(
+                              'Follower alerts',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Receive an alert with user icon when someone follows you',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            value: notifPrefs.followerAlerts,
+                            onChanged: (val) =>
+                                notifPrefs.setFollowerAlerts(val),
+                          ),
                         ),
-                      ),
-                      subtitle: const Text(
-                        'Receive an alert with user icon when someone follows you',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      value: notifPrefs.followerAlerts,
-                      onChanged: (val) => notifPrefs.setFollowerAlerts(val),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () => TaskNotificationService()
+                              .showFollowerAlertPreview(),
+                          child: const Text(
+                            'Test',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const Divider(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const FaIcon(FontAwesomeIcons.users, size: 18),
-                      title: const Text(
-                        'Squad group invites',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            secondary: const FaIcon(
+                              FontAwesomeIcons.users,
+                              size: 18,
+                            ),
+                            title: const Text(
+                              'Squad group invites',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Get notified when friends invite you to join a new Task Squad',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            value: notifPrefs.squadInvites,
+                            onChanged: (val) => notifPrefs.setSquadInvites(val),
+                          ),
                         ),
-                      ),
-                      subtitle: const Text(
-                        'Get notified when friends invite you to join a new Task Squad',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      value: notifPrefs.squadInvites,
-                      onChanged: (val) => notifPrefs.setSquadInvites(val),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () => TaskNotificationService()
+                              .showGroupCreationNotification(
+                                groupName: 'Focus Titans',
+                                creatorName: 'Alex',
+                              ),
+                          child: const Text(
+                            'Test',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const Divider(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const FaIcon(
-                        FontAwesomeIcons.handPointRight,
-                        size: 18,
-                      ),
-                      title: const Text(
-                        'Friend nudges & Gems gifts',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            secondary: const FaIcon(
+                              FontAwesomeIcons.handPointRight,
+                              size: 18,
+                            ),
+                            title: const Text(
+                              'Friend nudges & Gems gifts',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Alerts for task reminders and Gems boosts sent by your friends',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            value: notifPrefs.friendNudgesAndGifts,
+                            onChanged: (val) =>
+                                notifPrefs.setFriendNudgesAndGifts(val),
+                          ),
                         ),
-                      ),
-                      subtitle: const Text(
-                        'Alerts for task reminders and Gems boosts sent by your friends',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      value: notifPrefs.friendNudgesAndGifts,
-                      onChanged: (val) =>
-                          notifPrefs.setFriendNudgesAndGifts(val),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () => TaskNotificationService()
+                              .showFriendReminderNotification(
+                                fromName: 'Jessica',
+                                message: 'Time to focus and crush your tasks!',
+                              ),
+                          child: const Text(
+                            'Test',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const Divider(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const FaIcon(
-                        FontAwesomeIcons.flagCheckered,
-                        size: 18,
-                      ),
-                      title: const Text(
-                        'Partner task completions',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            secondary: const FaIcon(
+                              FontAwesomeIcons.flagCheckered,
+                              size: 18,
+                            ),
+                            title: const Text(
+                              'Partner task completions',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              '"Your friend finished their task, now it\'s your turn!"',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            value: notifPrefs.partnerCompletions,
+                            onChanged: (val) =>
+                                notifPrefs.setPartnerCompletions(val),
+                          ),
                         ),
-                      ),
-                      subtitle: const Text(
-                        '"Your friend finished their task, now it\'s your turn!"',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      value: notifPrefs.partnerCompletions,
-                      onChanged: (val) => notifPrefs.setPartnerCompletions(val),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () => TaskNotificationService()
+                              .showPartnerCompletionPreview(),
+                          child: const Text(
+                            'Test',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const Divider(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      secondary: const FaIcon(
-                        FontAwesomeIcons.solidClock,
-                        size: 18,
-                      ),
-                      title: const Text(
-                        'Occasional daily check-in',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SwitchListTile.adaptive(
+                            contentPadding: EdgeInsets.zero,
+                            secondary: const FaIcon(
+                              FontAwesomeIcons.solidClock,
+                              size: 18,
+                            ),
+                            title: const Text(
+                              'Daily task summary',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Daily summary at ${notifPrefs.occasionalTime.format(context)} showing assigned and completed tasks count',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            value: notifPrefs.occasionalReminders,
+                            onChanged: (val) async {
+                              await notifPrefs.setOccasionalReminders(val);
+                              final taskNotif = TaskNotificationService();
+                              if (val) {
+                                final taskProv = context.read<TaskProvider>();
+                                final assigned = taskProv.tasks.length;
+                                final completed =
+                                    taskProv.completedTasks.length;
+                                await taskNotif
+                                    .scheduleDailySummaryNotification(
+                                      hour: notifPrefs.occasionalTime.hour,
+                                      minute: notifPrefs.occasionalTime.minute,
+                                      assignedCount: assigned,
+                                      completedCount: completed,
+                                    );
+                              } else {
+                                await taskNotif
+                                    .cancelDailySummaryNotification();
+                              }
+                            },
+                          ),
                         ),
-                      ),
-                      subtitle: Text(
-                        'Gentle reflection reminder (${notifPrefs.occasionalTime.format(context)})',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      value: notifPrefs.occasionalReminders,
-                      onChanged: (val) async {
-                        await notifPrefs.setOccasionalReminders(val);
-                        final taskNotif = TaskNotificationService();
-                        if (val) {
-                          await taskNotif.scheduleOccasionalReminder(
-                            hour: notifPrefs.occasionalTime.hour,
-                            minute: notifPrefs.occasionalTime.minute,
-                          );
-                        } else {
-                          await taskNotif.cancelOccasionalReminder();
-                        }
-                      },
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () {
+                            final taskProv = context.read<TaskProvider>();
+                            final assigned = taskProv.tasks.length;
+                            final completed = taskProv.completedTasks.length;
+                            TaskNotificationService().showDailySummaryPreview(
+                              assignedCount: assigned > 0 ? assigned : 4,
+                              completedCount: completed > 0 ? completed : 2,
+                            );
+                          },
+                          child: const Text(
+                            'Test',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     if (notifPrefs.occasionalReminders) ...[
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          shape: const StadiumBorder(),
+                        ),
                         icon: const Icon(Icons.access_time_rounded, size: 18),
                         label: Text(
-                          'Change time: ${notifPrefs.occasionalTime.format(context)}',
+                          'Change summary time: ${notifPrefs.occasionalTime.format(context)}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         onPressed: () async {
                           final selected = await showTimePicker(
@@ -466,9 +416,12 @@ class SettingsScreen extends StatelessWidget {
                           if (selected != null) {
                             await notifPrefs.setOccasionalTime(selected);
                             final taskNotif = TaskNotificationService();
-                            await taskNotif.scheduleOccasionalReminder(
+                            final taskProv = context.read<TaskProvider>();
+                            await taskNotif.scheduleDailySummaryNotification(
                               hour: selected.hour,
                               minute: selected.minute,
+                              assignedCount: taskProv.tasks.length,
+                              completedCount: taskProv.completedTasks.length,
                             );
                           }
                         },
@@ -486,13 +439,12 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final usageProvider = context.watch<UsageProvider>();
     final account = context.watch<AccountProvider>();
     final cloudSync = context.watch<CloudSyncProvider>();
     final profile = context.watch<UserProfileProvider>().profile;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -514,23 +466,13 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 110),
         children: [
           _SettingsSection(
-            title: 'Permissions & access',
-            subtitle: 'Usage access and notifications',
-            icon: const FaIcon(FontAwesomeIcons.shieldHalved, size: 18),
+            title: 'Notifications & reminders',
+            subtitle: 'Reminders and alert preferences',
+            icon: const FaIcon(FontAwesomeIcons.solidBell, size: 18),
             initiallyExpanded: false,
             children: [
               _SettingsTile(
-                icon: FontAwesomeIcons.chartSimple,
-                title: 'App usage access',
-                subtitle: _usageStatusText(usageProvider.accessStatus),
-                trailing: _StatusDot(
-                  active:
-                      usageProvider.accessStatus == UsageAccessStatus.granted,
-                ),
-                onTap: () => context.push('/wellbeing/permission'),
-              ),
-              _SettingsTile(
-                icon: FontAwesomeIcons.bell,
+                icon: FontAwesomeIcons.solidBell,
                 title: 'Notification permission',
                 subtitle: 'Allow reminders and focus notifications',
                 onTap: () => _openAppNotificationSettings(context),
@@ -538,21 +480,15 @@ class SettingsScreen extends StatelessWidget {
               _SettingsTile(
                 icon: FontAwesomeIcons.sliders,
                 title: 'Notification preferences',
-                subtitle: 'Social alerts, squad invites & occasional reminders',
+                subtitle: 'Social alerts, squad invites & daily task summary',
                 onTap: () => _openNotificationPreferencesDialog(context),
-              ),
-              _SettingsTile(
-                icon: FontAwesomeIcons.clockRotateLeft,
-                title: 'Daily App Summaries',
-                subtitle: '5:00 PM snapshot & 11:00 PM wrap-up',
-                onTap: () => _openDailySummariesDialog(context),
               ),
             ],
           ),
           _SettingsSection(
             title: 'Account',
             subtitle: 'Profile, birthday and nationality',
-            icon: const FaIcon(FontAwesomeIcons.user, size: 18),
+            icon: const FaIcon(FontAwesomeIcons.solidUser, size: 18),
             children: [
               _SettingsTile(
                 icon: FontAwesomeIcons.userPen,
@@ -657,23 +593,6 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  static String _usageStatusText(UsageAccessStatus status) {
-    switch (status) {
-      case UsageAccessStatus.granted:
-        return 'Allowed';
-      case UsageAccessStatus.denied:
-        return 'Permission needed';
-      case UsageAccessStatus.unsupported:
-        return 'Android only';
-      case UsageAccessStatus.error:
-        return 'Could not read permission';
-      case UsageAccessStatus.checking:
-        return 'Checking…';
-      case UsageAccessStatus.unknown:
-        return 'Not checked yet';
-    }
   }
 
   static Future<void> _handleEmailVerification(BuildContext context) async {
@@ -1042,6 +961,7 @@ class _SettingsTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: ListTile(
+        contentPadding: const EdgeInsets.only(left: 36, right: 16),
         leading: FaIcon(icon, size: 18),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle),
@@ -1078,6 +998,7 @@ class _AppearanceTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: ListTile(
+        contentPadding: const EdgeInsets.only(left: 36, right: 16),
         leading: const FaIcon(FontAwesomeIcons.circleHalfStroke, size: 18),
         title: const Text(
           'Theme',

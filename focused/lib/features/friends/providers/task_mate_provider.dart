@@ -107,17 +107,43 @@ class TaskMateProvider extends ChangeNotifier {
         );
   }
 
+  Future<void> fetchHistory() async {
+    List<String> groupIds = _groups.map((g) => g.id).toList();
+    if (groupIds.isEmpty && _currentUid.isNotEmpty) {
+      try {
+        final snap = await FirebaseFirestore.instance
+            .collection('task_groups')
+            .where('memberUids', arrayContains: _currentUid)
+            .get();
+        groupIds = snap.docs.map((d) => d.id).toList();
+      } catch (e) {
+        debugPrint('Error fetching user groups for history: $e');
+      }
+    }
+
+    try {
+      final items = await _service.fetchGroupsHistory(
+        groupIds,
+        currentUid: _currentUid,
+      );
+      if (items.isNotEmpty || _history.isEmpty) {
+        _history = items;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching squad history: $e');
+    }
+  }
+
   void _refreshHistorySubscription() {
     _historySub?.cancel();
     final groupIds = _groups.map((g) => g.id).toList();
-    if (groupIds.isEmpty) {
-      _history = [];
-      notifyListeners();
-      return;
-    }
+
+    // Immediately fetch existing history so UI doesn't wait
+    fetchHistory();
 
     _historySub = _service
-        .streamGroupsHistory(groupIds)
+        .streamGroupsHistory(groupIds, currentUid: _currentUid)
         .listen(
           (items) {
             _history = items;
@@ -136,7 +162,7 @@ class TaskMateProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _service.deleteHistoryItems(itemsToDelete);
+      await _service.deleteHistoryItems(itemsToDelete, currentUid: _currentUid);
     } catch (e) {
       debugPrint('Error deleting history items: $e');
     }

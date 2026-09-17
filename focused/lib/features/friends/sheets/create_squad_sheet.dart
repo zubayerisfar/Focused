@@ -236,12 +236,23 @@ void showCreateGroupDialog(BuildContext context) {
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
-                    child: FilledButton(
+                    height: 52,
+                    child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF1CB0F6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: SvgPicture.asset(
+                        'assets/icon/group_icon.svg',
+                        width: 20,
+                        height: 20,
+                      ),
+                      label: const Text(
+                        'Create Squad',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
                         ),
                       ),
                       onPressed: selectedFriends.isEmpty
@@ -272,14 +283,6 @@ void showCreateGroupDialog(BuildContext context) {
                                 );
                               }
                             },
-                      child: const Text(
-                        'Create Squad',
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
                     ),
                   ),
                 ],

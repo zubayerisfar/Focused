@@ -78,9 +78,7 @@ class RemindersPlannerBody extends StatelessWidget {
                   horizontal: 16,
                   vertical: 10,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                shape: const StadiumBorder(),
               ),
               onPressed: () => context.push('/reminder/new'),
               child: const Text(
@@ -110,7 +108,7 @@ class RemindersPlannerBody extends StatelessWidget {
             child: Column(
               children: [
                 SvgPicture.asset(
-                  'assets/planner_page_icons/planner_reminder_icon.svg',
+                  'assets/planner_page_icons/reminder_icon.svg',
                   width: 54,
                   height: 54,
                   fit: BoxFit.contain,

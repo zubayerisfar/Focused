@@ -8,20 +8,15 @@ class AppUsageSummaryService {
 
   Future<void> initialize() async {
     try {
-      await _channel.invokeMethod('scheduleDailySummaries');
+      await _channel.invokeMethod('cancelDailySummaries');
+      await _channel.invokeMethod('setEnabled', {'enabled': false});
     } catch (e) {
-      debugPrint('Could not initialize AppUsageSummaryService: $e');
+      debugPrint('Could not cancel AppUsageSummaryService: $e');
     }
   }
 
   Future<bool> isEnabled() async {
-    try {
-      final result = await _channel.invokeMethod<bool>('isEnabled');
-      return result ?? true;
-    } catch (e) {
-      debugPrint('Could not check AppUsageSummaryService status: $e');
-      return true;
-    }
+    return false;
   }
 
   Future<void> setEnabled(bool enabled) async {

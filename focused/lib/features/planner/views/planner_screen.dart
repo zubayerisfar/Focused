@@ -79,6 +79,9 @@ class PlannerScreenState extends State<PlannerScreen> {
       ),
     );
 
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final navBarOffset = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14);
+
     return PopScope(
       canPop: _area == PlannerArea.hub,
       onPopInvokedWithResult: (didPop, _) {
@@ -91,7 +94,7 @@ class PlannerScreenState extends State<PlannerScreen> {
       child: Theme(
         data: plannerTheme,
         child: Scaffold(
-          backgroundColor: bg,
+          backgroundColor: Colors.transparent,
           appBar: _area == PlannerArea.hub
               ? AppBar(
                   backgroundColor: Colors.transparent,
@@ -130,7 +133,10 @@ class PlannerScreenState extends State<PlannerScreen> {
             child: Column(
               children: [
                 Expanded(child: SizedBox.expand(child: _buildAreaBody())),
-                if (_area != PlannerArea.tasks) const AppBannerAdWidget(),
+                if (_area != PlannerArea.tasks)
+                  AppBannerAdWidget(
+                    margin: EdgeInsets.fromLTRB(0, 6, 0, navBarOffset + 8),
+                  ),
               ],
             ),
           ),

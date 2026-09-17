@@ -68,6 +68,20 @@ class HabitProvider extends ChangeNotifier {
     return dates;
   }
 
+  /// Map of calendar dates to habit completion counts on that date.
+  Map<DateTime, int> habitCompletionCountsByDate() {
+    final counts = <DateTime, int>{};
+    for (final habit in _habits) {
+      for (final p in _progress) {
+        if (p.habitId == habit.id && p.value >= habit.targetValue) {
+          final d = DateTime(p.date.year, p.date.month, p.date.day);
+          counts[d] = (counts[d] ?? 0) + 1;
+        }
+      }
+    }
+    return Map<DateTime, int>.unmodifiable(counts);
+  }
+
   Habit? getHabitById(String id) {
     for (final habit in _habits) {
       if (habit.id == id) {

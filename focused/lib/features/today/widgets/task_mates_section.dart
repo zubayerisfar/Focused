@@ -10,12 +10,13 @@ import '../../main/views/main_shell.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/models/task_group.dart';
 import '../../tasks/providers/task_provider.dart';
+import '../../../core/widgets/glass_container.dart';
 
 String _dateQuery(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
 void _openSquads(BuildContext context) {
-  final switched = MainShell.switchToTab(context, 3);
+  final switched = MainShell.switchToTab(context, 2);
   if (!switched) {
     context.push('/groups');
   }
@@ -94,9 +95,13 @@ class TaskMatesSection extends StatelessWidget {
         Row(
           children: [
             SvgPicture.asset(
-              'assets/icon/group_icon.svg',
-              width: 24,
-              height: 24,
+              'assets/today_screen_icons/task_mate_icon_today_screen.svg',
+              width: 26,
+              height: 26,
+              colorFilter: ColorFilter.mode(
+                isDark ? Colors.white : const Color(0xFF1E293B),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -153,13 +158,9 @@ class TaskMatesSection extends StatelessWidget {
         const SizedBox(height: 12),
         // Clean surface card - no colored overlay background, soft shadow
         if (activeSquadTasks.isEmpty && activeGroups.isEmpty)
-          Container(
+          GlassContainer(
             width: double.infinity,
             padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(22),
-            ),
             child: Row(
               children: [
                 Expanded(
@@ -240,146 +241,118 @@ class _SquadTaskTile extends StatelessWidget {
     final focusSetupUri =
         '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(date)}';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: scheme.surface, // Clean surface - no overlay coloring on home
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Theme.of(
-              context,
-            ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+    return GlassContainer(
+      margin: const EdgeInsets.only(bottom: 10),
+      borderRadius: BorderRadius.circular(20),
+      onTap: () => context.push(focusSetupUri),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            // Group-specific left color indicator bar
+            Container(
+              width: 4.5,
+              height: 52,
+              decoration: BoxDecoration(
+                color: groupColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            // Clicking takes directly to the Focus start / setup page for this task
-            onTap: () => context.push(focusSetupUri),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
+            const SizedBox(width: 12),
+            // Sharp, clearly visible group icon container
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: groupColor.withValues(alpha: isDark ? 0.50 : 0.30),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/icon/group_icon.svg',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Group-specific left color indicator bar
-                  Container(
-                    width: 4.5,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: groupColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Sharp, clearly visible group icon container
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
-                      borderRadius: BorderRadius.circular(13),
-                      border: Border.all(
+                  // Group badge with group name in CAPITAL LETTERS & group coloring
+                  // Tapping badge opens squad tab directly
+                  GestureDetector(
+                    onTap: () => _openSquads(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
                         color: groupColor.withValues(
-                          alpha: isDark ? 0.50 : 0.30,
+                          alpha: isDark ? 0.25 : 0.12,
                         ),
-                        width: 1.5,
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.groups_rounded,
-                        color: groupColor,
-                        size: 24,
+                      child: Text(
+                        groupName,
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: groupColor,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Group badge with group name in CAPITAL LETTERS & group coloring
-                        // Tapping badge opens squad tab directly
-                        GestureDetector(
-                          onTap: () => _openSquads(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: groupColor.withValues(
-                                alpha: isDark ? 0.25 : 0.12,
-                              ),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              groupName,
-                              style: TextStyle(
-                                fontFamily: 'Quicksand',
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                                color: groupColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Task title
-                        Text(
-                          task.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'Quicksand',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        // Task description / schedule
-                        Text(
-                          taskDescription,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w400,
-                              ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  // Task title
+                  Text(
+                    task.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // Only the button to start the session
-                  IconButton.filledTonal(
-                    tooltip: 'Start Focus',
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(
-                      backgroundColor: groupColor.withValues(
-                        alpha: isDark ? 0.28 : 0.14,
-                      ),
-                      foregroundColor: groupColor,
+                  const SizedBox(height: 2),
+                  // Task description / schedule
+                  Text(
+                    taskDescription,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
                     ),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 24),
-                    onPressed: () => context.push(focusSetupUri),
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(width: 8),
+            // Only the button to start the session
+            IconButton.filledTonal(
+              tooltip: 'Start Focus',
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                backgroundColor: groupColor.withValues(
+                  alpha: isDark ? 0.28 : 0.14,
+                ),
+                foregroundColor: groupColor,
+              ),
+              icon: const Icon(Icons.play_arrow_rounded, size: 24),
+              onPressed: () => context.push(focusSetupUri),
+            ),
+          ],
         ),
       ),
     );
@@ -451,137 +424,110 @@ class _GroupActiveSummaryTile extends StatelessWidget {
       }
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: scheme.surface, // Clean surface - no overlay coloring
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Theme.of(
-              context,
-            ).dividerColor.withValues(alpha: isDark ? 0.35 : 0.6),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+    return GlassContainer(
+      margin: const EdgeInsets.only(bottom: 10),
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTilePressed,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 4.5,
+              height: 52,
+              decoration: BoxDecoration(
+                color: groupColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onTilePressed,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
+            const SizedBox(width: 12),
+            // Crisp, clearly visible icon container
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: groupColor.withValues(alpha: isDark ? 0.50 : 0.30),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/icon/group_icon.svg',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 4.5,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: groupColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Crisp, clearly visible icon container
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: groupColor.withValues(alpha: isDark ? 0.28 : 0.14),
-                      borderRadius: BorderRadius.circular(13),
-                      border: Border.all(
+                  GestureDetector(
+                    onTap: () => _openSquads(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
                         color: groupColor.withValues(
-                          alpha: isDark ? 0.50 : 0.30,
+                          alpha: isDark ? 0.25 : 0.12,
                         ),
-                        width: 1.5,
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.groups_rounded,
-                        color: groupColor,
-                        size: 24,
+                      child: Text(
+                        groupNameUpper,
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: groupColor,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        GestureDetector(
-                          onTap: () => _openSquads(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: groupColor.withValues(
-                                alpha: isDark ? 0.25 : 0.12,
-                              ),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              groupNameUpper,
-                              style: TextStyle(
-                                fontFamily: 'Quicksand',
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                                color: groupColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          taskTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Quicksand',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          taskCategory,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w400,
-                              ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  Text(
+                    taskTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // Only the button to start the session
-                  IconButton.filledTonal(
-                    tooltip: 'Start Focus',
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(
-                      backgroundColor: groupColor.withValues(
-                        alpha: isDark ? 0.28 : 0.14,
-                      ),
-                      foregroundColor: groupColor,
+                  const SizedBox(height: 2),
+                  Text(
+                    taskCategory,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
                     ),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 24),
-                    onPressed: onTilePressed,
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(width: 8),
+            // Only the button to start the session
+            IconButton.filledTonal(
+              tooltip: 'Start Focus',
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                backgroundColor: groupColor.withValues(
+                  alpha: isDark ? 0.28 : 0.14,
+                ),
+                foregroundColor: groupColor,
+              ),
+              icon: const Icon(Icons.play_arrow_rounded, size: 24),
+              onPressed: onTilePressed,
+            ),
+          ],
         ),
       ),
     );

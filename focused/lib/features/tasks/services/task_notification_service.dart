@@ -664,19 +664,21 @@ class TaskNotificationService {
     );
   }
 
-  Future<void> scheduleOccasionalReminder({
+  Future<void> scheduleDailySummaryNotification({
     required int hour,
     required int minute,
+    int assignedCount = 0,
+    int completedCount = 0,
   }) async {
     await init();
     const reminderId = 889900;
     await _notifications.cancel(reminderId);
 
     const androidDetails = AndroidNotificationDetails(
-      'focused_occasional_v1',
-      'Occasional Reminders',
+      'focused_daily_summary_v1',
+      'Daily Task Summary',
       channelDescription:
-          'Gentle occasional reminders to stay on top of your habits.',
+          'Daily summary showing assigned and completed tasks count.',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
@@ -684,6 +686,7 @@ class TaskNotificationService {
       color: Color(0xFF4E25AA),
       sound: RawResourceAndroidNotificationSound('notification_sound'),
       playSound: true,
+      styleInformation: BigTextStyleInformation(''),
     );
     const notificationDetails = NotificationDetails(
       android: androidDetails,
@@ -706,25 +709,119 @@ class TaskNotificationService {
       scheduled = scheduled.add(const Duration(days: 1));
     }
 
+    final body =
+        'Tasks assigned: $assignedCount\nTasks completed: $completedCount';
+
     try {
       await _notifications.zonedSchedule(
         reminderId,
-        '✨ Time to check in with yourself',
-        'Reflect on your progress today and prepare tomorrow\'s focus goals.',
+        '📊 Daily Task Summary',
+        body,
         scheduled,
         notificationDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
-        payload: 'occasional_reminder',
+        payload: 'daily_task_summary',
       );
     } catch (e) {
-      debugPrint('Could not schedule occasional reminder: $e');
+      debugPrint('Could not schedule daily summary reminder: $e');
     }
   }
 
-  Future<void> cancelOccasionalReminder() async {
+  Future<void> cancelDailySummaryNotification() async {
     const reminderId = 889900;
     await _notifications.cancel(reminderId);
+  }
+
+  // Backwards compatibility alias
+  Future<void> scheduleOccasionalReminder({
+    required int hour,
+    required int minute,
+  }) async {
+    await scheduleDailySummaryNotification(hour: hour, minute: minute);
+  }
+
+  Future<void> cancelOccasionalReminder() async {
+    await cancelDailySummaryNotification();
+  }
+
+  /// Preview/Test notifications for settings test buttons
+  Future<void> showDailySummaryPreview({
+    int assignedCount = 5,
+    int completedCount = 3,
+  }) async {
+    await init();
+    const androidDetails = AndroidNotificationDetails(
+      'focused_daily_summary_v1',
+      'Daily Task Summary',
+      channelDescription:
+          'Daily summary showing assigned and completed tasks count.',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_occasional'),
+      color: Color(0xFF4E25AA),
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+      styleInformation: BigTextStyleInformation(''),
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        sound: 'notification_sound.mp3',
+        presentSound: true,
+      ),
+    );
+    await _notifications.show(
+      889901,
+      '📊 Daily Task Summary',
+      'Tasks assigned: $assignedCount\nTasks completed: $completedCount',
+      notificationDetails,
+    );
+  }
+
+  Future<void> showFollowerAlertPreview() async {
+    await init();
+    const androidDetails = AndroidNotificationDetails(
+      'focused_followers_v1',
+      'Follower Alerts',
+      channelDescription: 'Notifications when someone follows you.',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_friends'),
+      color: Color(0xFF4E25AA),
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    await _notifications.show(
+      889902,
+      '👤 New Follower',
+      'Alex is now following your focus journey!',
+      const NotificationDetails(android: androidDetails),
+    );
+  }
+
+  Future<void> showPartnerCompletionPreview() async {
+    await init();
+    const androidDetails = AndroidNotificationDetails(
+      'focused_task_mates_v2',
+      'Partner Task Completions',
+      channelDescription: 'Alerts when your squad partner finishes their task.',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: DrawableResourceAndroidBitmap('notif_group_reminder'),
+      color: Color(0xFF4E25AA),
+      sound: RawResourceAndroidNotificationSound('notification_sound'),
+      playSound: true,
+    );
+    await _notifications.show(
+      889903,
+      '🎉 Partner Task Completed!',
+      'Sarah just completed "Read 20 pages". Now it\'s your turn!',
+      const NotificationDetails(android: androidDetails),
+    );
   }
 
   Future<void> showFriendReminderNotification({

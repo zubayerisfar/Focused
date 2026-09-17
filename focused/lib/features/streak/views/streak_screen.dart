@@ -16,6 +16,7 @@ import '../providers/user_stats_provider.dart';
 import '../services/achievement_service.dart';
 import '../services/productivity_streak_service.dart';
 import '../widgets/achievement_badge_art.dart';
+import '../../../core/widgets/glass_container.dart';
 
 class StreakScreen extends StatefulWidget {
   const StreakScreen({super.key});
@@ -83,150 +84,155 @@ class _StreakScreenState extends State<StreakScreen> {
         .where((badge) => badge.category == AchievementBadgeCategory.streak)
         .toList(growable: false);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          isInDanger ? 'Streak (In Danger)' : 'Streak',
-          style: TextStyle(
-            color: isInDanger ? const Color(0xFFEF4444) : null,
-            fontWeight: FontWeight.w800,
+    return GlassScaffoldBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text(
+            isInDanger ? 'Streak (In Danger)' : 'Streak',
+            style: TextStyle(
+              color: isInDanger ? const Color(0xFFEF4444) : null,
+              fontWeight: FontWeight.w800,
+            ),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'All badges',
+              onPressed: () => context.push('/badges'),
+              icon: const Icon(Icons.workspace_premium_outlined),
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'All badges',
-            onPressed: () => context.push('/badges'),
-            icon: const Icon(Icons.workspace_premium_outlined),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
-        children: [
-          if (isInDanger) ...[
-            _StreakDangerRestoreCard(
-              missedDate:
-                  streakDetails.missedDate ??
-                  now.subtract(const Duration(days: 1)),
-              gems: userStats.gems,
-              isRestoring: _isRestoring,
-              onWatchAdRestore: () {
-                setState(() => _isRestoring = true);
-                AdService.instance.showRewardedAd(
-                  onUserEarnedReward: (reward) async {
-                    final targetDate =
-                        streakDetails.missedDate ??
-                        now.subtract(const Duration(days: 1));
-                    await userStats.restoreStreakWithAd(targetDate);
-                    if (mounted) {
-                      setState(() => _isRestoring = false);
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 36),
+          children: [
+            if (isInDanger) ...[
+              _StreakDangerRestoreCard(
+                missedDate:
+                    streakDetails.missedDate ??
+                    now.subtract(const Duration(days: 1)),
+                gems: userStats.gems,
+                isRestoring: _isRestoring,
+                onWatchAdRestore: () {
+                  setState(() => _isRestoring = true);
+                  AdService.instance.showRewardedAd(
+                    onUserEarnedReward: (reward) async {
+                      final targetDate =
+                          streakDetails.missedDate ??
+                          now.subtract(const Duration(days: 1));
+                      await userStats.restoreStreakWithAd(targetDate);
+                      if (mounted) {
+                        setState(() => _isRestoring = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            backgroundColor: Color(0xFF10B981),
+                            content: Text(
+                              '🔥 Streak Restored Successfully! Yesterday repaired.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    onAdDismissed: () {
+                      if (mounted) setState(() => _isRestoring = false);
+                    },
+                  );
+                },
+                onGemsRestore: () async {
+                  if (userStats.gems < UserStatsProvider.gemStreakRestoreCost) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Not enough gems. You need 500 gems to restore streak.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  setState(() => _isRestoring = true);
+                  final targetDate =
+                      streakDetails.missedDate ??
+                      now.subtract(const Duration(days: 1));
+                  final success = await userStats.restoreStreakWithGems(
+                    targetDate,
+                  );
+                  if (mounted) {
+                    setState(() => _isRestoring = false);
+                    if (success) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           backgroundColor: Color(0xFF10B981),
-                          content: Text(
-                            '🔥 Streak Restored Successfully! Yesterday repaired.',
-                          ),
+                          content: Text('🔥 Streak Restored! 500 Gems spent.'),
                         ),
                       );
                     }
-                  },
-                  onAdDismissed: () {
-                    if (mounted) setState(() => _isRestoring = false);
-                  },
-                );
-              },
-              onGemsRestore: () async {
-                if (userStats.gems < UserStatsProvider.gemStreakRestoreCost) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Not enough gems. You need 500 gems to restore streak.',
-                      ),
-                    ),
-                  );
-                  return;
-                }
-                setState(() => _isRestoring = true);
-                final targetDate =
-                    streakDetails.missedDate ??
-                    now.subtract(const Duration(days: 1));
-                final success = await userStats.restoreStreakWithGems(
-                  targetDate,
-                );
-                if (mounted) {
-                  setState(() => _isRestoring = false);
-                  if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        backgroundColor: Color(0xFF10B981),
-                        content: Text('🔥 Streak Restored! 500 Gems spent.'),
-                      ),
-                    );
                   }
-                }
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-          _StreakHero(
-            current: current,
-            longest: longest,
-            isInDanger: isInDanger,
-          ),
-          const SizedBox(height: 24),
-          _MonthCalendar(
-            month: _visibleMonth,
-            activeDays: normalizedActivity,
-            onPrevious: () => setState(() {
-              _visibleMonth = DateTime(
-                _visibleMonth.year,
-                _visibleMonth.month - 1,
-              );
-            }),
-            onNext: () => setState(() {
-              _visibleMonth = DateTime(
-                _visibleMonth.year,
-                _visibleMonth.month + 1,
-              );
-            }),
-          ),
-          const SizedBox(height: 26),
-          _GoalCard(
-            current: current,
-            goalDays: goal.goalDays,
-            onChangeGoal: () => _chooseGoal(context),
-          ),
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Streak badges',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
+                },
               ),
-              TextButton(
-                onPressed: () => context.push('/badges'),
-                child: const Text('View all'),
-              ),
+              const SizedBox(height: 20),
             ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 154,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: streakBadges.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final badge = streakBadges[index];
-                return _StreakBadgeCard(badge: badge);
-              },
+            _StreakHero(
+              current: current,
+              longest: longest,
+              isInDanger: isInDanger,
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            _MonthCalendar(
+              month: _visibleMonth,
+              activeDays: normalizedActivity,
+              onPrevious: () => setState(() {
+                _visibleMonth = DateTime(
+                  _visibleMonth.year,
+                  _visibleMonth.month - 1,
+                );
+              }),
+              onNext: () => setState(() {
+                _visibleMonth = DateTime(
+                  _visibleMonth.year,
+                  _visibleMonth.month + 1,
+                );
+              }),
+            ),
+            const SizedBox(height: 26),
+            _GoalCard(
+              current: current,
+              goalDays: goal.goalDays,
+              onChangeGoal: () => _chooseGoal(context),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Streak badges',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/badges'),
+                  child: const Text('View all'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 154,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: streakBadges.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final badge = streakBadges[index];
+                  return _StreakBadgeCard(badge: badge);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -300,18 +306,15 @@ class _StreakHero extends StatelessWidget {
         ? const Color(0xFFDC2626).withValues(alpha: 0.35)
         : const Color(0xFFFF8A3D).withValues(alpha: 0.28);
 
-    return Container(
+    return GlassContainer(
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: isInDanger
-              ? const Color(0xFFEF4444).withValues(alpha: 0.5)
-              : Theme.of(context).dividerColor,
-          width: isInDanger ? 1.5 : 1.0,
-        ),
-      ),
+      borderRadius: BorderRadius.circular(28),
+      border: isInDanger
+          ? Border.all(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.5),
+              width: 1.5,
+            )
+          : null,
       child: Row(
         children: [
           Expanded(
@@ -393,22 +396,12 @@ class _StreakDangerRestoreCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dayFormat = DateFormat('EEEE, MMM d').format(missedDate);
 
-    return Container(
+    return GlassContainer(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF3F1D1D) : const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFEF4444).withValues(alpha: 0.5),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFEF4444).withValues(alpha: 0.14),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: const Color(0xFFEF4444).withValues(alpha: 0.5),
+        width: 1.5,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -469,9 +462,7 @@ class _StreakDangerRestoreCard extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFFEF4444),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: const StadiumBorder(),
               ),
               onPressed: isRestoring ? null : onWatchAdRestore,
               icon: isRestoring
@@ -505,9 +496,7 @@ class _StreakDangerRestoreCard extends StatelessWidget {
                   color: const Color(0xFFEF4444).withValues(alpha: 0.4),
                   width: 1.2,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: const StadiumBorder(),
               ),
               onPressed: isRestoring ? null : onGemsRestore,
               icon: SvgPicture.asset(
@@ -552,13 +541,9 @@ class _MonthCalendar extends StatelessWidget {
     final cellCount = ((leading + daysInMonth + 6) ~/ 7) * 7;
     const weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-    return Container(
+    return GlassContainer(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
+      borderRadius: BorderRadius.circular(24),
       child: Column(
         children: [
           Row(
@@ -672,13 +657,9 @@ class _GoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = (current / goalDays).clamp(0.0, 1.0).toDouble();
     final remaining = (goalDays - current).clamp(0, goalDays);
-    return Container(
+    return GlassContainer(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
+      borderRadius: BorderRadius.circular(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -694,7 +675,11 @@ class _GoalCard extends StatelessWidget {
                   ),
                 ),
               ),
-              TextButton(onPressed: onChangeGoal, child: const Text('Change')),
+              TextButton(
+                style: TextButton.styleFrom(shape: const StadiumBorder()),
+                onPressed: onChangeGoal,
+                child: const Text('Change'),
+              ),
             ],
           ),
           const SizedBox(height: 10),

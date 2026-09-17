@@ -28,17 +28,9 @@ import '../features/settings/views/notification_permission_screen.dart';
 import '../features/settings/views/cloud_sync_screen.dart';
 import '../features/settings/views/settings_screen.dart';
 import '../features/streak/views/streak_screen.dart';
+import '../features/tasks/models/task.dart';
 import '../features/tasks/views/task_details_screen.dart';
 import '../features/tasks/views/task_edit_screen.dart';
-import '../features/wellbeing/views/app_limits_screen.dart';
-import '../features/wellbeing/views/app_usage_app_details_screen.dart';
-import '../features/wellbeing/views/app_usage_details_screen.dart';
-import '../features/wellbeing/views/daily_wellbeing_details_screen.dart';
-import '../features/wellbeing/views/focus_interruption_details_screen.dart';
-import '../features/wellbeing/views/usage_permission_screen.dart';
-import '../features/wellbeing/views/wellbeing_screen.dart';
-import '../features/wellbeing/views/wellbeing_summary_screen.dart';
-import '../features/wellbeing/views/weekly_wellbeing_screen.dart';
 import '../features/gems/views/gems_screen.dart';
 
 GoRouter createAppRouter({
@@ -200,27 +192,24 @@ GoRouter createAppRouter({
         builder: (context, state) => const NotificationAccessScreen(),
       ),
       GoRoute(
-        path: '/wellbeing',
-        builder: (context, state) => const WellbeingScreen(),
-      ),
-      GoRoute(
-        path: '/wellbeing/day',
-        builder: (context, state) {
-          final raw = state.uri.queryParameters['date'];
-          final parsed = DateTime.tryParse(raw ?? '');
-          final date = parsed == null
-              ? DateTime.now()
-              : DateTime(parsed.year, parsed.month, parsed.day);
-          return DailyWellbeingDetailsScreen(date: date);
-        },
-      ),
-      GoRoute(
         path: '/devices',
         builder: (context, state) => const DevicesScreen(),
       ),
       GoRoute(
         path: '/task/new',
-        builder: (context, state) => const TaskEditScreen(),
+        builder: (context, state) {
+          final priorityParam = state.uri.queryParameters['priority']
+              ?.toLowerCase();
+          TaskPriority? initialPriority;
+          if (priorityParam == 'critical') {
+            initialPriority = TaskPriority.critical;
+          } else if (priorityParam == 'important') {
+            initialPriority = TaskPriority.important;
+          } else if (priorityParam == 'growth') {
+            initialPriority = TaskPriority.growth;
+          }
+          return TaskEditScreen(initialPriority: initialPriority);
+        },
       ),
       GoRoute(
         path: '/tasks/edit',
@@ -295,37 +284,6 @@ GoRouter createAppRouter({
         builder: (context, state) => FocusSessionDetailsScreen(
           sessionId: Uri.decodeComponent(state.pathParameters['sessionId']!),
         ),
-      ),
-      GoRoute(
-        path: '/wellbeing/summary',
-        builder: (context, state) => const WellbeingSummaryScreen(),
-      ),
-      GoRoute(
-        path: '/wellbeing/analytics',
-        builder: (context, state) => const WeeklyWellbeingScreen(),
-      ),
-      GoRoute(
-        path: '/wellbeing/app-usage',
-        builder: (context, state) => const AppUsageDetailsScreen(),
-      ),
-      GoRoute(
-        path: '/wellbeing/app/:appId',
-        builder: (context, state) => AppUsageAppDetailsScreen(
-          appId: Uri.decodeComponent(state.pathParameters['appId']!),
-          initialAppName: state.uri.queryParameters['name'],
-        ),
-      ),
-      GoRoute(
-        path: '/wellbeing/focus-interruptions',
-        builder: (context, state) => const FocusInterruptionDetailsScreen(),
-      ),
-      GoRoute(
-        path: '/wellbeing/permission',
-        builder: (context, state) => const UsagePermissionScreen(),
-      ),
-      GoRoute(
-        path: '/wellbeing/limits',
-        builder: (context, state) => const AppLimitsScreen(),
       ),
     ],
   );

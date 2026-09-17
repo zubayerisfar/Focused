@@ -10,14 +10,14 @@ class AppColors {
   static const Color mist = Color(0xFF8FA7A2);
 
   // Light Mode Surfaces & Text
-  static const Color lightScaffold = Color(0xFFEFECE6);
-  static const Color lightSurface = Color(0xFFFFFEFB);
-  static const Color lightSurfaceSoft = Color(0xFFE6E3DC);
-  static const Color lightText = Color(0xFF292B31);
-  static const Color lightMuted = Color(0xFF6F727A);
-  static const Color lightDivider = Color(0xFFE7E4DC);
-  static const Color lightOutline = Color(0xFFCAC8C0);
-  static const Color lightOutlineVariant = Color(0xFFE4E1D9);
+  static const Color lightScaffold = Color(0xFFF7F9FC);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSurfaceSoft = Color(0xFFEEF2F9);
+  static const Color lightText = Color(0xFF1E293B);
+  static const Color lightMuted = Color(0xFF64748B);
+  static const Color lightDivider = Color(0xFFE2E8F0);
+  static const Color lightOutline = Color(0xFFCBD5E1);
+  static const Color lightOutlineVariant = Color(0xFFE2E8F0);
 
   // Dark Mode Surfaces & Text
   static const Color darkScaffold = Color(0xFF08090D);

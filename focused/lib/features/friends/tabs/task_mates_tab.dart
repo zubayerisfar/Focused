@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../tasks/models/task_group.dart';
 import '../../auth/providers/account_provider.dart';
 import '../providers/task_mate_provider.dart';
+import '../widgets/squad_task_actions.dart';
 
 class TaskMatesTab extends StatelessWidget {
   final bool isDark;
@@ -87,8 +88,19 @@ class TaskMatesTab extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1CB0F6).withValues(alpha: 0.15),
+                  color: isDark
+                      ? Colors.white
+                      : const Color(0xFF1CB0F6).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
+                  boxShadow: isDark
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Center(
                   child: SvgPicture.asset(
@@ -125,16 +137,18 @@ class TaskMatesTab extends StatelessWidget {
               FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF1CB0F6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  shape: const StadiumBorder(),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 12,
+                    horizontal: 24,
+                    vertical: 13,
                   ),
                 ),
                 onPressed: onCreateGroup,
-                icon: const Icon(Icons.group_add_rounded),
+                icon: SvgPicture.asset(
+                  'assets/icon/group_icon.svg',
+                  width: 20,
+                  height: 20,
+                ),
                 label: const Text(
                   'Create a Task Squad',
                   style: TextStyle(
@@ -207,7 +221,7 @@ class TaskMatesTab extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: canCreate ? onCreateGroup : null,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(100),
         child: Container(
           height: 72,
           alignment: Alignment.center,
@@ -215,7 +229,7 @@ class TaskMatesTab extends StatelessWidget {
             color: isDark
                 ? const Color(0xFF131722).withValues(alpha: 0.5)
                 : scheme.surfaceContainerLowest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(100),
             border: Border.all(
               color: isDark
                   ? const Color(0xFF2A3447).withValues(alpha: 0.6)
@@ -321,10 +335,19 @@ class TaskMatesTab extends StatelessWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: const Color(
-                      0xFF1CB0F6,
-                    ).withValues(alpha: isDark ? 0.25 : 0.15),
+                    color: isDark
+                        ? Colors.white
+                        : const Color(0xFF1CB0F6).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
+                    boxShadow: isDark
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
                   alignment: Alignment.center,
                   child: SvgPicture.asset(
@@ -495,8 +518,8 @@ class TaskMatesTab extends StatelessWidget {
                             const SizedBox(width: 5),
                             Text(
                               activeCount > 0
-                                  ? '$activeCount/3 Tasks Active (+50 Gems)'
-                                  : 'No Active Tasks (0/3)',
+                                  ? '$activeCount Task Active (+50 Gems)'
+                                  : 'No Active Tasks',
                               style: TextStyle(
                                 fontFamily: 'Quicksand',
                                 fontSize: 11.5,
@@ -599,19 +622,6 @@ class TaskMatesTab extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF1CB0F6),
-                                shape: BoxShape.circle,
-                              ),
-                              child: SvgPicture.asset(
-                                'assets/icon/group_icon.svg',
-                                width: 20,
-                                height: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -629,7 +639,9 @@ class TaskMatesTab extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '${liveGroup.members.length} members • ${liveGroup.activeTasks.length}/3 Tasks',
+                                    liveGroup.activeTasks.isNotEmpty
+                                        ? '${liveGroup.members.length} members • 1 Active Task'
+                                        : '${liveGroup.members.length} members • No Active Tasks',
                                     style: TextStyle(
                                       fontFamily: 'Quicksand',
                                       color: isDark
@@ -786,126 +798,246 @@ class TaskMatesTab extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
 
-                            // Section Title & Add Task Button (shown when tasks already exist)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'SHARED TASKS (${liveGroup.activeTasks.length}/3)',
-                                  style: TextStyle(
-                                    fontFamily: 'Quicksand',
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark
-                                        ? const Color(0xFF77878F)
-                                        : scheme.onSurfaceVariant,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                if (liveGroup.activeTasks.isNotEmpty &&
-                                    liveGroup.canAddMoreTasks)
-                                  TextButton.icon(
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      visualDensity: VisualDensity.compact,
-                                    ),
-                                    onPressed: () {
-                                      onAssignTask(liveGroup);
-                                    },
-                                    icon: const Icon(
-                                      Icons.add_rounded,
-                                      size: 16,
-                                    ),
-                                    label: const Text(
-                                      'Add Task',
+                            // Section Title & Add Task Button (shown when tasks already exist and not on cooldown)
+                            Builder(
+                              builder: (context) {
+                                final now = DateTime.now();
+                                final completedToday = provider.history.any(
+                                  (h) =>
+                                      h.groupId == liveGroup.id &&
+                                      h.completedAt.year == now.year &&
+                                      h.completedAt.month == now.month &&
+                                      h.completedAt.day == now.day,
+                                );
+
+                                return Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'SHARED TASK (${liveGroup.activeTasks.length}/1)',
                                       style: TextStyle(
                                         fontFamily: 'Quicksand',
-                                        color: Color(0xFF1CB0F6),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12.5,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark
+                                            ? const Color(0xFF77878F)
+                                            : scheme.onSurfaceVariant,
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
-                                  ),
-                              ],
+                                    if (liveGroup.activeTasks.isNotEmpty &&
+                                        liveGroup.canAddMoreTasks &&
+                                        !completedToday)
+                                      TextButton.icon(
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        onPressed: () {
+                                          onAssignTask(liveGroup);
+                                        },
+                                        icon: const Icon(
+                                          Icons.add_rounded,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Add Task',
+                                          style: TextStyle(
+                                            fontFamily: 'Quicksand',
+                                            color: Color(0xFF1CB0F6),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
                             ),
                             const SizedBox(height: 8),
 
                             if (liveGroup.activeTasks.isEmpty)
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: scheme.surfaceContainerHigh,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: scheme.outlineVariant,
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    const Icon(
-                                      Icons.assignment_outlined,
-                                      size: 38,
-                                      color: Color(0xFF1CB0F6),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      'No Active Tasks',
-                                      style: TextStyle(
-                                        fontFamily: 'Quicksand',
-                                        color: isDark
-                                            ? Colors.white
-                                            : scheme.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Upload up to 3 shared tasks/habits for the squad to conquer together and earn +50 Gems!',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontFamily: 'Quicksand',
-                                        color: isDark
-                                            ? const Color(0xFFAFBBC1)
-                                            : scheme.onSurfaceVariant,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    FilledButton.icon(
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF1CB0F6,
+                              Builder(
+                                builder: (context) {
+                                  final now = DateTime.now();
+                                  final completedToday = provider.history.any(
+                                    (h) =>
+                                        h.groupId == liveGroup.id &&
+                                        h.completedAt.year == now.year &&
+                                        h.completedAt.month == now.month &&
+                                        h.completedAt.day == now.day,
+                                  );
+
+                                  if (completedToday) {
+                                    return Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(22),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: isDark
+                                              ? [
+                                                  const Color(0xFF132840),
+                                                  const Color(0xFF182230),
+                                                ]
+                                              : [
+                                                  const Color(0xFFEBF5FF),
+                                                  const Color(0xFFF3F8FF),
+                                                ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
                                         ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: const Color(0xFF1CB0F6)
+                                              .withValues(
+                                                alpha: isDark ? 0.3 : 0.4,
+                                              ),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          const Text(
+                                            '🎉',
+                                            style: TextStyle(fontSize: 44),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            'Hurray, you finished your task!',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'Quicksand',
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : scheme.onSurface,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 16.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'Come back tomorrow to continue your journey.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'Quicksand',
+                                              color: isDark
+                                                  ? const Color(0xFFAFBBC1)
+                                                  : scheme.onSurfaceVariant,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 7,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF1CB0F6)
+                                                  .withValues(
+                                                    alpha: isDark ? 0.18 : 0.12,
+                                                  ),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.access_time_rounded,
+                                                  size: 14,
+                                                  color: Color(0xFF1CB0F6),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'Resets after 12:00 AM midnight',
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Quicksand',
+                                                    color: Color(0xFF1CB0F6),
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 11.5,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  return Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: scheme.surfaceContainerHigh,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: scheme.outlineVariant,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        const Icon(
+                                          Icons.assignment_outlined,
+                                          size: 38,
+                                          color: Color(0xFF1CB0F6),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          'No Active Tasks',
+                                          style: TextStyle(
+                                            fontFamily: 'Quicksand',
+                                            color: isDark
+                                                ? Colors.white
+                                                : scheme.onSurface,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 15,
                                           ),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 10,
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Upload 1 shared task for the squad to conquer together and earn +50 Gems!',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontFamily: 'Quicksand',
+                                            color: isDark
+                                                ? const Color(0xFFAFBBC1)
+                                                : scheme.onSurfaceVariant,
+                                            fontSize: 13,
+                                          ),
                                         ),
-                                      ),
-                                      onPressed: () => onAssignTask(liveGroup),
-                                      icon: const Icon(
-                                        Icons.add_rounded,
-                                        size: 18,
-                                      ),
-                                      label: const Text(
-                                        'Add Task',
-                                        style: TextStyle(
-                                          fontFamily: 'Quicksand',
-                                          fontWeight: FontWeight.w700,
+                                        const SizedBox(height: 14),
+                                        FilledButton(
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: const Color(
+                                              0xFF1CB0F6,
+                                            ),
+                                            shape: const StadiumBorder(),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
+                                              vertical: 11,
+                                            ),
+                                          ),
+                                          onPressed: () =>
+                                              onAssignTask(liveGroup),
+                                          child: const Text(
+                                            'Add Task',
+                                            style: TextStyle(
+                                              fontFamily: 'Quicksand',
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  );
+                                },
                               )
                             else
                               for (
@@ -975,6 +1107,44 @@ class TaskMatesTab extends StatelessWidget {
                                                     const SizedBox(width: 4),
                                                     const Text(
                                                       '+50 Gems',
+                                                      style: TextStyle(
+                                                        color: Color(
+                                                          0xFF0284C7,
+                                                        ),
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFF1CB0F6,
+                                                  ).withValues(alpha: 0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    SvgPicture.asset(
+                                                      'assets/icon/group_icon.svg',
+                                                      width: 14,
+                                                      height: 14,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    const Text(
+                                                      'Squad',
                                                       style: TextStyle(
                                                         color: Color(
                                                           0xFF0284C7,
@@ -1331,13 +1501,14 @@ class TaskMatesTab extends StatelessWidget {
                                                           ),
                                                     ),
                                                     onPressed: () {
-                                                      onStartTask(
+                                                      SquadTaskActions.completeTask(
+                                                        context,
                                                         liveGroup,
-                                                        taskIdx,
+                                                        taskIndex: taskIdx,
                                                       );
                                                     },
                                                     child: const Text(
-                                                      'Start Task',
+                                                      'Complete',
                                                       style: TextStyle(
                                                         fontFamily: 'Quicksand',
                                                         fontWeight:

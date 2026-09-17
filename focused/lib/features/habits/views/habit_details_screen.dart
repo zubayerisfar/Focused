@@ -89,12 +89,29 @@ class HabitDetailsScreen extends StatelessWidget {
                 }
               },
             ),
-            TextButton(
-              onPressed: () =>
-                  context.push('/habit/edit/${Uri.encodeComponent(habit.id)}'),
-              child: const Text('Edit'),
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 0,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () => context.push(
+                  '/habit/edit/${Uri.encodeComponent(habit.id)}',
+                ),
+                child: const Text(
+                  'Edit',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: 6),
           ],
         ),
         body: ListView(

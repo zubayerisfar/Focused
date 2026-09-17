@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/network/network_connectivity_service.dart';
 import '../../../core/widgets/offline_blocked_card.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../models/friend_user.dart';
 import '../../auth/providers/account_provider.dart';
 import '../providers/friends_provider.dart';
@@ -220,216 +221,224 @@ class _FriendsScreenState extends State<FriendsScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: null,
-      appBar: AppBar(
+    return GlassScaffoldBackground(
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        toolbarHeight: 54,
-        titleSpacing: 18,
-        title: Text(
-          'Friends',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
+        floatingActionButton: null,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          toolbarHeight: 54,
+          titleSpacing: 18,
+          title: Text(
+            'Friends',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+            ),
           ),
-        ),
-        actions: [
-          // Notification Hub Icon with badge
-          Builder(
-            builder: (ctx) {
-              final unreadCount =
-                  unclaimedGifts.length +
-                  friendsProvider.groupNotices
-                      .where((n) => n['read'] == false)
-                      .length;
-              return Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: SvgPicture.asset(
-                      'assets/icon/group_tab_notification_icon.svg',
-                      width: 28,
-                      height: 28,
+          actions: [
+            // Notification Hub Icon with badge
+            Builder(
+              builder: (ctx) {
+                final unreadCount =
+                    unclaimedGifts.length +
+                    friendsProvider.groupNotices
+                        .where((n) => n['read'] == false)
+                        .length;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: SvgPicture.asset(
+                        'assets/icon/group_tab_notification_icon.svg',
+                        width: 28,
+                        height: 28,
+                      ),
+                      tooltip: 'Squad Notifications & Gifts',
+                      onPressed: () => _openNotificationHub(context),
                     ),
-                    tooltip: 'Squad Notifications & Gifts',
-                    onPressed: () => _openNotificationHub(context),
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEF4444),
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          '$unreadCount',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            height: 1,
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              height: 1,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(width: 4),
-          const ProfileStreakGemBar(showProfile: true, avatarRadius: 20),
-          const SizedBox(width: 18),
-        ],
-      ),
-      body: !_isConnected
-          ? OfflineBlockedCard(
-              title: "Oops, you're not connected!",
-              message:
-                  'Connect to the internet and retry again to view and interact with your friends.',
-              onRetry: _checkConnectivity,
-              isRetrying: _isCheckingConnection,
-            )
-          : NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // ── CLAIM EXP BUTTON (Shown ONLY when points received from friends!) ──
-                        if (unclaimedGifts.isNotEmpty) ...[
-                          ...unclaimedGifts.map(
-                            (gift) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: ClaimExpBanner(
-                                gift: gift,
-                                onClaim: () async {
-                                  await friendsProvider.claimExp(gift);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        backgroundColor: const Color(
-                                          0xFF58CC02,
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
+                  ],
+                );
+              },
+            ),
+            const SizedBox(width: 4),
+            const ProfileStreakGemBar(showProfile: true, avatarRadius: 20),
+            const SizedBox(width: 18),
+          ],
+        ),
+        body: !_isConnected
+            ? OfflineBlockedCard(
+                title: "Oops, you're not connected!",
+                message:
+                    'Connect to the internet and retry again to view and interact with your friends.',
+                onRetry: _checkConnectivity,
+                isRetrying: _isCheckingConnection,
+              )
+            : NestedScrollView(
+                headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── CLAIM EXP BUTTON (Shown ONLY when points received from friends!) ──
+                          if (unclaimedGifts.isNotEmpty) ...[
+                            ...unclaimedGifts.map(
+                              (gift) => Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: ClaimExpBanner(
+                                  gift: gift,
+                                  onClaim: () async {
+                                    await friendsProvider.claimExp(gift);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: const Color(
+                                            0xFF58CC02,
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          content: Row(
+                                            children: [
+                                              const Text(
+                                                '🎉',
+                                                style: TextStyle(fontSize: 20),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                '+${gift.amount} EXP received from ${gift.fromUsername}!',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        content: Row(
-                                          children: [
-                                            const Text(
-                                              '🎉',
-                                              style: TextStyle(fontSize: 20),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              '+${gift.amount} EXP received from ${gift.fromUsername}!',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
+                                      );
+                                    }
+                                  },
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
 
-                        // ── TABS: ACTIVITIES (FRONT), FOLLOWING & FOLLOWERS ──
-                        Container(
-                          height: 52,
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerHigh,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: scheme.outlineVariant),
+                          // ── TABS: ACTIVITIES (FRONT), FOLLOWING & FOLLOWERS ──
+                          Container(
+                            height: 52,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: TabBar(
+                              controller: _tabController,
+                              dividerColor: Colors.transparent,
+                              dividerHeight: 0,
+                              overlayColor: WidgetStateProperty.all(
+                                Colors.transparent,
+                              ),
+                              splashFactory: NoSplash.splashFactory,
+                              splashBorderRadius: BorderRadius.circular(100),
+                              indicator: BoxDecoration(
+                                color: const Color(0xFF1CB0F6),
+                                borderRadius: BorderRadius.circular(100),
+                              ),
+                              indicatorSize: TabBarIndicatorSize.tab,
+                              labelColor: Colors.white,
+                              unselectedLabelColor: isDark
+                                  ? const Color(0xFF77878F)
+                                  : scheme.onSurfaceVariant,
+                              labelStyle: const TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.5,
+                              ),
+                              unselectedLabelStyle: const TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                              ),
+                              tabs: const [
+                                Tab(text: 'Activities'),
+                                Tab(text: 'Following'),
+                                Tab(text: 'Followers'),
+                              ],
+                            ),
                           ),
-                          child: TabBar(
-                            controller: _tabController,
-                            dividerColor: Colors.transparent,
-                            dividerHeight: 0,
-                            indicator: BoxDecoration(
-                              color: const Color(0xFF1CB0F6),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            labelColor: Colors.white,
-                            unselectedLabelColor: isDark
-                                ? const Color(0xFF77878F)
-                                : scheme.onSurfaceVariant,
-                            labelStyle: const TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14.5,
-                            ),
-                            unselectedLabelStyle: const TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14.5,
-                            ),
-                            tabs: const [
-                              Tab(text: 'Activities'),
-                              Tab(text: 'Following'),
-                              Tab(text: 'Followers'),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                          const SizedBox(height: 12),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  // 1. Activities Tab (FRONT)
-                  ActivitiesTab(
-                    isDark: isDark,
-                    onFindFriends: () => context.push('/friends/add'),
-                  ),
-
-                  // 2. Following Tab (with Search & Follow directly at top)
-                  _FollowingTab(
-                    following: following,
-                    isDark: isDark,
-                    scheme: scheme,
-                    friendsProvider: friendsProvider,
-                    onUnfollow: (f) => _confirmUnfollow(context, f),
-                  ),
-
-                  // 3. Followers Tab
-                  FriendsListTab(
-                    friends: followers,
-                    isFollowingTab: false,
-                    isDark: isDark,
-                    canSendReminder: friendsProvider.canSendReminder,
-                    canSendGift: false,
-                    onSendReminder: (_) {},
-                    onFollowBack: (f) => friendsProvider.follow(f),
-                    onUnfollow: (f) => _confirmUnfollow(context, f),
-                  ),
                 ],
+                body: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // 1. Activities Tab (FRONT)
+                    ActivitiesTab(
+                      isDark: isDark,
+                      onFindFriends: () => context.push('/friends/add'),
+                    ),
+
+                    // 2. Following Tab (with Search & Follow directly at top)
+                    _FollowingTab(
+                      following: following,
+                      isDark: isDark,
+                      scheme: scheme,
+                      friendsProvider: friendsProvider,
+                      onUnfollow: (f) => _confirmUnfollow(context, f),
+                    ),
+
+                    // 3. Followers Tab
+                    FriendsListTab(
+                      friends: followers,
+                      isFollowingTab: false,
+                      isDark: isDark,
+                      canSendReminder: friendsProvider.canSendReminder,
+                      canSendGift: false,
+                      onSendReminder: (_) {},
+                      onFollowBack: (f) => friendsProvider.follow(f),
+                      onUnfollow: (f) => _confirmUnfollow(context, f),
+                    ),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 

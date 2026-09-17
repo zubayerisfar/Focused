@@ -100,7 +100,7 @@ class _GroupScreenState extends State<GroupScreen>
         friendsProvider.groupNotices.where((n) => n['read'] == false).length;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -179,17 +179,19 @@ class _GroupScreenState extends State<GroupScreen>
                     height: 50,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: scheme.outlineVariant),
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(100),
                     ),
                     child: TabBar(
                       controller: _tabController,
                       dividerColor: Colors.transparent,
                       dividerHeight: 0,
+                      overlayColor: WidgetStateProperty.all(Colors.transparent),
+                      splashFactory: NoSplash.splashFactory,
+                      splashBorderRadius: BorderRadius.circular(100),
                       indicator: BoxDecoration(
                         color: const Color(0xFF1CB0F6),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(100),
                       ),
                       indicatorSize: TabBarIndicatorSize.tab,
                       labelColor: Colors.white,

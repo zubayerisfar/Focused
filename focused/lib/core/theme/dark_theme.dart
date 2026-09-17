@@ -59,33 +59,31 @@ ThemeData buildDarkTheme() {
     ),
     navigationBarTheme: NavigationBarThemeData(
       height: 68,
-      backgroundColor: const Color(0xFF0B0D13),
-      indicatorColor: const Color(0xFF24324A),
-      indicatorShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      backgroundColor: Colors.transparent,
+      indicatorColor: const Color(0xFF6366F1),
+      indicatorShape: const StadiumBorder(),
       elevation: 0,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return const TextStyle(
             fontFamily: AppTextTheme.fontFamily,
-            fontSize: 12,
+            fontSize: 11.5,
             fontWeight: FontWeight.w800,
-            color: AppColors.darkPrimary,
+            color: Colors.white,
           );
         }
         return const TextStyle(
           fontFamily: AppTextTheme.fontFamily,
-          fontSize: 12,
+          fontSize: 11.5,
           fontWeight: FontWeight.w600,
           color: muted,
         );
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: AppColors.darkPrimary, size: 24);
+          return const IconThemeData(color: Colors.white, size: 22);
         }
-        return const IconThemeData(color: muted, size: 24);
+        return const IconThemeData(color: muted, size: 22);
       }),
     ),
     bottomSheetTheme: const BottomSheetThemeData(
@@ -130,10 +128,11 @@ ThemeData buildDarkTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 50),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         backgroundColor: AppColors.darkPrimary,
         foregroundColor: const Color(0xFF0D1424),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const StadiumBorder(),
         textStyle: const TextStyle(
           fontFamily: AppTextTheme.fontFamily,
           fontWeight: FontWeight.w700,
@@ -143,10 +142,23 @@ ThemeData buildDarkTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
         foregroundColor: const Color(0xFFE8EEF8),
         side: const BorderSide(color: Color(0xFF333D50)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(
+          fontFamily: AppTextTheme.fontFamily,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(0, 50),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const StadiumBorder(),
         textStyle: const TextStyle(
           fontFamily: AppTextTheme.fontFamily,
           fontWeight: FontWeight.w700,
@@ -155,6 +167,8 @@ ThemeData buildDarkTheme() {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const StadiumBorder(),
         foregroundColor: const Color(0xFF8FB0FF),
         textStyle: const TextStyle(
           fontFamily: AppTextTheme.fontFamily,
@@ -166,7 +180,7 @@ ThemeData buildDarkTheme() {
       side: BorderSide.none,
       backgroundColor: scheme.surfaceContainerHighest,
       selectedColor: scheme.primaryContainer,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: const StadiumBorder(),
       labelStyle: const TextStyle(
         fontFamily: AppTextTheme.fontFamily,
         fontWeight: FontWeight.w700,

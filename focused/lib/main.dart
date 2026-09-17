@@ -44,7 +44,6 @@ import 'features/onboarding/services/onboarding_storage_service.dart';
 import 'features/settings/services/cloud_sync_service.dart';
 import 'features/settings/services/sync_metadata_storage_service.dart';
 import 'features/streak/services/streak_goal_storage_service.dart';
-import 'features/wellbeing/services/app_usage_summary_service.dart';
 import 'core/services/ad_service.dart';
 import 'features/tasks/services/task_notification_service.dart';
 import 'features/tasks/services/task_occurrence_completion_storage_service.dart';
@@ -374,12 +373,5 @@ Future<void> main() async {
     ),
   );
 
-  unawaited(usageProvider.refreshPermissionAndUsage());
-  unawaited(const AppUsageSummaryService().initialize());
   unawaited(AdService.instance.initialize());
-
-  // Periodically refresh usage stats so active app usage and limits are checked
-  Timer.periodic(const Duration(minutes: 1), (_) {
-    unawaited(usageProvider.refreshPermissionAndUsage());
-  });
 }

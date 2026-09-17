@@ -127,9 +127,7 @@ class _ScheduleView extends StatelessWidget {
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: const StadiumBorder(),
             ),
             onPressed: () => context.push('/task/new'),
             child: const Text(
@@ -210,9 +208,7 @@ class _DayView extends StatelessWidget {
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: const StadiumBorder(),
             ),
             onPressed: () => context.push('/task/new'),
             child: const Text(
@@ -297,9 +293,7 @@ class _MultiDayFlow extends StatelessWidget {
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: const StadiumBorder(),
             ),
             onPressed: () => context.push('/task/new'),
             child: const Text(
@@ -379,9 +373,7 @@ class _MonthView extends StatelessWidget {
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: const StadiumBorder(),
             ),
             onPressed: () => context.push('/task/new'),
             child: const Text(
@@ -981,15 +973,15 @@ class _PlannerTimelineTask extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          SvgPicture.asset(
-                            task.isSquadTask
-                                ? 'assets/icon/group_task.svg'
-                                : 'assets/icon/task_icon.svg',
-                            width: 22,
-                            height: 22,
-                          ),
                           const SizedBox(width: 10),
+                          if (task.isSquadTask) ...[
+                            SvgPicture.asset(
+                              'assets/icon/group_icon.svg',
+                              width: 20,
+                              height: 20,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1244,14 +1236,14 @@ class _AnytimePlannerTask extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
             child: Row(
               children: [
-                task.isSquadTask
-                    ? SvgPicture.asset(
-                        'assets/icon/group_task.svg',
-                        width: 18,
-                        height: 18,
-                      )
-                    : const Icon(Icons.all_inclusive_rounded, size: 18),
-                const SizedBox(width: 10),
+                if (task.isSquadTask) ...[
+                  SvgPicture.asset(
+                    'assets/icon/group_icon.svg',
+                    width: 18,
+                    height: 18,
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: Text(
                     task.title,

@@ -74,9 +74,7 @@ class HabitPlannerBody extends StatelessWidget {
                   horizontal: 16,
                   vertical: 10,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                shape: const StadiumBorder(),
               ),
               onPressed: () => context.push('/habit/new'),
               child: const Text(
@@ -121,7 +119,7 @@ class _HabitEmptyState extends StatelessWidget {
       child: Column(
         children: [
           SvgPicture.asset(
-            'assets/planner_page_icons/planner_habit_icon.svg',
+            'assets/planner_page_icons/habit_icon.svg',
             width: 54,
             height: 54,
             fit: BoxFit.contain,

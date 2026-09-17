@@ -126,9 +126,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF1CB0F6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
                   vertical: 14,
@@ -184,14 +182,25 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                   ? (widget.isDark
                         ? const Color(0xFF2A1515)
                         : const Color(0xFFFFF0F0))
-                  : scheme.surface,
+                  : (widget.isDark ? const Color(0xFF141622) : Colors.white),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isAtRisk
                     ? const Color(0xFFEF4444)
-                    : scheme.outlineVariant,
-                width: isAtRisk ? 1.8 : 1.0,
+                    : (widget.isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE2E8F0)),
+                width: isAtRisk ? 1.8 : 1.1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.isDark
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : const Color(0xFF64748B).withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,7 +490,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () => _openPickFriendSheet(context),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(100),
         child: Container(
           height: 64,
           alignment: Alignment.center,
@@ -489,7 +498,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
             color: widget.isDark
                 ? const Color(0xFF131722).withValues(alpha: 0.5)
                 : scheme.surfaceContainerLowest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(100),
             border: Border.all(
               color: widget.isDark
                   ? const Color(0xFF2A3447).withValues(alpha: 0.6)

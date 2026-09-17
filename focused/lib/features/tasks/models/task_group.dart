@@ -259,7 +259,7 @@ class TaskGroup {
   GroupActiveTask? get activeTask =>
       activeTasks.isNotEmpty ? activeTasks.first : null;
   bool get hasActiveTask => activeTasks.isNotEmpty;
-  bool get canAddMoreTasks => activeTasks.length < 3;
+  bool get canAddMoreTasks => activeTasks.isEmpty;
   bool isMember(String uid) => memberUids.contains(uid);
   bool isCreator(String uid) => createdBy == uid;
 }

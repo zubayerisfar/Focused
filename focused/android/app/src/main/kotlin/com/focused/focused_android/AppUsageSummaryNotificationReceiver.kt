@@ -76,26 +76,9 @@ class AppUsageSummaryNotificationReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action ?: return
-
-        if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            if (AppUsageSummaryScheduler.isEnabled(context)) {
-                AppUsageSummaryScheduler.scheduleDailySummaries(context)
-            }
-            return
-        }
-
-        val is5pm = action == ACTION_TRIGGER_5PM
-        val is11pm = action == ACTION_TRIGGER_11PM
-        val isTest = action == ACTION_TEST_TRIGGER
-
-        if (!is5pm && !is11pm && !isTest) return
-
-        showSummaryNotification(context, is5pm = is5pm, isTest = isTest)
-
-        if (!isTest && AppUsageSummaryScheduler.isEnabled(context)) {
-            AppUsageSummaryScheduler.scheduleDailySummaries(context)
-        }
+        // App usage summary notifications are permanently disabled.
+        AppUsageSummaryScheduler.cancelDailySummaries(context)
+        return
     }
 
     private fun showSummaryNotification(context: Context, is5pm: Boolean, isTest: Boolean) {

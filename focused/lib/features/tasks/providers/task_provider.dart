@@ -429,6 +429,29 @@ class TaskProvider extends ChangeNotifier {
     return Set<DateTime>.unmodifiable(result);
   }
 
+  /// Map of calendar dates to task completion counts on that date.
+  Map<DateTime, int> completionActivityCountsByDate() {
+    final result = <DateTime, int>{};
+
+    void addDate(DateTime dt) {
+      final d = _dateOnlyLocal(dt);
+      result[d] = (result[d] ?? 0) + 1;
+    }
+
+    for (final task in _tasks) {
+      final completedAt = task.completedAt;
+      if (task.isCompleted && completedAt != null) {
+        addDate(completedAt);
+      }
+    }
+
+    for (final completion in _occurrenceCompletions) {
+      addDate(completion.completedAt);
+    }
+
+    return Map<DateTime, int>.unmodifiable(result);
+  }
+
   DateTime? nextOccurrenceStartForTask(Task task, DateTime after) {
     return _scheduleService.nextOccurrenceStart(task, after);
   }

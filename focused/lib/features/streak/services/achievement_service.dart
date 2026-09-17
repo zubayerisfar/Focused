@@ -28,7 +28,7 @@ class AchievementService {
     int longestStreak,
     Set<String> unlockedSet,
   ) {
-    const milestones = <int>[7, 30, 60, 100, 120, 180, 300, 365, 500, 1000];
+    const milestones = <int>[7, 30, 60, 100, 120, 180, 300, 365];
 
     return milestones
         .map((days) {

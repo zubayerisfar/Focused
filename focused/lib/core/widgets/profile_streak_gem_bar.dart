@@ -92,10 +92,6 @@ class ProfileStreakGemBar extends StatelessWidget {
                 0xFF1CB0F6,
               ).withValues(alpha: isDark ? 0.16 : 0.12),
               borderRadius: BorderRadius.circular(19),
-              border: Border.all(
-                color: const Color(0xFF1CB0F6).withValues(alpha: 0.32),
-                width: 1.2,
-              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -128,10 +124,6 @@ class ProfileStreakGemBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: streakColor.withValues(alpha: isDark ? 0.18 : 0.13),
               borderRadius: BorderRadius.circular(19),
-              border: Border.all(
-                color: streakColor.withValues(alpha: isInDanger ? 0.6 : 0.32),
-                width: isInDanger ? 1.5 : 1.2,
-              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

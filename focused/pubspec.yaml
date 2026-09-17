@@ -80,10 +80,12 @@ flutter:
   assets:
     - assets/badges/
     - assets/navbar_icon/
+    - assets/navigation_modern/
     - assets/icon/
     - assets/app_icon/
     - assets/notification_icons/
     - assets/planner_page_icons/
+    - assets/today_screen_icons/
     - assets/sound/
     - assets/animation/
 

@@ -1,13 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/widgets/glass_container.dart';
 import '../../tasks/providers/task_provider.dart';
-import '../../wellbeing/providers/usage_provider.dart';
-import '../../focus/views/focus_screen.dart';
-import '../../friends/views/friends_screen.dart';
 import '../../groups/views/group_screen.dart';
+import '../../friends/views/friends_screen.dart';
 import '../../planner/views/planner_hub_body.dart';
 import '../../planner/views/planner_screen.dart';
 import '../../settings/views/settings_screen.dart';
@@ -53,7 +53,6 @@ class _MainShellState extends State<MainShell> {
       PrimaryScrollController.none(
         child: PlannerScreen(key: _plannerKey, initialArea: widget.plannerArea),
       ),
-      const PrimaryScrollController.none(child: FocusScreen()),
       const PrimaryScrollController.none(child: GroupScreen()),
       const PrimaryScrollController.none(child: FriendsScreen()),
       const PrimaryScrollController.none(child: SettingsScreen(embedded: true)),
@@ -65,12 +64,8 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _requestInitialPermissions() async {
     if (!mounted) return;
-    // 1. Request native notification permission popup directly
+    // Request native notification permission popup directly
     await context.read<TaskProvider>().requestNotificationPermission();
-
-    // 2. Check and refresh usage permission state
-    if (!mounted) return;
-    await context.read<UsageProvider>().refreshPermissionAndUsage();
   }
 
   @override
@@ -87,16 +82,12 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final scaffoldColor = theme.scaffoldBackgroundColor;
-    final navBarBg = isDark
-        ? const Color(0xFF0F1118)
-        : theme.colorScheme.surface;
 
     final overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: scaffoldColor,
+      statusBarColor: Colors.transparent,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor: navBarBg,
+      systemNavigationBarColor: Colors.transparent,
       systemNavigationBarIconBrightness: isDark
           ? Brightness.light
           : Brightness.dark,
@@ -120,183 +111,28 @@ class _MainShellState extends State<MainShell> {
           }
           SystemNavigator.pop();
         },
-        child: Scaffold(
-          body: IndexedStack(index: _currentIndex, children: _screens),
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              color: navBarBg,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.6),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: ValueListenableBuilder<bool>(
+        child: GlassScaffoldBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            body: IndexedStack(index: _currentIndex, children: _screens),
+            bottomNavigationBar: ValueListenableBuilder<bool>(
               valueListenable:
                   NetworkConnectivityService.instance.isOnlineNotifier,
               builder: (context, isOnline, _) {
-                return NavigationBarTheme(
-                  data: NavigationBarThemeData(
-                    indicatorColor: Colors.transparent,
-                    overlayColor: WidgetStateProperty.all(Colors.transparent),
-                    height: 78,
-                    labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((
-                      states,
-                    ) {
-                      final isSelected = states.contains(WidgetState.selected);
-                      return TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: isSelected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
-                        letterSpacing: -0.1,
-                        color: isSelected
-                            ? (isDark ? Colors.white : const Color(0xFF1E293B))
-                            : (isDark
-                                  ? Colors.white.withValues(alpha: 0.55)
-                                  : const Color(0xFF64748B)),
-                      );
-                    }),
-                  ),
-                  child: NavigationBar(
-                    selectedIndex: _currentIndex,
-                    height: 78,
-                    elevation: 0,
-                    shadowColor: Colors.transparent,
-                    surfaceTintColor: Colors.transparent,
-                    onDestinationSelected: (index) {
-                      if (index == 3 || index == 4) {
-                        NetworkConnectivityService.instance.checkNow();
-                      }
-                      if (_currentIndex != index) {
-                        setState(() {
-                          _currentIndex = index;
-                        });
-                      }
-                    },
-                    labelBehavior:
-                        NavigationDestinationLabelBehavior.alwaysShow,
-                    destinations: [
-                      const NavigationDestination(
-                        icon: _NavIcon(
-                          assetName: 'nav_home.svg',
-                          fallbackIcon: Icons.home_outlined,
-                          color: Color(0xFFFF8228), // Orange
-                          isSelected: false,
-                          size: 32,
-                        ),
-                        selectedIcon: _NavIcon(
-                          assetName: 'nav_home.svg',
-                          fallbackIcon: Icons.home_rounded,
-                          color: Color(0xFFFF8228), // Orange
-                          isSelected: true,
-                          size: 32,
-                        ),
-                        label: 'Home',
-                      ),
-                      const NavigationDestination(
-                        icon: _NavIcon(
-                          assetName: 'nav_planner.svg',
-                          fallbackIcon: Icons.view_timeline_outlined,
-                          color: Color(0xFF58CC02), // Green
-                          isSelected: false,
-                          size: 32,
-                        ),
-                        selectedIcon: _NavIcon(
-                          assetName: 'nav_planner.svg',
-                          fallbackIcon: Icons.view_timeline_rounded,
-                          color: Color(0xFF58CC02), // Green
-                          isSelected: true,
-                          size: 32,
-                        ),
-                        label: 'Planner',
-                      ),
-                      const NavigationDestination(
-                        icon: _NavIcon(
-                          assetName: 'nav_focus.svg',
-                          fallbackIcon: Icons.center_focus_strong_outlined,
-                          color: Color(0xFFFF5252), // Red
-                          isSelected: false,
-                          size: 32,
-                        ),
-                        selectedIcon: _NavIcon(
-                          assetName: 'nav_focus.svg',
-                          fallbackIcon: Icons.center_focus_strong_rounded,
-                          color: Color(0xFFFF5252), // Red
-                          isSelected: true,
-                          size: 32,
-                        ),
-                        label: 'Focus',
-                      ),
-                      NavigationDestination(
-                        icon: _NavIcon(
-                          assetName: 'group_icon.svg',
-                          alternateAssetName: 'group_icon.svg',
-                          fallbackIcon: Icons.groups_outlined,
-                          color: const Color(0xFF1CB0F6), // Blue
-                          isSelected: false,
-                          size: 32,
-                          isGrayedOut: !isOnline,
-                        ),
-                        selectedIcon: _NavIcon(
-                          assetName: 'group_icon.svg',
-                          alternateAssetName: 'group_icon.svg',
-                          fallbackIcon: Icons.groups_rounded,
-                          color: const Color(0xFF1CB0F6), // Blue
-                          isSelected: true,
-                          size: 32,
-                          isGrayedOut: !isOnline,
-                        ),
-                        label: 'Groups',
-                      ),
-                      NavigationDestination(
-                        icon: _NavIcon(
-                          assetName: 'nav_friends.svg',
-                          alternateAssetName: 'friends_icon.svg',
-                          fallbackIcon: Icons.people_alt_outlined,
-                          color: const Color(0xFF9B51E0), // Purple
-                          isSelected: false,
-                          size: 32,
-                          isGrayedOut: !isOnline,
-                        ),
-                        selectedIcon: _NavIcon(
-                          assetName: 'nav_friends.svg',
-                          alternateAssetName: 'friends_icon.svg',
-                          fallbackIcon: Icons.people_alt_rounded,
-                          color: const Color(0xFF9B51E0), // Purple
-                          isSelected: true,
-                          size: 32,
-                          isGrayedOut: !isOnline,
-                        ),
-                        label: 'Friends',
-                      ),
-                      const NavigationDestination(
-                        icon: _NavIcon(
-                          assetName: 'nav_settings.svg',
-                          fallbackIcon: Icons.settings_outlined,
-                          color: Color(0xFF0EA5E9), // Bluish
-                          isSelected: false,
-                          size: 32,
-                        ),
-                        selectedIcon: _NavIcon(
-                          assetName: 'nav_settings.svg',
-                          fallbackIcon: Icons.settings_rounded,
-                          color: Color(0xFF0EA5E9), // Bluish
-                          isSelected: true,
-                          size: 32,
-                        ),
-                        label: 'Settings',
-                      ),
-                    ],
-                  ),
+                return _FloatingGlassNavBar(
+                  currentIndex: _currentIndex,
+                  isOnline: isOnline,
+                  onTap: (index) {
+                    if (index == 2 || index == 3) {
+                      NetworkConnectivityService.instance.checkNow();
+                    }
+                    if (_currentIndex != index) {
+                      setState(() {
+                        _currentIndex = index;
+                      });
+                    }
+                  },
                 );
               },
             ),
@@ -307,135 +143,247 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-class _NavIcon extends StatelessWidget {
-  final String assetName;
-  final String? alternateAssetName;
-  final IconData fallbackIcon;
-  final Color color;
-  final bool isSelected;
-  final double size;
-  final bool isGrayedOut;
+class _FloatingGlassNavBar extends StatelessWidget {
+  final int currentIndex;
+  final bool isOnline;
+  final ValueChanged<int> onTap;
 
-  const _NavIcon({
-    required this.assetName,
-    this.alternateAssetName,
-    required this.fallbackIcon,
-    required this.color,
-    required this.isSelected,
-    this.size = 24.0,
-    this.isGrayedOut = false,
+  const _FloatingGlassNavBar({
+    required this.currentIndex,
+    required this.isOnline,
+    required this.onTap,
   });
-
-  static final Map<String, bool> _assetCache = {};
-
-  static Future<String?> _resolveAssetPath(
-    String primaryName, [
-    String? alternateName,
-  ]) async {
-    final primaryPath = 'assets/navbar_icon/$primaryName';
-    if (_assetCache[primaryPath] == true) return primaryPath;
-    try {
-      await rootBundle.load(primaryPath);
-      _assetCache[primaryPath] = true;
-      return primaryPath;
-    } catch (_) {
-      _assetCache[primaryPath] = false;
-    }
-
-    if (alternateName != null) {
-      final altPath = 'assets/navbar_icon/$alternateName';
-      if (_assetCache[altPath] == true) return altPath;
-      try {
-        await rootBundle.load(altPath);
-        _assetCache[altPath] = true;
-        return altPath;
-      } catch (_) {
-        _assetCache[altPath] = false;
-      }
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return FutureBuilder<String?>(
-      future: _resolveAssetPath(assetName, alternateAssetName),
-      builder: (context, snapshot) {
-        final path = snapshot.data;
-        Widget iconWidget;
-
-        if (path != null) {
-          iconWidget = SvgPicture.asset(
-            path,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-          );
-        } else {
-          iconWidget = Icon(
-            fallbackIcon,
-            size: size - 2,
-            color: isSelected
-                ? color
-                : (isDark ? Colors.white70 : const Color(0xFF4A5568)),
-          );
-        }
-
-        if (isGrayedOut) {
-          iconWidget = ColorFiltered(
-            colorFilter: const ColorFilter.matrix(<double>[
-              0.2126,
-              0.7152,
-              0.0722,
-              0,
-              0,
-              0.2126,
-              0.7152,
-              0.0722,
-              0,
-              0,
-              0.2126,
-              0.7152,
-              0.0722,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0.45,
-              0,
-            ]),
-            child: iconWidget,
-          );
-        }
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.symmetric(
-            horizontal: isSelected ? 10 : 4,
-            vertical: 4,
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        18,
+        0,
+        18,
+        bottomInset > 0 ? bottomInset + 4 : 14,
+      ),
+      child: Container(
+        height: 66,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(33),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.55)
+                  : const Color(0xFF6366F1).withValues(alpha: 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(33),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF131520).withValues(alpha: 0.86)
+                    : Colors.white.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(33),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : Colors.white.withValues(alpha: 0.90),
+                  width: 1.2,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _NavBarItem(
+                    index: 0,
+                    selectedIndex: currentIndex,
+                    svgAsset: 'assets/navigation_modern/home_icon.svg',
+                    fallbackIcon: Icons.home_rounded,
+                    label: 'Home',
+                    onTap: () => onTap(0),
+                  ),
+                  _NavBarItem(
+                    index: 1,
+                    selectedIndex: currentIndex,
+                    svgAsset: 'assets/navigation_modern/planner_icon.svg',
+                    fallbackIcon: Icons.calendar_today_rounded,
+                    label: 'Planner',
+                    onTap: () => onTap(1),
+                  ),
+                  _NavBarItem(
+                    index: 2,
+                    selectedIndex: currentIndex,
+                    svgAsset: 'assets/navigation_modern/group_task_icon.svg',
+                    fallbackIcon: Icons.groups_rounded,
+                    label: 'Groups',
+                    isGrayedOut: !isOnline,
+                    onTap: () {
+                      if (!isOnline) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            behavior: SnackBarBehavior.floating,
+                            content: Text(
+                              'Offline: Connect to internet to access Groups',
+                            ),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                      onTap(2);
+                    },
+                  ),
+                  _NavBarItem(
+                    index: 3,
+                    selectedIndex: currentIndex,
+                    svgAsset: 'assets/navigation_modern/friends_icon.svg',
+                    fallbackIcon: Icons.people_rounded,
+                    label: 'Friends',
+                    isGrayedOut: !isOnline,
+                    onTap: () {
+                      if (!isOnline) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            behavior: SnackBarBehavior.floating,
+                            content: Text(
+                              'Offline: Connect to internet to access Friends',
+                            ),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                      onTap(3);
+                    },
+                  ),
+                  _NavBarItem(
+                    index: 4,
+                    selectedIndex: currentIndex,
+                    svgAsset: 'assets/navigation_modern/settings_icon.svg',
+                    fallbackIcon: Icons.settings_rounded,
+                    label: 'Settings',
+                    onTap: () => onTap(4),
+                  ),
+                ],
+              ),
+            ),
           ),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (isGrayedOut
-                      ? Colors.grey.withValues(alpha: 0.15)
-                      : color.withValues(alpha: isDark ? 0.22 : 0.12))
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: AnimatedScale(
-            scale: isSelected ? 1.08 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: iconWidget,
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-int _safeIndex(int value) => value.clamp(0, 5).toInt();
+class _NavBarItem extends StatelessWidget {
+  final int index;
+  final int selectedIndex;
+  final String svgAsset;
+  final IconData fallbackIcon;
+  final String label;
+  final bool isGrayedOut;
+  final VoidCallback onTap;
+
+  const _NavBarItem({
+    required this.index,
+    required this.selectedIndex,
+    required this.svgAsset,
+    required this.fallbackIcon,
+    required this.label,
+    this.isGrayedOut = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selectedIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final unselectedIconColor = isDark
+        ? Colors.white.withValues(alpha: 0.88)
+        : const Color(0xFF0F172A);
+
+    final unselectedTextColor = isDark
+        ? Colors.white.withValues(alpha: 0.70)
+        : const Color(0xFF334155);
+
+    final activeTextColor = isDark ? Colors.white : const Color(0xFF4F46E5);
+    final iconSize = (index == 1 || index == 2) ? 23.5 : 22.0;
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Opacity(
+          opacity: isGrayedOut ? 0.38 : 1.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSelected ? 16 : 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  borderRadius: BorderRadius.circular(100),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF6366F1,
+                            ).withValues(alpha: 0.40),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: SvgPicture.asset(
+                  svgAsset,
+                  width: iconSize,
+                  height: iconSize,
+                  fit: BoxFit.contain,
+                  colorFilter: ColorFilter.mode(
+                    isSelected ? Colors.white : unselectedIconColor,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  letterSpacing: -0.1,
+                  color: isSelected ? activeTextColor : unselectedTextColor,
+                ),
+                child: Text(label, maxLines: 1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+int _safeIndex(int value) => value.clamp(0, 4).toInt();

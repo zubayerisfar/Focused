@@ -36,6 +36,18 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // Ensure legacy daily app usage summaries are permanently cancelled and cleaned up
+        try {
+            AppUsageSummaryScheduler.cancelDailySummaries(applicationContext)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                notificationManager?.deleteNotificationChannel("focused_usage_summary_channel")
+                notificationManager?.cancel(9201)
+                notificationManager?.cancel(9202)
+                notificationManager?.cancel(9203)
+            }
+        } catch (_: Throwable) {}
+
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             INSTALLATION_INFO_CHANNEL,

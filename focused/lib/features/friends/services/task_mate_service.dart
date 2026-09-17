@@ -27,37 +27,187 @@ class TaskMateService {
         });
   }
 
-  /// Streams task history across the user's groups
-  Stream<List<GroupTaskHistory>> streamGroupsHistory(List<String> groupIds) {
-    if (groupIds.isEmpty) return Stream.value(const []);
+  /// Fetches task history once across the user's groups and user's own history backup
+  Future<List<GroupTaskHistory>> fetchGroupsHistory(
+    List<String> groupIds, {
+    String? currentUid,
+  }) async {
+    final all = <GroupTaskHistory>[];
+    final seenIds = <String>{};
 
-    // Query history collection group or query per group
-    // Each group stores history under task_groups/{groupId}/history
-    // If groupIds has 1-10 items, we can combine stream or query group_task_history
-    final groupLimit = groupIds.take(10).toList();
-    return _firestore
-        .collectionGroup('history')
-        .where('groupId', whereIn: groupLimit)
-        .snapshots()
-        .map((snapshot) {
-          final items = snapshot.docs
-              .map((doc) => GroupTaskHistory.fromFirestore(doc))
-              .toList();
-          items.sort((a, b) => b.completedAt.compareTo(a.completedAt));
-          return items;
-        });
+    // 1. Fetch from squad history collections
+    for (final gId in groupIds.take(10)) {
+      try {
+        final snap = await _firestore
+            .collection('task_groups')
+            .doc(gId)
+            .collection('history')
+            .get();
+        for (final doc in snap.docs) {
+          try {
+            final item = GroupTaskHistory.fromFirestore(doc);
+            if (seenIds.add(item.id)) {
+              all.add(item);
+            }
+          } catch (e) {
+            debugPrint('Error parsing group history doc ${doc.id}: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching history for group $gId: $e');
+      }
+    }
+
+    // 2. Also fetch from user's personal group task history backup if available
+    if (currentUid != null && currentUid.isNotEmpty) {
+      try {
+        final snap = await _firestore
+            .collection('users')
+            .doc(currentUid)
+            .collection('group_task_history')
+            .get();
+        for (final doc in snap.docs) {
+          try {
+            final item = GroupTaskHistory.fromFirestore(doc);
+            if (seenIds.add(item.id)) {
+              all.add(item);
+            }
+          } catch (e) {
+            debugPrint('Error parsing user history backup doc ${doc.id}: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching personal group history backup: $e');
+      }
+    }
+
+    all.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    return all;
+  }
+
+  /// Streams task history across the user's groups without requiring composite indexes
+  Stream<List<GroupTaskHistory>> streamGroupsHistory(
+    List<String> groupIds, {
+    String? currentUid,
+  }) {
+    late StreamController<List<GroupTaskHistory>> controller;
+    final Map<String, List<GroupTaskHistory>> groupHistoryMap = {};
+    List<GroupTaskHistory> userBackupHistory = [];
+    final List<StreamSubscription> subscriptions = [];
+
+    void emitMerged() {
+      final seenIds = <String>{};
+      final all = <GroupTaskHistory>[];
+
+      for (final list in groupHistoryMap.values) {
+        for (final item in list) {
+          if (seenIds.add(item.id)) {
+            all.add(item);
+          }
+        }
+      }
+
+      for (final item in userBackupHistory) {
+        if (seenIds.add(item.id)) {
+          all.add(item);
+        }
+      }
+
+      all.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+      if (!controller.isClosed) {
+        controller.add(all);
+      }
+    }
+
+    controller = StreamController<List<GroupTaskHistory>>.broadcast(
+      onListen: () {
+        for (final gId in groupIds.take(10)) {
+          final sub = _firestore
+              .collection('task_groups')
+              .doc(gId)
+              .collection('history')
+              .snapshots()
+              .listen(
+                (snapshot) {
+                  final list = <GroupTaskHistory>[];
+                  for (final doc in snapshot.docs) {
+                    try {
+                      list.add(GroupTaskHistory.fromFirestore(doc));
+                    } catch (e) {
+                      debugPrint('Error parsing doc ${doc.id}: $e');
+                    }
+                  }
+                  groupHistoryMap[gId] = list;
+                  emitMerged();
+                },
+                onError: (e) {
+                  debugPrint('Error streaming history for group $gId: $e');
+                },
+              );
+          subscriptions.add(sub);
+        }
+
+        // Also stream user's personal backup
+        if (currentUid != null && currentUid.isNotEmpty) {
+          final userSub = _firestore
+              .collection('users')
+              .doc(currentUid)
+              .collection('group_task_history')
+              .snapshots()
+              .listen(
+                (snapshot) {
+                  final list = <GroupTaskHistory>[];
+                  for (final doc in snapshot.docs) {
+                    try {
+                      list.add(GroupTaskHistory.fromFirestore(doc));
+                    } catch (e) {
+                      debugPrint('Error parsing backup doc ${doc.id}: $e');
+                    }
+                  }
+                  userBackupHistory = list;
+                  emitMerged();
+                },
+                onError: (e) {
+                  debugPrint('Error streaming user history backup: $e');
+                },
+              );
+          subscriptions.add(userSub);
+        }
+      },
+      onCancel: () {
+        for (final sub in subscriptions) {
+          sub.cancel();
+        }
+        subscriptions.clear();
+      },
+    );
+
+    return controller.stream;
   }
 
   /// Deletes selected history entries
-  Future<void> deleteHistoryItems(List<GroupTaskHistory> itemsToDelete) async {
+  Future<void> deleteHistoryItems(
+    List<GroupTaskHistory> itemsToDelete, {
+    String? currentUid,
+  }) async {
     final batch = _firestore.batch();
     for (final item in itemsToDelete) {
-      final docRef = _firestore
-          .collection('task_groups')
-          .doc(item.groupId)
-          .collection('history')
-          .doc(item.id);
-      batch.delete(docRef);
+      if (item.groupId.isNotEmpty) {
+        final docRef = _firestore
+            .collection('task_groups')
+            .doc(item.groupId)
+            .collection('history')
+            .doc(item.id);
+        batch.delete(docRef);
+      }
+      if (currentUid != null && currentUid.isNotEmpty) {
+        final userDocRef = _firestore
+            .collection('users')
+            .doc(currentUid)
+            .collection('group_task_history')
+            .doc(item.id);
+        batch.delete(userDocRef);
+      }
     }
     await batch.commit();
   }
@@ -146,8 +296,8 @@ class TaskMateService {
 
         final data = snap.data();
         final rawActiveTasks = (data?['activeTasks'] as List<dynamic>?) ?? [];
-        if (rawActiveTasks.length >= 3) {
-          // Already has 3 active tasks!
+        if (rawActiveTasks.isNotEmpty) {
+          // Already has an active task! (1 task per group limit)
           return false;
         }
 
@@ -303,7 +453,13 @@ class TaskMateService {
             .toList() ??
         [];
     final groupName = (data?['name']?.toString() ?? 'TASK SQUAD').toUpperCase();
-    final membersMap = (data?['members'] as Map<String, dynamic>?) ?? {};
+    final rawMembersData = data?['members'];
+    final Map<String, dynamic> membersMap = {};
+    if (rawMembersData is Map) {
+      rawMembersData.forEach((k, v) {
+        membersMap[k.toString()] = v is Map ? Map<String, dynamic>.from(v) : v;
+      });
+    }
 
     if (rawActiveTasks.isNotEmpty &&
         taskIndex >= 0 &&
@@ -322,7 +478,10 @@ class TaskMateService {
           ? (currentMemberSched['scheduledTime'] as Timestamp).toDate()
           : null;
       final now = DateTime.now();
-      final isLate = scheduledTime != null && now.isAfter(scheduledTime);
+      // 20-minute grace window: completing within 20 mins of scheduled time is on time
+      final isLate =
+          scheduledTime != null &&
+          now.isAfter(scheduledTime.add(const Duration(minutes: 20)));
 
       currentMemberSched['completed'] = true;
       currentMemberSched['completedAt'] = Timestamp.fromDate(now);
@@ -334,17 +493,26 @@ class TaskMateService {
       final allCompleted =
           memberUids.isNotEmpty &&
           memberUids.every((mUid) {
-            final sched = memberSchedules[mUid] as Map<String, dynamic>?;
+            final rawSched = memberSchedules[mUid];
+            final sched = rawSched is Map
+                ? Map<String, dynamic>.from(rawSched)
+                : null;
             return sched?['completed'] == true;
           });
 
-      if (allCompleted) {
-        // Archive to group history
-        try {
-          final historyMembers = <String, dynamic>{};
-          for (final mUid in memberUids) {
-            final sched = memberSchedules[mUid] as Map<String, dynamic>?;
-            final mData = membersMap[mUid] as Map<String, dynamic>?;
+      // Record completion to group history in Firebase immediately
+      try {
+        final historyMembers = <String, dynamic>{};
+        for (final mUid in memberUids) {
+          final rawSched = memberSchedules[mUid];
+          final sched = rawSched is Map
+              ? Map<String, dynamic>.from(rawSched)
+              : null;
+          final rawMData = membersMap[mUid];
+          final mData = rawMData is Map
+              ? Map<String, dynamic>.from(rawMData)
+              : null;
+          if (sched?['completed'] == true) {
             historyMembers[mUid] = {
               'uid': mUid,
               'displayName': mData?['displayName'] ?? 'Member',
@@ -353,23 +521,44 @@ class TaskMateService {
               'isLate': sched?['completedLate'] ?? false,
             };
           }
-
-          await docRef.collection('history').add({
-            'groupId': groupId,
-            'groupName': groupName,
-            'title': targetTask['title'] ?? 'Squad Task',
-            if (targetTask['category'] != null)
-              'category': targetTask['category'],
-            'isHabit': targetTask['isHabit'] ?? false,
-            'completedAt': FieldValue.serverTimestamp(),
-            'memberCompletions': historyMembers,
-          });
-
-          // Remove the completed task from activeTasks so squad can start next cycle / new task
-          updatedTasks.removeAt(taskIndex);
-        } catch (e) {
-          debugPrint('Error archiving completed group task to history: $e');
         }
+
+        final taskHistoryDocId =
+            targetTask['id']?.toString() ??
+            'hist_${targetTask['title'].toString().hashCode.abs()}';
+
+        final historyPayload = {
+          'groupId': groupId,
+          'groupName': groupName,
+          'title': targetTask['title'] ?? 'Squad Task',
+          if (targetTask['category'] != null)
+            'category': targetTask['category'],
+          'isHabit': targetTask['isHabit'] ?? false,
+          'completedAt': FieldValue.serverTimestamp(),
+          'completedAtDate': Timestamp.fromDate(now),
+          'memberCompletions': historyMembers,
+        };
+
+        // Write to squad history
+        await docRef
+            .collection('history')
+            .doc(taskHistoryDocId)
+            .set(historyPayload, SetOptions(merge: true));
+
+        // Also write to user's personal backup history collection
+        await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('group_task_history')
+            .doc(taskHistoryDocId)
+            .set(historyPayload, SetOptions(merge: true));
+
+        // If ALL squad members have completed, remove from activeTasks
+        if (allCompleted) {
+          updatedTasks.removeAt(taskIndex);
+        }
+      } catch (e) {
+        debugPrint('Error saving completed group task to history: $e');
       }
 
       await docRef.update({
@@ -381,6 +570,53 @@ class TaskMateService {
       });
     } else {
       final now = DateTime.now();
+      final activeTask = data?['activeTask'] is Map
+          ? Map<String, dynamic>.from(data!['activeTask'] as Map)
+          : null;
+      if (activeTask != null) {
+        final taskTitle = activeTask['title']?.toString() ?? 'Squad Task';
+        final taskHistoryDocId =
+            activeTask['id']?.toString() ?? 'hist_${taskTitle.hashCode.abs()}';
+        final historyMembers = <String, dynamic>{
+          uid: {
+            'uid': uid,
+            'displayName': membersMap[uid]?['displayName'] ?? 'Member',
+            'photoUrl': membersMap[uid]?['photoUrl'],
+            'completedAt': Timestamp.fromDate(now),
+            'isLate': false,
+          },
+        };
+        try {
+          final fallbackPayload = {
+            'groupId': groupId,
+            'groupName': groupName,
+            'title': taskTitle,
+            if (activeTask['category'] != null)
+              'category': activeTask['category'],
+            'isHabit': activeTask['isHabit'] ?? false,
+            'completedAt': FieldValue.serverTimestamp(),
+            'completedAtDate': Timestamp.fromDate(now),
+            'memberCompletions': historyMembers,
+          };
+
+          await docRef
+              .collection('history')
+              .doc(taskHistoryDocId)
+              .set(fallbackPayload, SetOptions(merge: true));
+
+          await _firestore
+              .collection('users')
+              .doc(uid)
+              .collection('group_task_history')
+              .doc(taskHistoryDocId)
+              .set(fallbackPayload, SetOptions(merge: true));
+        } catch (e) {
+          debugPrint(
+            'Error saving completed fallback group task to history: $e',
+          );
+        }
+      }
+
       await docRef.update({
         'activeTask.memberSchedules.$uid.completed': true,
         'activeTask.memberSchedules.$uid.completedAt': Timestamp.fromDate(now),

@@ -65,19 +65,14 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Text('👥', style: TextStyle(fontSize: 22)),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Create Squad Task (${liveGroup.activeTasks.length}/3)',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : scheme.onSurface,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Create Squad Task',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : scheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -92,7 +87,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 12,
+                            vertical: 14,
                           ),
                           decoration: BoxDecoration(
                             color: !isDaily
@@ -110,53 +105,32 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                               width: !isDaily ? 2 : 1,
                             ),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
+                              Text(
+                                'Single Task',
+                                style: TextStyle(
+                                  fontFamily: 'Quicksand',
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
                                   color: !isDaily
-                                      ? const Color(0xFF9B51E0)
-                                      : scheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  Icons.task_alt_rounded,
-                                  size: 18,
-                                  color: !isDaily
-                                      ? Colors.white
-                                      : scheme.onSurfaceVariant,
+                                      ? (isDark
+                                            ? Colors.white
+                                            : const Color(0xFF6B21A8))
+                                      : (isDark
+                                            ? Colors.white70
+                                            : scheme.onSurface),
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Single Task',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: !isDaily
-                                            ? (isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF6B21A8))
-                                            : (isDark
-                                                  ? Colors.white70
-                                                  : scheme.onSurface),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'One-time quest',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: 2),
+                              Text(
+                                'One-time quest',
+                                style: TextStyle(
+                                  fontFamily: 'Quicksand',
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -173,7 +147,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 12,
+                            vertical: 14,
                           ),
                           decoration: BoxDecoration(
                             color: isDaily
@@ -191,53 +165,32 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                               width: isDaily ? 2 : 1,
                             ),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
+                              Text(
+                                'Daily Habit',
+                                style: TextStyle(
+                                  fontFamily: 'Quicksand',
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
                                   color: isDaily
-                                      ? const Color(0xFF10B981)
-                                      : scheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  Icons.repeat_rounded,
-                                  size: 18,
-                                  color: isDaily
-                                      ? Colors.white
-                                      : scheme.onSurfaceVariant,
+                                      ? (isDark
+                                            ? Colors.white
+                                            : const Color(0xFF047857))
+                                      : (isDark
+                                            ? Colors.white70
+                                            : scheme.onSurface),
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Daily Habit',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: isDaily
-                                            ? (isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF047857))
-                                            : (isDark
-                                                  ? Colors.white70
-                                                  : scheme.onSurface),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Recurring daily',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: 2),
+                              Text(
+                                'Repeats everyday',
+                                style: TextStyle(
+                                  fontFamily: 'Quicksand',
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -252,24 +205,50 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                 TextField(
                   controller: customTaskController,
                   autofocus: true,
+                  style: const TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
                   decoration: InputDecoration(
-                    labelText: isDaily ? 'Daily Squad Habit' : 'Task Title',
                     hintText: isDaily
-                        ? 'e.g. Daily Coding, Morning Run'
-                        : 'e.g. Complete Project Proposal, Math Chapter 4',
+                        ? 'Enter daily squad habit…'
+                        : 'Enter squad task title…',
+                    hintStyle: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 15,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
                     filled: true,
-                    fillColor: scheme.surfaceContainerHigh,
+                    fillColor: isDark
+                        ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
+                        : const Color(0xFFF1F5F9),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: scheme.outlineVariant),
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(
+                        color: scheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: scheme.outlineVariant),
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide(
+                        color: scheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF9B51E0),
+                        width: 1.8,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 // Date Picker Row (for one-time task)
                 if (!isDaily) ...[
@@ -634,24 +613,12 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
 
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
+                  child: FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF9B51E0),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      shape: const StadiumBorder(),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    icon: const Icon(Icons.group_add_rounded),
-                    label: Text(
-                      isDaily
-                          ? 'Create Daily Squad Habit'
-                          : 'Create Squad Task',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
                     ),
                     onPressed: () async {
                       final title = customTaskController.text.trim();
@@ -704,12 +671,20 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                             content: Text(
                               ok
                                   ? '⚡ Squad Quest "$title" created!'
-                                  : 'This squad already has 3 active tasks.',
+                                  : 'This squad already has an active task.',
                             ),
                           ),
                         );
                       }
                     },
+                    child: const Text(
+                      'Add Task',
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
               ],

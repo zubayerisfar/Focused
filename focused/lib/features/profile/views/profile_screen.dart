@@ -18,6 +18,7 @@ import '../../streak/services/productivity_streak_service.dart';
 import '../../streak/widgets/achievement_badge_art.dart';
 import '../../friends/models/friend_user.dart';
 import '../../settings/views/settings_screen.dart';
+import '../widgets/monthly_contribution_graph.dart';
 
 class ProfileScreen extends StatelessWidget {
   final FriendUser? friendUser;
@@ -275,7 +276,9 @@ class ProfileScreen extends StatelessWidget {
             children: [
               // Following Count
               InkWell(
-                onTap: () => context.push('/friends?tab=following'),
+                onTap: isFriend
+                    ? null
+                    : () => context.push('/friends?tab=following'),
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -310,7 +313,9 @@ class ProfileScreen extends StatelessWidget {
               Container(width: 1, height: 36, color: scheme.outlineVariant),
               // Followers Count
               InkWell(
-                onTap: () => context.push('/friends?tab=followers'),
+                onTap: isFriend
+                    ? null
+                    : () => context.push('/friends?tab=followers'),
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -587,6 +592,10 @@ class ProfileScreen extends StatelessWidget {
               ),
             ],
           ),
+          if (!isFriend) ...[
+            const SizedBox(height: 16),
+            const MonthlyContributionGraph(),
+          ],
           const SizedBox(height: 32),
 
           // ── Friend Streaks ("বন্ধুত্বের ধারাবাহিকতা") ──

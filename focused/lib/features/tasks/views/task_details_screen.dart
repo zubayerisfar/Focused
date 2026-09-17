@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../models/task.dart';
 import '../models/task_recurrence.dart';
-import '../../focus/providers/focus_provider.dart';
 import '../providers/task_provider.dart';
 import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/services/ad_service.dart';
@@ -25,7 +24,6 @@ class TaskDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tasks = context.watch<TaskProvider>();
-    final focus = context.watch<FocusProvider>();
     final task = tasks.getTaskById(taskId);
 
     if (task == null) {
@@ -48,17 +46,30 @@ class TaskDetailsScreen extends StatelessWidget {
     final occurrence = tasks.occurrenceForTaskOnDate(task, day);
     final completed = tasks.isTaskCompletedForDate(task, day);
 
-    final linkedSessions = focus.sessionHistory.where((session) {
-      if (session.taskId != task.id) return false;
-      if (task.recurrence == TaskRecurrence.none) return true;
-      final linkedDay = session.linkedOccurrenceDate;
-      return linkedDay != null && _sameDate(linkedDay, day);
-    }).toList();
-
-    final focused = linkedSessions.fold<Duration>(
-      Duration.zero,
-      (total, session) => total + session.actualFocusDuration,
-    );
+    final String taskTypeLabel;
+    final IconData taskTypeIcon;
+    if (task.recurrence == TaskRecurrence.daily) {
+      taskTypeLabel = 'Daily';
+      taskTypeIcon = Icons.repeat_rounded;
+    } else if (task.recurrence == TaskRecurrence.weekdays) {
+      taskTypeLabel = 'Weekdays';
+      taskTypeIcon = Icons.repeat_rounded;
+    } else if (task.recurrence == TaskRecurrence.weekly) {
+      taskTypeLabel = 'Weekly';
+      taskTypeIcon = Icons.repeat_rounded;
+    } else if (task.recurrence == TaskRecurrence.customDays) {
+      taskTypeLabel = 'Custom Days';
+      taskTypeIcon = Icons.repeat_rounded;
+    } else if (task.scheduledStart != null) {
+      taskTypeLabel = DateFormat('MMM d').format(task.scheduledStart!);
+      taskTypeIcon = Icons.calendar_today_rounded;
+    } else if (task.plannedDate != null) {
+      taskTypeLabel = DateFormat('MMM d').format(task.plannedDate!);
+      taskTypeIcon = Icons.calendar_today_rounded;
+    } else {
+      taskTypeLabel = 'One-time';
+      taskTypeIcon = Icons.task_alt_rounded;
+    }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -78,12 +89,28 @@ class TaskDetailsScreen extends StatelessWidget {
           elevation: 2,
           shadowColor: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
           actions: [
-            TextButton(
-              onPressed: () =>
-                  context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
-              child: const Text('Edit'),
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 0,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () =>
+                    context.push('/task/edit/${Uri.encodeComponent(task.id)}'),
+                child: const Text(
+                  'Edit',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
           ],
         ),
         body: ListView(
@@ -112,74 +139,98 @@ class TaskDetailsScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: _MetricCard(
-                    value: _formatDuration(focused),
-                    label: 'Focused',
-                    customIcon: SvgPicture.asset(
-                      'assets/icon/focus_icon.svg',
-                      width: 24,
-                      height: 24,
-                    ),
+                    value: completed ? 'Completed' : 'Pending',
+                    label: completed ? 'Done' : 'Incomplete',
+                    icon: completed
+                        ? Icons.check_circle_rounded
+                        : Icons.pending_actions_rounded,
+                    iconColor: completed
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFF59E0B),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: _MetricCard(
-                    value: '${linkedSessions.length}',
-                    label: linkedSessions.length == 1 ? 'Session' : 'Sessions',
-                    icon: Icons.history_rounded,
+                    value: taskTypeLabel,
+                    label: 'Task Type',
+                    icon: taskTypeIcon,
+                    iconColor: const Color(0xFF1CB0F6),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            if (!completed)
-              FilledButton.icon(
-                onPressed: () => context.push(
-                  '/focus/setup?taskId=${Uri.encodeQueryComponent(task.id)}&occurrenceDate=${_dateQuery(day)}',
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  shape: const StadiumBorder(),
+                  backgroundColor: completed
+                      ? const Color(0xFF64748B)
+                      : const Color(0xFF1CB0F6),
                 ),
-                icon: SvgPicture.asset(
-                  'assets/icon/focus_icon.svg',
-                  width: 20,
-                  height: 20,
-                ),
-                label: const Text('Start focus'),
-              ),
-            if (!completed) const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final newCompleted = !completed;
-                await tasks.setCompletedForDate(
-                  task.id,
-                  day,
-                  newCompleted,
-                  completedAt: newCompleted ? DateTime.now() : null,
-                );
+                onPressed: () async {
+                  final newCompleted = !completed;
+                  await tasks.setCompletedForDate(
+                    task.id,
+                    day,
+                    newCompleted,
+                    completedAt: newCompleted ? DateTime.now() : null,
+                  );
 
-                if (newCompleted && context.mounted) {
-                  final stats = context.read<UserStatsProvider>();
-                  await stats.addGems(
-                    UserStatsProvider.gemTaskReward,
-                  ); // 20 Gems
+                  if (newCompleted && context.mounted) {
+                    final stats = context.read<UserStatsProvider>();
+                    await stats.addGems(
+                      UserStatsProvider.gemTaskReward,
+                    ); // 20 Gems
 
-                  // 5-second interstitial ad on task completion
-                  AdService.instance.showInterstitialAd();
+                    // 5-second interstitial ad on task completion
+                    AdService.instance.showInterstitialAd();
 
-                  if (context.mounted) {
-                    _showTaskCompletionRewardDialog(context, stats);
+                    if (context.mounted) {
+                      _showTaskCompletionRewardDialog(context, stats);
+                    }
                   }
-                }
-              },
-              icon: Icon(completed ? Icons.undo_rounded : Icons.check_rounded),
-              label: Text(completed ? 'Mark incomplete' : 'Mark complete'),
-            ),
-            const SizedBox(height: 10),
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
+                },
+                icon: Icon(
+                  completed ? Icons.undo_rounded : Icons.check_circle_rounded,
+                  size: 22,
+                ),
+                label: Text(
+                  completed ? 'Mark incomplete' : 'Mark complete',
+                  style: const TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
               ),
-              onPressed: () => _confirmDelete(context, task),
-              icon: const Icon(Icons.delete_outline_rounded),
-              label: const Text('Delete task'),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.error.withValues(alpha: 0.5),
+                  ),
+                  shape: const StadiumBorder(),
+                ),
+                onPressed: () => _confirmDelete(context, task),
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                label: const Text(
+                  'Delete task',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -250,7 +301,7 @@ class _TaskHeader extends StatelessWidget {
             child: completed
                 ? Icon(Icons.check_rounded, color: color, size: 30)
                 : SvgPicture.asset(
-                    'assets/icon/task_icon.svg',
+                    'assets/planner_page_icons/task_icon.svg',
                     width: 32,
                     height: 32,
                   ),
@@ -428,12 +479,14 @@ class _MetricCard extends StatelessWidget {
   final String label;
   final IconData? icon;
   final Widget? customIcon;
+  final Color? iconColor;
 
   const _MetricCard({
     required this.value,
     required this.label,
     this.icon,
     this.customIcon,
+    this.iconColor,
   });
 
   @override
@@ -462,16 +515,31 @@ class _MetricCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           customIcon ??
-              Icon(icon!, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                icon!,
+                color: iconColor ?? Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -543,7 +611,7 @@ void _showTaskCompletionRewardDialog(
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       title: Row(
         children: const [
-          Text('🎉', style: TextStyle(fontSize: 26)),
+          Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 28),
           SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -559,32 +627,22 @@ void _showTaskCompletionRewardDialog(
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SvgPicture.asset('assets/icon/gem.svg', width: 22, height: 22),
+                SvgPicture.asset('assets/icon/gem.svg', width: 24, height: 24),
                 const SizedBox(width: 8),
-                const Text(
-                  'EARNED +20 GEMS',
+                Text(
+                  '+20 Gems Earned',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    letterSpacing: 0.5,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: isDark
+                        ? const Color(0xFF38BDF8)
+                        : const Color(0xFF0284C7),
                   ),
                 ),
               ],
@@ -603,33 +661,14 @@ void _showTaskCompletionRewardDialog(
       ),
       actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       actions: [
-        Row(
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Smaller, slightly grayed button
-            Expanded(
-              flex: 4,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () => Navigator.pop(dialogCtx),
-                child: Text(
-                  'Claim 20',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: isDark
-                        ? const Color(0xFF64748B)
-                        : Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Prominent bold button to double
-            Expanded(
-              flex: 6,
+            // Prominent bold button to double (Top)
+            SizedBox(
+              width: double.infinity,
+              height: 48,
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
@@ -637,7 +676,6 @@ void _showTaskCompletionRewardDialog(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 onPressed: () {
                   Navigator.pop(dialogCtx);
@@ -658,7 +696,31 @@ void _showTaskCompletionRewardDialog(
                 icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
                 label: const Text(
                   'Double to 40',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5),
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Normal claim button (Bottom)
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: Text(
+                  'Claim 20 Gems',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark
+                        ? const Color(0xFF8B949E)
+                        : Colors.grey.shade600,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
