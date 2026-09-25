@@ -100,14 +100,31 @@ class AdService {
     );
   }
 
-  /// Shows the preloaded interstitial ad
-  void showInterstitialAd({VoidCallback? onAdClosed}) {
+  DateTime? _lastInterstitialShownAt;
+
+  /// Shows the preloaded interstitial ad with smart frequency capping (default: 2 minutes cooldown)
+  void showInterstitialAd({
+    VoidCallback? onAdClosed,
+    Duration minInterval = const Duration(minutes: 2),
+    bool force = false,
+  }) {
+    final now = DateTime.now();
+    if (!force &&
+        _lastInterstitialShownAt != null &&
+        now.difference(_lastInterstitialShownAt!) < minInterval) {
+      debugPrint('Interstitial ad skipped: frequency cap active ($minInterval cooldown).');
+      onAdClosed?.call();
+      return;
+    }
+
     if (_interstitialAd == null) {
       debugPrint('Interstitial ad not ready yet, loading for next time.');
       loadInterstitialAd();
       onAdClosed?.call();
       return;
     }
+
+    _lastInterstitialShownAt = now;
 
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {

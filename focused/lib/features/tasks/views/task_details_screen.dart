@@ -185,12 +185,14 @@ class TaskDetailsScreen extends StatelessWidget {
                       UserStatsProvider.gemTaskReward,
                     ); // 20 Gems
 
-                    // 5-second interstitial ad on task completion
-                    AdService.instance.showInterstitialAd();
-
-                    if (context.mounted) {
-                      _showTaskCompletionRewardDialog(context, stats);
-                    }
+                    // Interstitial ad on task completion, then show reward dialog
+                    AdService.instance.showInterstitialAd(
+                      onAdClosed: () {
+                        if (context.mounted) {
+                          _showTaskCompletionRewardDialog(context, stats);
+                        }
+                      },
+                    );
                   }
                 },
                 icon: Icon(

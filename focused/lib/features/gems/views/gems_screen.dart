@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../core/widgets/app_banner_ad_widget.dart';
 import '../../../core/widgets/glass_container.dart';
 
 class GemsScreen extends StatefulWidget {
@@ -85,6 +86,8 @@ class _GemsScreenState extends State<GemsScreen> {
                 remainingCooldown: remainingCooldown,
                 onWatchAd: _onWatchAd,
               ),
+              const SizedBox(height: 24),
+              const AppBannerAdWidget(),
             ],
           ),
         ),
