@@ -280,7 +280,7 @@ class _GroupHistoryTabState extends State<GroupHistoryTab> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected
-                          ? const Color(0xFF1CB0F6)
+                          ? const Color(0xFF6366F1)
                           : Theme.of(context).dividerColor.withValues(
                               alpha: widget.isDark ? 0.35 : 0.6,
                             ),
@@ -323,7 +323,7 @@ class _GroupHistoryTabState extends State<GroupHistoryTab> {
                             if (_isSelecting) ...[
                               Checkbox(
                                 value: isSelected,
-                                activeColor: const Color(0xFF1CB0F6),
+                                activeColor: const Color(0xFF6366F1),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(6),
                                 ),

@@ -94,7 +94,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
               errorBuilder: (_, _, _) => const Icon(
                 Icons.people_outline_rounded,
                 size: 90,
-                color: Color(0xFF1CB0F6),
+                color: Color(0xFF6366F1),
               ),
             ),
             const SizedBox(height: 18),
@@ -125,7 +125,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
             const SizedBox(height: 24),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1CB0F6),
+                backgroundColor: const Color(0xFF6366F1),
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
@@ -211,7 +211,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                     // Avatar
                     CircleAvatar(
                       radius: 26,
-                      backgroundColor: const Color(0xFF1CB0F6),
+                      backgroundColor: const Color(0xFF6366F1),
                       backgroundImage:
                           friend.photoUrl != null && friend.photoUrl!.isNotEmpty
                           ? NetworkImage(friend.photoUrl!)
@@ -769,7 +769,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       leading: CircleAvatar(
-                        backgroundColor: const Color(0xFF1CB0F6),
+                        backgroundColor: const Color(0xFF6366F1),
                         backgroundImage: friend.photoUrl != null
                             ? NetworkImage(friend.photoUrl!)
                             : null,
@@ -791,7 +791,7 @@ class _ActivitiesTabState extends State<ActivitiesTab> {
                       subtitle: Text(friend.handle),
                       trailing: FilledButton(
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF1CB0F6),
+                          backgroundColor: const Color(0xFF6366F1),
                         ),
                         onPressed: () async {
                           Navigator.pop(ctx);

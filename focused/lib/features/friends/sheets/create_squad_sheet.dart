@@ -239,7 +239,7 @@ void showCreateGroupDialog(BuildContext context) {
                     height: 52,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1CB0F6),
+                        backgroundColor: const Color(0xFF6366F1),
                         shape: const StadiumBorder(),
                       ),
                       icon: SvgPicture.asset(

@@ -240,12 +240,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: FilledButton(
                   onPressed: account.isBusy ? null : _submitEmail,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1CB0F6),
+                    backgroundColor: const Color(0xFF6366F1),
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
                     elevation: 2,
                     shadowColor: const Color(
-                      0xFF1CB0F6,
+                      0xFF6366F1,
                     ).withValues(alpha: 0.35),
                   ),
                   child: account.isBusy
@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       floatingLabelStyle: const TextStyle(
         fontFamily: 'Quicksand',
-        color: Color(0xFF1CB0F6),
+        color: Color(0xFF6366F1),
         fontWeight: FontWeight.w700,
       ),
       helperStyle: TextStyle(
@@ -331,7 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: Color(0xFF1CB0F6), width: 1.8),
+        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.8),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(20),
@@ -559,12 +559,12 @@ class _ModeButton extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF1CB0F6) : Colors.transparent,
+          color: selected ? const Color(0xFF6366F1) : Colors.transparent,
           borderRadius: BorderRadius.circular(100),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF1CB0F6).withValues(alpha: 0.35),
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

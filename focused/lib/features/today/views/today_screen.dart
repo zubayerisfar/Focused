@@ -12,7 +12,6 @@ import '../../streak/providers/user_stats_provider.dart';
 import '../../../core/services/home_widget_service.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/profile_streak_gem_bar.dart';
-import '../../../core/widgets/app_banner_ad_widget.dart';
 import 'package:go_router/go_router.dart';
 import '../../streak/services/productivity_streak_service.dart';
 import '../widgets/daily_plan_section.dart';
@@ -224,8 +223,6 @@ class _TodayScreenState extends State<TodayScreen> {
 
                   // Habit Tracker Section
                   HabitTrackerSection(habits: habits, date: activeDate),
-                  const SizedBox(height: 24),
-                  const AppBannerAdWidget(),
                 ]),
               ),
             ),

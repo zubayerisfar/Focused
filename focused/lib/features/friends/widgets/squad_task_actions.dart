@@ -59,7 +59,7 @@ class SquadTaskActions {
           : ' & added to Today Tasks';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: const Color(0xFF1CB0F6),
+          backgroundColor: const Color(0xFF6366F1),
           behavior: SnackBarBehavior.floating,
           content: Text(
             '⏰ Scheduled for ${DateFormat('EEE, MMM d • h:mm a').format(scheduled)}$syncNote!',

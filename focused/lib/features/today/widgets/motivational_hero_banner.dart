@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/glass_container.dart';
 
-/// Glossy Gradient Motivational Hero Banner inspired by the TaskityAI reference design
+/// Clean, frosted Glass Motivational Hero Banner without harsh gradient coloring
 class MotivationalHeroBanner extends StatelessWidget {
   final int pendingTasks;
 
@@ -9,61 +10,80 @@ class MotivationalHeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final now = DateTime.now();
-    final dateStr = DateFormat('d MMM').format(now);
+    final dateStr = DateFormat('EEEE, d MMM').format(now);
 
-    return Container(
+    return GlassContainer(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFF7A59), Color(0xFFE879F9), Color(0xFF818CF8)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF7A59).withValues(alpha: 0.26),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      borderRadius: BorderRadius.circular(26),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top pill: Date badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.25),
-                width: 0.8,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.calendar_today_rounded,
-                  size: 13,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  dateStr,
-                  style: const TextStyle(
-                    fontFamily: 'Quicksand',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    color: Colors.white,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Date pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFF6366F1).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : const Color(0xFF6366F1).withValues(alpha: 0.18),
+                    width: 0.8,
                   ),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      size: 13,
+                      color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF6366F1),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Status pill (All Clear vs In Progress)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: pendingTasks <= 0
+                      ? const Color(0xFF10B981).withValues(alpha: isDark ? 0.2 : 0.1)
+                      : const Color(0xFF6366F1).withValues(alpha: isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  pendingTasks <= 0 ? 'All Clear ✨' : '$pendingTasks In Progress',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    color: pendingTasks <= 0
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF6366F1),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
@@ -74,7 +94,7 @@ class MotivationalHeroBanner extends StatelessWidget {
               fontFamily: 'Quicksand',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.85),
+              color: scheme.onSurfaceVariant,
             ),
           ),
 
@@ -86,11 +106,11 @@ class MotivationalHeroBanner extends StatelessWidget {
                 : (pendingTasks == 1
                       ? 'You have 1 task for today.'
                       : 'You have $pendingTasks tasks for today.'),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Quicksand',
               fontSize: 22,
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: scheme.onSurface,
               height: 1.25,
               letterSpacing: -0.3,
             ),

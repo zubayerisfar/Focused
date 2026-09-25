@@ -190,7 +190,7 @@ class _GroupScreenState extends State<GroupScreen>
                       splashFactory: NoSplash.splashFactory,
                       splashBorderRadius: BorderRadius.circular(100),
                       indicator: BoxDecoration(
-                        color: const Color(0xFF1CB0F6),
+                        color: const Color(0xFF6366F1),
                         borderRadius: BorderRadius.circular(100),
                       ),
                       indicatorSize: TabBarIndicatorSize.tab,

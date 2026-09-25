@@ -192,7 +192,7 @@ class FriendNotificationHubSheet extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1CB0F6),
+                            color: const Color(0xFF6366F1),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -211,13 +211,13 @@ class FriendNotificationHubSheet extends StatelessWidget {
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     color: const Color(
-                                      0xFF1CB0F6,
+                                      0xFF6366F1,
                                     ).withValues(alpha: 0.15),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
                                     Icons.group_add_rounded,
-                                    color: Color(0xFF1CB0F6),
+                                    color: Color(0xFF6366F1),
                                     size: 20,
                                   ),
                                 ),

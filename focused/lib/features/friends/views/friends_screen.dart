@@ -375,7 +375,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                               splashFactory: NoSplash.splashFactory,
                               splashBorderRadius: BorderRadius.circular(100),
                               indicator: BoxDecoration(
-                                color: const Color(0xFF1CB0F6),
+                                color: const Color(0xFF6366F1),
                                 borderRadius: BorderRadius.circular(100),
                               ),
                               indicatorSize: TabBarIndicatorSize.tab,
@@ -602,7 +602,7 @@ class _FollowingTabState extends State<_FollowingTab> {
               ),
               prefixIcon: const Icon(
                 Icons.search_rounded,
-                color: Color(0xFF1CB0F6),
+                color: Color(0xFF6366F1),
                 size: 20,
               ),
               suffixIcon: _searchController.text.isNotEmpty
@@ -634,7 +634,7 @@ class _FollowingTabState extends State<_FollowingTab> {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(
-                  color: Color(0xFF1CB0F6),
+                  color: Color(0xFF6366F1),
                   width: 1.8,
                 ),
               ),
@@ -661,7 +661,7 @@ class _FollowingTabState extends State<_FollowingTab> {
               ? (isSearching
                     ? const Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFF1CB0F6),
+                          color: Color(0xFF6366F1),
                         ),
                       )
                     : searchResults.isEmpty
@@ -807,7 +807,7 @@ class _SearchUserResultTile extends StatelessWidget {
                       Text(
                         user.handle,
                         style: const TextStyle(
-                          color: Color(0xFF1CB0F6),
+                          color: Color(0xFF6366F1),
                           fontWeight: FontWeight.w700,
                           fontSize: 12.5,
                         ),
@@ -846,7 +846,7 @@ class _SearchUserResultTile extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
-                    color: Color(0xFF1CB0F6),
+                    color: Color(0xFF6366F1),
                   ),
                 ),
               )
@@ -879,7 +879,7 @@ class _SearchUserResultTile extends StatelessWidget {
             else
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1CB0F6),
+                  backgroundColor: const Color(0xFF6366F1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

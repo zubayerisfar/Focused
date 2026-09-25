@@ -71,7 +71,7 @@ class _AddFriendsScreenState extends State<AddFriendsScreen> {
                 ),
                 prefixIcon: const Icon(
                   Icons.search_rounded,
-                  color: Color(0xFF1CB0F6),
+                  color: Color(0xFF6366F1),
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -100,7 +100,7 @@ class _AddFriendsScreenState extends State<AddFriendsScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
                   borderSide: const BorderSide(
-                    color: Color(0xFF1CB0F6),
+                    color: Color(0xFF6366F1),
                     width: 2,
                   ),
                 ),
@@ -123,7 +123,7 @@ class _AddFriendsScreenState extends State<AddFriendsScreen> {
           Expanded(
             child: isSearching
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF1CB0F6)),
+                    child: CircularProgressIndicator(color: Color(0xFF6366F1)),
                   )
                 : _searchController.text.trim().isEmpty
                 ? Center(
@@ -270,7 +270,7 @@ class _UserResultTile extends StatelessWidget {
                       Text(
                         user.handle,
                         style: const TextStyle(
-                          color: Color(0xFF1CB0F6),
+                          color: Color(0xFF6366F1),
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -309,7 +309,7 @@ class _UserResultTile extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
-                        color: Color(0xFF1CB0F6),
+                        color: Color(0xFF6366F1),
                       ),
                     ),
                   )
@@ -343,7 +343,7 @@ class _UserResultTile extends StatelessWidget {
                   )
                 : FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1CB0F6),
+                      backgroundColor: const Color(0xFF6366F1),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),

@@ -92,13 +92,13 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                           decoration: BoxDecoration(
                             color: !isDaily
                                 ? const Color(
-                                    0xFF9B51E0,
+                                    0xFF6366F1,
                                   ).withValues(alpha: isDark ? 0.22 : 0.12)
                                 : scheme.surfaceContainerHigh,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: !isDaily
-                                  ? const Color(0xFF9B51E0)
+                                  ? const Color(0xFF6366F1)
                                   : scheme.outlineVariant.withValues(
                                       alpha: 0.5,
                                     ),
@@ -242,7 +242,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
                       borderSide: const BorderSide(
-                        color: Color(0xFF9B51E0),
+                        color: Color(0xFF6366F1),
                         width: 1.8,
                       ),
                     ),
@@ -281,7 +281,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                         children: [
                           const Icon(
                             Icons.calendar_today_rounded,
-                            color: Color(0xFF9B51E0),
+                            color: Color(0xFF6366F1),
                             size: 20,
                           ),
                           const SizedBox(width: 12),
@@ -360,7 +360,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                             children: [
                               const Icon(
                                 Icons.schedule_rounded,
-                                color: Color(0xFF9B51E0),
+                                color: Color(0xFF6366F1),
                                 size: 18,
                               ),
                               const SizedBox(width: 8),
@@ -488,7 +488,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                                     children: [
                                       const Icon(
                                         Icons.notifications_active_rounded,
-                                        color: Color(0xFF9B51E0),
+                                        color: Color(0xFF6366F1),
                                         size: 22,
                                       ),
                                       const SizedBox(width: 10),
@@ -529,7 +529,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                                             ? FontWeight.w900
                                             : FontWeight.w700,
                                         color: selectedReminderMinutes == mins
-                                            ? const Color(0xFF9B51E0)
+                                            ? const Color(0xFF6366F1)
                                             : (isDark
                                                   ? Colors.white
                                                   : scheme.onSurface),
@@ -539,7 +539,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                                         ? Container(
                                             padding: const EdgeInsets.all(4),
                                             decoration: const BoxDecoration(
-                                              color: Color(0xFF9B51E0),
+                                              color: Color(0xFF6366F1),
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
@@ -574,7 +574,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                       children: [
                         const Icon(
                           Icons.notifications_active_outlined,
-                          color: Color(0xFF9B51E0),
+                          color: Color(0xFF6366F1),
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -615,7 +615,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF9B51E0),
+                      backgroundColor: const Color(0xFF6366F1),
                       foregroundColor: Colors.white,
                       shape: const StadiumBorder(),
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -666,7 +666,7 @@ void showAssignTaskSheet(BuildContext context, TaskGroup group) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             backgroundColor: ok
-                                ? const Color(0xFF9B51E0)
+                                ? const Color(0xFF6366F1)
                                 : Colors.redAccent,
                             content: Text(
                               ok

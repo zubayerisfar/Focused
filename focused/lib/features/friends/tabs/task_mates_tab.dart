@@ -41,7 +41,7 @@ class TaskMatesTab extends StatelessWidget {
               const Icon(
                 Icons.restart_alt_rounded,
                 size: 48,
-                color: Color(0xFF1CB0F6),
+                color: Color(0xFF6366F1),
               ),
               const SizedBox(height: 12),
               Text(
@@ -73,7 +73,7 @@ class TaskMatesTab extends StatelessWidget {
 
     if (taskMateProvider.isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF1CB0F6)),
+        child: CircularProgressIndicator(color: Color(0xFF6366F1)),
       );
     }
 
@@ -90,7 +90,7 @@ class TaskMatesTab extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.white
-                      : const Color(0xFF1CB0F6).withValues(alpha: 0.15),
+                      : const Color(0xFF6366F1).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                   boxShadow: isDark
                       ? [
@@ -136,7 +136,7 @@ class TaskMatesTab extends StatelessWidget {
               const SizedBox(height: 20),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1CB0F6),
+                  backgroundColor: const Color(0xFF6366F1),
                   shape: const StadiumBorder(),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -243,7 +243,7 @@ class TaskMatesTab extends StatelessWidget {
               Icon(
                 Icons.add_rounded,
                 color: canCreate
-                    ? const Color(0xFF1CB0F6)
+                    ? const Color(0xFF6366F1)
                     : (isDark
                           ? const Color(0xFF475569)
                           : scheme.onSurfaceVariant.withValues(alpha: 0.4)),
@@ -257,7 +257,7 @@ class TaskMatesTab extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
                   color: canCreate
-                      ? const Color(0xFF1CB0F6)
+                      ? const Color(0xFF6366F1)
                       : (isDark
                             ? const Color(0xFF475569)
                             : scheme.onSurfaceVariant.withValues(alpha: 0.4)),
@@ -337,7 +337,7 @@ class TaskMatesTab extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isDark
                         ? Colors.white
-                        : const Color(0xFF1CB0F6).withValues(alpha: 0.15),
+                        : const Color(0xFF6366F1).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                     boxShadow: isDark
                         ? [
@@ -388,7 +388,7 @@ class TaskMatesTab extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(
-                                  0xFF1CB0F6,
+                                  0xFF6366F1,
                                 ).withValues(alpha: 0.18),
                                 borderRadius: BorderRadius.circular(6),
                               ),
@@ -396,7 +396,7 @@ class TaskMatesTab extends StatelessWidget {
                                 'Owner',
                                 style: TextStyle(
                                   fontFamily: 'Quicksand',
-                                  color: Color(0xFF1CB0F6),
+                                  color: Color(0xFF6366F1),
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -437,7 +437,7 @@ class TaskMatesTab extends StatelessWidget {
                                       child: CircleAvatar(
                                         radius: 9.5,
                                         backgroundColor: const Color(
-                                          0xFF1CB0F6,
+                                          0xFF6366F1,
                                         ),
                                         backgroundImage:
                                             memberList[i].photoUrl != null &&
@@ -557,7 +557,7 @@ class TaskMatesTab extends StatelessWidget {
                   child: Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 14,
-                    color: const Color(0xFF1CB0F6),
+                    color: const Color(0xFF6366F1),
                   ),
                 ),
               ],
@@ -745,7 +745,7 @@ class TaskMatesTab extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: isMe
-                                            ? const Color(0xFF1CB0F6)
+                                            ? const Color(0xFF6366F1)
                                             : scheme.outlineVariant,
                                         width: isMe ? 1.5 : 1.0,
                                       ),
@@ -756,7 +756,7 @@ class TaskMatesTab extends StatelessWidget {
                                         CircleAvatar(
                                           radius: 12,
                                           backgroundColor: const Color(
-                                            0xFF1CB0F6,
+                                            0xFF6366F1,
                                           ),
                                           backgroundImage:
                                               member.photoUrl != null &&
@@ -848,7 +848,7 @@ class TaskMatesTab extends StatelessWidget {
                                           'Add Task',
                                           style: TextStyle(
                                             fontFamily: 'Quicksand',
-                                            color: Color(0xFF1CB0F6),
+                                            color: Color(0xFF6366F1),
                                             fontWeight: FontWeight.bold,
                                             fontSize: 12.5,
                                           ),
@@ -892,7 +892,7 @@ class TaskMatesTab extends StatelessWidget {
                                         ),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
-                                          color: const Color(0xFF1CB0F6)
+                                          color: const Color(0xFF6366F1)
                                               .withValues(
                                                 alpha: isDark ? 0.3 : 0.4,
                                               ),
@@ -938,7 +938,7 @@ class TaskMatesTab extends StatelessWidget {
                                               vertical: 7,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF1CB0F6)
+                                              color: const Color(0xFF6366F1)
                                                   .withValues(
                                                     alpha: isDark ? 0.18 : 0.12,
                                                   ),
@@ -951,14 +951,14 @@ class TaskMatesTab extends StatelessWidget {
                                                 const Icon(
                                                   Icons.access_time_rounded,
                                                   size: 14,
-                                                  color: Color(0xFF1CB0F6),
+                                                  color: Color(0xFF6366F1),
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Text(
                                                   'Resets after 12:00 AM midnight',
                                                   style: const TextStyle(
                                                     fontFamily: 'Quicksand',
-                                                    color: Color(0xFF1CB0F6),
+                                                    color: Color(0xFF6366F1),
                                                     fontWeight: FontWeight.w700,
                                                     fontSize: 11.5,
                                                   ),
@@ -986,7 +986,7 @@ class TaskMatesTab extends StatelessWidget {
                                         const Icon(
                                           Icons.assignment_outlined,
                                           size: 38,
-                                          color: Color(0xFF1CB0F6),
+                                          color: Color(0xFF6366F1),
                                         ),
                                         const SizedBox(height: 10),
                                         Text(
@@ -1016,7 +1016,7 @@ class TaskMatesTab extends StatelessWidget {
                                         FilledButton(
                                           style: FilledButton.styleFrom(
                                             backgroundColor: const Color(
-                                              0xFF1CB0F6,
+                                              0xFF6366F1,
                                             ),
                                             shape: const StadiumBorder(),
                                             padding: const EdgeInsets.symmetric(
@@ -1071,7 +1071,7 @@ class TaskMatesTab extends StatelessWidget {
                                                   0xFF58CC02,
                                                 ).withValues(alpha: 0.5)
                                               : const Color(
-                                                  0xFF1CB0F6,
+                                                  0xFF6366F1,
                                                 ).withValues(alpha: 0.5),
                                           width: 1.5,
                                         ),
@@ -1128,7 +1128,7 @@ class TaskMatesTab extends StatelessWidget {
                                                     ),
                                                 decoration: BoxDecoration(
                                                   color: const Color(
-                                                    0xFF1CB0F6,
+                                                    0xFF6366F1,
                                                   ).withValues(alpha: 0.15),
                                                   borderRadius:
                                                       BorderRadius.circular(8),
@@ -1346,7 +1346,7 @@ class TaskMatesTab extends StatelessWidget {
                                                       decoration: BoxDecoration(
                                                         color:
                                                             const Color(
-                                                              0xFF1CB0F6,
+                                                              0xFF6366F1,
                                                             ).withValues(
                                                               alpha: 0.15,
                                                             ),
@@ -1363,7 +1363,7 @@ class TaskMatesTab extends StatelessWidget {
                                                         ),
                                                         style: const TextStyle(
                                                           color: Color(
-                                                            0xFF1CB0F6,
+                                                            0xFF6366F1,
                                                           ),
                                                           fontWeight:
                                                               FontWeight.bold,
@@ -1466,7 +1466,7 @@ class TaskMatesTab extends StatelessWidget {
                                                     icon: const Icon(
                                                       Icons.schedule_rounded,
                                                       size: 16,
-                                                      color: Color(0xFF1CB0F6),
+                                                      color: Color(0xFF6366F1),
                                                     ),
                                                     label: Text(
                                                       myScheduledTime != null

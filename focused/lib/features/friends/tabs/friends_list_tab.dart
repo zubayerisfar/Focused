@@ -63,7 +63,7 @@ class FriendsListTab extends StatelessWidget {
             const SizedBox(height: 14),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1CB0F6),
+                backgroundColor: const Color(0xFF6366F1),
               ),
               onPressed: () => context.push('/friends/add'),
               child: const Text(
@@ -210,7 +210,7 @@ class FriendsListTab extends StatelessWidget {
                               )
                             : FilledButton(
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1CB0F6),
+                                  backgroundColor: const Color(0xFF6366F1),
                                   shape: const StadiumBorder(),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 14,

@@ -344,12 +344,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                             ? null
                             : _checkVerificationManually,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF1CB0F6),
+                          backgroundColor: const Color(0xFF6366F1),
                           foregroundColor: Colors.white,
                           shape: const StadiumBorder(),
                           elevation: 2,
                           shadowColor: const Color(
-                            0xFF1CB0F6,
+                            0xFF6366F1,
                           ).withValues(alpha: 0.35),
                         ),
                         child: _isChecking

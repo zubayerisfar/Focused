@@ -17,7 +17,6 @@ import '../../tasks/services/task_notification_service.dart';
 import '../../tasks/providers/task_provider.dart';
 import 'deactivate_account_sheet.dart';
 import 'delete_account_dialog.dart';
-import '../../../core/widgets/app_banner_ad_widget.dart';
 
 class SettingsScreen extends StatelessWidget {
   final bool embedded;
@@ -129,274 +128,131 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            secondary: const FaIcon(
-                              FontAwesomeIcons.userPlus,
-                              size: 18,
-                            ),
-                            title: const Text(
-                              'Follower alerts',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14.5,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              'Receive an alert with user icon when someone follows you',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            value: notifPrefs.followerAlerts,
-                            onChanged: (val) =>
-                                notifPrefs.setFollowerAlerts(val),
-                          ),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.userPlus,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Follower alerts',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          onPressed: () => TaskNotificationService()
-                              .showFollowerAlertPreview(),
-                          child: const Text(
-                            'Test',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                      subtitle: const Text(
+                        'Receive an alert with user icon when someone follows you',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.followerAlerts,
+                      onChanged: (val) =>
+                          notifPrefs.setFollowerAlerts(val),
                     ),
                     const Divider(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            secondary: const FaIcon(
-                              FontAwesomeIcons.users,
-                              size: 18,
-                            ),
-                            title: const Text(
-                              'Squad group invites',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14.5,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              'Get notified when friends invite you to join a new Task Squad',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            value: notifPrefs.squadInvites,
-                            onChanged: (val) => notifPrefs.setSquadInvites(val),
-                          ),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.users,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Squad group invites',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          onPressed: () => TaskNotificationService()
-                              .showGroupCreationNotification(
-                                groupName: 'Focus Titans',
-                                creatorName: 'Alex',
-                              ),
-                          child: const Text(
-                            'Test',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                      subtitle: const Text(
+                        'Get notified when friends invite you to join a new Task Squad',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.squadInvites,
+                      onChanged: (val) => notifPrefs.setSquadInvites(val),
                     ),
                     const Divider(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            secondary: const FaIcon(
-                              FontAwesomeIcons.handPointRight,
-                              size: 18,
-                            ),
-                            title: const Text(
-                              'Friend nudges & Gems gifts',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14.5,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              'Alerts for task reminders and Gems boosts sent by your friends',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            value: notifPrefs.friendNudgesAndGifts,
-                            onChanged: (val) =>
-                                notifPrefs.setFriendNudgesAndGifts(val),
-                          ),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.handPointRight,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Friend nudges & Gems gifts',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          onPressed: () => TaskNotificationService()
-                              .showFriendReminderNotification(
-                                fromName: 'Jessica',
-                                message: 'Time to focus and crush your tasks!',
-                              ),
-                          child: const Text(
-                            'Test',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                      subtitle: const Text(
+                        'Alerts for task reminders and Gems boosts sent by your friends',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.friendNudgesAndGifts,
+                      onChanged: (val) =>
+                          notifPrefs.setFriendNudgesAndGifts(val),
                     ),
                     const Divider(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            secondary: const FaIcon(
-                              FontAwesomeIcons.flagCheckered,
-                              size: 18,
-                            ),
-                            title: const Text(
-                              'Partner task completions',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14.5,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              '"Your friend finished their task, now it\'s your turn!"',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            value: notifPrefs.partnerCompletions,
-                            onChanged: (val) =>
-                                notifPrefs.setPartnerCompletions(val),
-                          ),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.flagCheckered,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Partner task completions',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          onPressed: () => TaskNotificationService()
-                              .showPartnerCompletionPreview(),
-                          child: const Text(
-                            'Test',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                      subtitle: const Text(
+                        '"Your friend finished their task, now it\'s your turn!"',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.partnerCompletions,
+                      onChanged: (val) =>
+                          notifPrefs.setPartnerCompletions(val),
                     ),
                     const Divider(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            secondary: const FaIcon(
-                              FontAwesomeIcons.solidClock,
-                              size: 18,
-                            ),
-                            title: const Text(
-                              'Daily task summary',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14.5,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Daily summary at ${notifPrefs.occasionalTime.format(context)} showing assigned and completed tasks count',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            value: notifPrefs.occasionalReminders,
-                            onChanged: (val) async {
-                              await notifPrefs.setOccasionalReminders(val);
-                              final taskNotif = TaskNotificationService();
-                              if (val) {
-                                final taskProv = context.read<TaskProvider>();
-                                final assigned = taskProv.tasks.length;
-                                final completed =
-                                    taskProv.completedTasks.length;
-                                await taskNotif
-                                    .scheduleDailySummaryNotification(
-                                      hour: notifPrefs.occasionalTime.hour,
-                                      minute: notifPrefs.occasionalTime.minute,
-                                      assignedCount: assigned,
-                                      completedCount: completed,
-                                    );
-                              } else {
-                                await taskNotif
-                                    .cancelDailySummaryNotification();
-                              }
-                            },
-                          ),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const FaIcon(
+                        FontAwesomeIcons.solidClock,
+                        size: 18,
+                      ),
+                      title: const Text(
+                        'Daily task summary',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          onPressed: () {
-                            final taskProv = context.read<TaskProvider>();
-                            final assigned = taskProv.tasks.length;
-                            final completed = taskProv.completedTasks.length;
-                            TaskNotificationService().showDailySummaryPreview(
-                              assignedCount: assigned > 0 ? assigned : 4,
-                              completedCount: completed > 0 ? completed : 2,
-                            );
-                          },
-                          child: const Text(
-                            'Test',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
+                      subtitle: Text(
+                        'Daily summary at ${notifPrefs.occasionalTime.format(context)} showing assigned and completed tasks count',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: notifPrefs.occasionalReminders,
+                      onChanged: (val) async {
+                        await notifPrefs.setOccasionalReminders(val);
+                        final taskNotif = TaskNotificationService();
+                        if (val) {
+                          final taskProv = context.read<TaskProvider>();
+                          final assigned = taskProv.tasks.length;
+                          final completed =
+                              taskProv.completedTasks.length;
+                          await taskNotif
+                              .scheduleDailySummaryNotification(
+                                hour: notifPrefs.occasionalTime.hour,
+                                minute: notifPrefs.occasionalTime.minute,
+                                assignedCount: assigned,
+                                completedCount: completed,
+                              );
+                        } else {
+                          await taskNotif
+                              .cancelDailySummaryNotification();
+                        }
+                      },
                     ),
                     if (notifPrefs.occasionalReminders) ...[
                       const SizedBox(height: 8),
@@ -591,8 +447,6 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const AppBannerAdWidget(),
         ],
       ),
     );

@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../models/habit.dart';
 import '../models/habit_analytics_summary.dart';
 import '../providers/habit_provider.dart';
-import '../../../core/widgets/app_banner_ad_widget.dart';
 
 class HabitDetailsScreen extends StatelessWidget {
   final String habitId;
@@ -144,8 +143,6 @@ class HabitDetailsScreen extends StatelessWidget {
             _ReminderCard(habit: habit),
             const SizedBox(height: 24),
             _AnalyticsSection(habit: habit, analytics: analytics),
-            const SizedBox(height: 24),
-            const AppBannerAdWidget(),
           ],
         ),
       ),
