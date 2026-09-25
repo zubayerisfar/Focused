@@ -429,6 +429,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       await context.read<UserProfileProvider>().syncFromFirestore(user.uid);
       await PushNotificationService.syncUserToken(user.uid);
+      try {
+        await context.read<CloudSyncProvider>().syncNow(
+          mode: CloudSyncMode.bidirectional,
+          isManual: false,
+        );
+      } catch (_) {}
     }
   }
 }

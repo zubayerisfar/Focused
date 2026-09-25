@@ -85,7 +85,7 @@ class CloudSyncProvider extends ChangeNotifier {
 
     if (_accountProvider.isSignedIn) {
       unawaited(
-        syncNow(mode: CloudSyncMode.uploadOnly, isManual: false).catchError((
+        syncNow(mode: CloudSyncMode.bidirectional, isManual: false).catchError((
           e,
         ) {
           debugPrint('Automated startup cloud sync: $e');
@@ -181,7 +181,7 @@ class CloudSyncProvider extends ChangeNotifier {
     unawaited(
       _refreshRegistrationState().then((_) {
         if (wasSignedOut && _accountProvider.isSignedIn && !_syncing) {
-          syncNow(mode: CloudSyncMode.uploadOnly, isManual: false).catchError((
+          syncNow(mode: CloudSyncMode.bidirectional, isManual: false).catchError((
             e,
           ) {
             debugPrint('Automated post-login cloud sync: $e');

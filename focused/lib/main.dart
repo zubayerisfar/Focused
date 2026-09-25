@@ -249,7 +249,6 @@ Future<void> main() async {
     userProfileStorage: userProfileStorageService,
     streakGoalStorage: streakGoalStorageService,
     userStatsStorage: userStatsStorageService,
-    usageRecordStorage: usageRecordStorageService,
   );
 
   final cloudSyncProvider = CloudSyncProvider(
