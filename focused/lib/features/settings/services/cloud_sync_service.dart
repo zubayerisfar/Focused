@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../wellbeing/models/device_usage_summary.dart';
 import '../../focus/models/focus_session.dart';
 import '../../habits/models/habit.dart';
 import '../../habits/models/habit_progress.dart';
@@ -12,6 +13,7 @@ import '../../tasks/models/task_occurrence_completion.dart';
 import '../../profile/models/user_cloud_stats.dart';
 import '../../profile/models/user_profile.dart';
 import '../../streak/services/achievement_service.dart';
+import '../../wellbeing/services/device_usage_summary_service.dart';
 import '../../focus/services/focus_session_storage_service.dart';
 import '../../habits/services/habit_storage_service.dart';
 import '../../streak/services/productivity_streak_service.dart';
@@ -19,6 +21,7 @@ import '../../streak/services/streak_goal_storage_service.dart';
 import 'sync_metadata_storage_service.dart';
 import '../../tasks/services/task_occurrence_completion_storage_service.dart';
 import '../../tasks/services/task_storage_service.dart';
+import '../../wellbeing/services/usage_record_storage_service.dart';
 import '../../profile/services/user_cloud_stats_storage_service.dart';
 import '../../profile/services/user_profile_storage_service.dart';
 
@@ -49,8 +52,8 @@ class CloudSyncService {
     required UserProfileStorageService userProfileStorage,
     required StreakGoalStorageService streakGoalStorage,
     UserCloudStatsStorageService? userStatsStorage,
-    dynamic usageRecordStorage,
-    dynamic summaryService,
+    UsageRecordStore? usageRecordStorage,
+    DeviceUsageSummaryService? summaryService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _metadataStorage = metadataStorage,
        _taskStorage = taskStorage,
@@ -59,7 +62,9 @@ class CloudSyncService {
        _focusSessionStorage = focusSessionStorage,
        _userProfileStorage = userProfileStorage,
        _streakGoalStorage = streakGoalStorage,
-       _userStatsStorage = userStatsStorage;
+       _userStatsStorage = userStatsStorage,
+       _usageRecordStorage = usageRecordStorage,
+       _summaryService = summaryService ?? const DeviceUsageSummaryService();
 
   final FirebaseFirestore _firestore;
   final SyncMetadataStorageService _metadataStorage;
@@ -70,6 +75,8 @@ class CloudSyncService {
   final UserProfileStorageService _userProfileStorage;
   final StreakGoalStorageService _streakGoalStorage;
   final UserCloudStatsStorageService? _userStatsStorage;
+  final UsageRecordStore? _usageRecordStorage;
+  final DeviceUsageSummaryService _summaryService;
 
   Future<CloudSyncResult> sync({
     required String uid,
@@ -941,6 +948,16 @@ class CloudSyncService {
         .doc(deviceId);
     final existing = await ref.get();
 
+    DeviceUsageSummary? summary;
+    try {
+      summary = await _summaryService.generateSummary(
+        usageRecordStorage: _usageRecordStorage,
+        focusSessionStorage: _focusSessionStorage,
+      );
+    } catch (e) {
+      debugPrint('Could not compute device usage summary: $e');
+    }
+
     await ref.set({
       'deviceId': deviceId,
       'platform': platform,
@@ -951,6 +968,7 @@ class CloudSyncService {
       if (lastSyncAt != null)
         'lastSyncAt': Timestamp.fromDate(lastSyncAt.toUtc()),
       'status': 'active',
+      if (summary != null) 'usageSummary': summary.toMap(),
     }, SetOptions(merge: true));
   }
 
@@ -1013,7 +1031,9 @@ class CloudDevice {
           ? lastSyncRaw.toDate().toLocal()
           : null,
       status: map['status'] is String ? map['status'] as String : 'active',
-      summary: null,
+      summary: summaryRaw is Map
+          ? DeviceUsageSummary.fromMap(summaryRaw)
+          : null,
     );
   }
 }

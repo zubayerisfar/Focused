@@ -100,14 +100,14 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
           _DeviceHeader(device: widget.device, isCurrent: widget.isCurrent),
           const SizedBox(height: 24),
           Text(
-            'Device Sync Details',
+            'Aggregated Usage Summary',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Cloud synchronization status and hardware registration for your Focused account.',
+            'Privacy-preserving high-level summary measured locally on this hardware.',
             style: TextStyle(
               fontSize: 13,
               color: scheme.onSurfaceVariant,
@@ -115,77 +115,119 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _DetailCard(
-            icon: Icons.sync_rounded,
-            iconColor: const Color(0xFF6366F1),
-            title: 'Sync Status',
-            value: widget.device.status.toUpperCase(),
-            subtitle: widget.device.lastSyncAt != null
-                ? 'Last synchronized ${_relativeTime(widget.device.lastSyncAt!)}'
-                : 'Pending initial sync',
-          ),
-          const SizedBox(height: 12),
-          _DetailCard(
-            icon: Icons.fingerprint_rounded,
-            iconColor: const Color(0xFF10B981),
-            title: 'Hardware Identifier',
-            value: widget.device.deviceId.length > 20
-                ? '${widget.device.deviceId.substring(0, 20)}…'
-                : widget.device.deviceId,
-            subtitle: 'Registered ${_relativeTime(widget.device.createdAt)}',
-          ),
-          const SizedBox(height: 12),
-          _DetailCard(
-            icon: Icons.cloud_done_rounded,
-            iconColor: const Color(0xFF8B5CF6),
-            title: 'Synchronized Items',
-            value: 'Tasks, Habits, Streaks & Profile',
-            subtitle: 'Imports seamlessly across all your signed-in devices',
-          ),
-          const SizedBox(height: 24),
+          if (summary == null || summary.activeDaysCount == 0) ...[
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: scheme.primary),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      'No aggregated usage history is recorded for this device yet.',
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _SummaryMetricCard(
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Recorded History',
+                    value: '${summary.activeDaysCount}',
+                    suffix: summary.activeDaysCount == 1 ? 'day' : 'days',
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _SummaryMetricCard(
+                    icon: Icons.access_time_rounded,
+                    label: 'Daily Screen Time',
+                    value: _formatMinutes(summary.avgDailyScreenTimeMinutes),
+                    suffix: 'avg / day',
+                    color: const Color(0xFFF59E0B),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _SummaryMetricCard(
+                    icon: Icons.center_focus_strong_rounded,
+                    label: 'Total Focused',
+                    value: _formatMinutes(summary.totalFocusMinutes),
+                    suffix: '${summary.totalFocusSessions} sessions',
+                    color: const Color(0xFF10B981),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _SummaryMetricCard(
+                    icon: Icons.bolt_rounded,
+                    label: 'Daily Focus Avg',
+                    value: _formatMinutes(summary.avgDailyFocusMinutes),
+                    suffix: 'per active day',
+                    color: const Color(0xFF8B5CF6),
+                  ),
+                ),
+              ],
+            ),
+            if (summary.mostDistractingApp != null) ...[
+              const SizedBox(height: 14),
+              _DetailCard(
+                icon: Icons.warning_amber_rounded,
+                iconColor: const Color(0xFFEF4444),
+                title: 'Most Used App',
+                value: summary.mostDistractingApp!,
+                subtitle: summary.mostDistractingAppAvgDailyMinutes != null
+                    ? 'Average ${_formatMinutes(summary.mostDistractingAppAvgDailyMinutes!)} per day'
+                    : null,
+              ),
+            ],
+            if (summary.usualFocusTime != null) ...[
+              const SizedBox(height: 12),
+              _DetailCard(
+                icon: Icons.wb_sunny_outlined,
+                iconColor: const Color(0xFFF59E0B),
+                title: 'Usual Focus Time',
+                value: summary.usualFocusTime!,
+                subtitle: 'Peak productivity window on this device',
+              ),
+            ],
+          ],
+          const SizedBox(height: 28),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFF6366F1).withValues(alpha: 0.15),
-              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.verified_user_rounded,
-                  size: 22,
-                  color: Color(0xFF10B981),
-                ),
+                Icon(Icons.shield_outlined, size: 20, color: scheme.primary),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'On-Device Privacy Guaranteed',
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Device screen time and application usage statistics are kept strictly local to this device. Focused never uploads, stores, or downloads personal app usage to the cloud.',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          height: 1.45,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Raw application usage timelines and notification logs remain private on the original hardware. '
+                    'Only aggregated summary metrics sync with your account.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.45,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],

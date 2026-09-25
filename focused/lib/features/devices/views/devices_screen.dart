@@ -271,6 +271,33 @@ class _DeviceCard extends StatelessWidget {
                   const Icon(Icons.chevron_right_rounded),
                 ],
               ),
+              if (summary != null && summary.activeDaysCount > 0) ...[
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _QuickStatPill(
+                      icon: Icons.calendar_today_rounded,
+                      label: '${summary.activeDaysCount}d history',
+                    ),
+                    const SizedBox(width: 8),
+                    _QuickStatPill(
+                      icon: Icons.center_focus_strong_rounded,
+                      label: '${summary.totalFocusMinutes ~/ 60}h focus',
+                    ),
+                    const Spacer(),
+                    Text(
+                      'View data →',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
