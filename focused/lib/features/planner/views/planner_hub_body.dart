@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -87,11 +86,8 @@ class PlannerHubBody extends StatelessWidget {
         ? 'Today, ${DateFormat('d MMMM').format(selectedDate)}'
         : DateFormat('EEEE, d MMMM').format(selectedDate);
 
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    final bottomNavClearance = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14) + 36;
-
     return ListView(
-      padding: EdgeInsets.fromLTRB(18, 12, 18, bottomNavClearance),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 110),
       children: [
         // ── Top Date Filter Banner ──
         InkWell(
@@ -211,8 +207,6 @@ class PlannerHubBody extends StatelessWidget {
           totalCount: dateTasks.length,
           completedCount: completedTasks,
           onTapCard: () => onSelectArea(PlannerArea.tasks),
-          onQuickAdd: () => context.push('/task/new'),
-          quickAddTooltip: 'Create New Task',
           chips: [
             _TileChip(
               icon: Icons.checklist_rounded,
@@ -244,7 +238,6 @@ class PlannerHubBody extends StatelessWidget {
                 color: const Color(0xFF10B981),
               ),
           ],
-          footerLabel: 'Tap tile for calendar schedule & timeline',
         ),
 
         const SizedBox(height: 16),
@@ -254,7 +247,7 @@ class PlannerHubBody extends StatelessWidget {
         // ══════════════════════════════════════════════════════════════
         _ModernPlannerTile(
           title: 'Reminders & Alerts',
-          subtitle: 'Scheduled notifications, alerts, and timed alarms',
+          subtitle: null,
           svgAsset: 'assets/planner_page_icons/reminder_icon.svg',
           fallbackIcon: Icons.notifications_active_rounded,
           accentColor: const Color(0xFFFF9600),
@@ -264,8 +257,6 @@ class PlannerHubBody extends StatelessWidget {
           totalCount: dateReminders.length,
           completedCount: completedReminders,
           onTapCard: () => onSelectArea(PlannerArea.reminders),
-          onQuickAdd: () => context.push('/reminder/new'),
-          quickAddTooltip: 'Create New Reminder',
           chips: [
             _TileChip(
               icon: Icons.notifications_active_rounded,
@@ -291,7 +282,6 @@ class PlannerHubBody extends StatelessWidget {
                 isHighImpact: true,
               ),
           ],
-          footerLabel: 'Tap tile for alarms and scheduled reminders',
         ),
 
         const SizedBox(height: 16),
@@ -311,8 +301,6 @@ class PlannerHubBody extends StatelessWidget {
           totalCount: dateHabits.length,
           completedCount: completedHabits,
           onTapCard: () => onSelectArea(PlannerArea.habits),
-          onQuickAdd: () => context.push('/habit/new'),
-          quickAddTooltip: 'Create New Habit',
           chips: [
             _TileChip(
               icon: Icons.repeat_rounded,
@@ -337,7 +325,6 @@ class PlannerHubBody extends StatelessWidget {
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               ),
           ],
-          footerLabel: 'Tap tile for streak tracking and habits list',
         ),
       ],
     );
@@ -353,7 +340,7 @@ class PlannerHubBody extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 class _ModernPlannerTile extends StatelessWidget {
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final String? svgAsset;
   final IconData fallbackIcon;
   final Color accentColor;
@@ -361,14 +348,11 @@ class _ModernPlannerTile extends StatelessWidget {
   final int totalCount;
   final int completedCount;
   final VoidCallback onTapCard;
-  final VoidCallback onQuickAdd;
-  final String quickAddTooltip;
   final List<Widget> chips;
-  final String footerLabel;
 
   const _ModernPlannerTile({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     this.svgAsset,
     this.fallbackIcon = Icons.star_rounded,
     required this.accentColor,
@@ -376,10 +360,7 @@ class _ModernPlannerTile extends StatelessWidget {
     required this.totalCount,
     required this.completedCount,
     required this.onTapCard,
-    required this.onQuickAdd,
-    required this.quickAddTooltip,
     required this.chips,
-    required this.footerLabel,
   });
 
   @override
@@ -427,7 +408,7 @@ class _ModernPlannerTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header Row: Icon, Title, Quick "+" Action Button ──
+                // ── Header Row: Icon, Title, and Chevron Arrow ──
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -474,93 +455,60 @@ class _ModernPlannerTile extends StatelessWidget {
                               color: scheme.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            subtitle,
-                            style: TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: scheme.onSurfaceVariant,
+                          if (subtitle != null && subtitle!.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              subtitle!,
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
 
-                    // Quick "+" creation button
-                    Material(
-                      color: Colors.transparent,
-                      child: Tooltip(
-                        message: quickAddTooltip,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: onQuickAdd,
-                          child: Ink(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: accentColor.withValues(
-                                alpha: isDark ? 0.25 : 0.12,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: accentColor.withValues(alpha: 0.35),
-                                width: 1.0,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.add_rounded,
-                              color: accentColor,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 6),
-
-                    // Forward arrow indicator
+                    // Forward arrow indicator to visit
                     Icon(
                       Icons.chevron_right_rounded,
                       color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                      size: 22,
+                      size: 26,
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                if (chips.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  // ── Interactive Chips Row ──
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: chips,
+                  ),
+                ],
 
-                // ── Interactive Chips Row ──
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: chips,
-                ),
-
-                const SizedBox(height: 14),
-
-                // ── Progress Bar & Ratio ──
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          totalCount > 0
-                              ? '$completedCount of $totalCount completed'
-                              : 'No items scheduled for this date',
-                          style: TextStyle(
-                            fontFamily: 'Quicksand',
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onSurfaceVariant,
+                // ── Progress Bar & Ratio (only shown when there are items) ──
+                if (totalCount > 0) ...[
+                  const SizedBox(height: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '$completedCount of $totalCount completed',
+                            style: TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                        if (totalCount > 0)
                           Text(
                             '${(progressRatio * 100).toInt()}%',
                             style: TextStyle(
@@ -570,58 +518,23 @@ class _ModernPlannerTile extends StatelessWidget {
                               color: accentColor,
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: progressRatio,
-                        minHeight: 5,
-                        backgroundColor: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : accentColor.withValues(alpha: 0.12),
-                        valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // ── Bottom Action Hint ──
-                Row(
-                  children: [
-                    Icon(
-                      Icons.touch_app_outlined,
-                      size: 13,
-                      color: accentColor.withValues(alpha: 0.75),
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        footerLabel,
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: accentColor.withValues(
-                            alpha: isDark ? 0.9 : 0.8,
-                          ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: progressRatio,
+                          minHeight: 5,
+                          backgroundColor: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : accentColor.withValues(alpha: 0.12),
+                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                         ),
                       ),
-                    ),
-                    Text(
-                      'Details →',
-                      style: TextStyle(
-                        fontFamily: 'Quicksand',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: accentColor,
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

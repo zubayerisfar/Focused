@@ -7,6 +7,7 @@ import '../../tasks/models/task.dart';
 import '../../settings/providers/cloud_sync_provider.dart';
 import '../../tasks/providers/task_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_banner_ad_widget.dart';
 import '../../habits/views/habit_planner_body.dart';
 import '../../reminders/views/reminders_planner_body.dart';
 import 'planner_hub_body.dart';
@@ -69,6 +70,7 @@ class PlannerScreenState extends State<PlannerScreen> {
     final selectedBackground = isDark
         ? accent.withValues(alpha: 0.30)
         : accent.withValues(alpha: 0.14);
+    final bg = baseTheme.scaffoldBackgroundColor;
 
     final plannerTheme = baseTheme.copyWith(
       colorScheme: baseTheme.colorScheme.copyWith(
@@ -76,6 +78,9 @@ class PlannerScreenState extends State<PlannerScreen> {
         primaryContainer: selectedBackground,
       ),
     );
+
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final navBarOffset = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14);
 
     return PopScope(
       canPop: _area == PlannerArea.hub,
@@ -125,7 +130,15 @@ class PlannerScreenState extends State<PlannerScreen> {
           body: SafeArea(
             top: _area != PlannerArea.hub,
             bottom: false,
-            child: _buildAreaBody(),
+            child: Column(
+              children: [
+                Expanded(child: SizedBox.expand(child: _buildAreaBody())),
+                if (_area != PlannerArea.tasks)
+                  AppBannerAdWidget(
+                    margin: EdgeInsets.fromLTRB(0, 6, 0, navBarOffset + 8),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
