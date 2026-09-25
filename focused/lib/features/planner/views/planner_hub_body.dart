@@ -87,8 +87,11 @@ class PlannerHubBody extends StatelessWidget {
         ? 'Today, ${DateFormat('d MMMM').format(selectedDate)}'
         : DateFormat('EEEE, d MMMM').format(selectedDate);
 
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomNavClearance = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14) + 36;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 110),
+      padding: EdgeInsets.fromLTRB(18, 12, 18, bottomNavClearance),
       children: [
         // ── Top Date Filter Banner ──
         InkWell(
