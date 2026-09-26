@@ -2,14 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter/foundation.dart';
 
-import '../../focus/services/focus_analysis_storage_service.dart';
 import '../../focus/services/focus_session_storage_service.dart';
 import '../../habits/services/habit_storage_service.dart';
 import '../../streak/services/streak_goal_storage_service.dart';
 import '../../settings/services/sync_metadata_storage_service.dart';
 import '../../tasks/services/task_occurrence_completion_storage_service.dart';
 import '../../tasks/services/task_storage_service.dart';
-import '../../wellbeing/services/usage_record_storage_service.dart';
 import '../../profile/services/user_cloud_stats_storage_service.dart';
 import '../../profile/services/user_profile_storage_service.dart';
 
@@ -33,35 +31,29 @@ class AccountLifecycleService {
     required TaskOccurrenceCompletionStorageService taskCompletionStorage,
     required HabitStorageService habitStorage,
     required FocusSessionStorageService focusSessionStorage,
-    required FocusAnalysisStorageService focusAnalysisStorage,
     required UserProfileStorageService userProfileStorage,
     required StreakGoalStorageService streakGoalStorage,
     required SyncMetadataStorageService syncMetadataStorage,
     UserCloudStatsStorageService? userStatsStorage,
-    UsageRecordStorageService? usageRecordStorage,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _taskStorage = taskStorage,
        _taskCompletionStorage = taskCompletionStorage,
        _habitStorage = habitStorage,
        _focusSessionStorage = focusSessionStorage,
-       _focusAnalysisStorage = focusAnalysisStorage,
        _userProfileStorage = userProfileStorage,
        _streakGoalStorage = streakGoalStorage,
        _syncMetadataStorage = syncMetadataStorage,
-       _userStatsStorage = userStatsStorage,
-       _usageRecordStorage = usageRecordStorage;
+       _userStatsStorage = userStatsStorage;
 
   final FirebaseFirestore _firestore;
   final TaskStorageService _taskStorage;
   final TaskOccurrenceCompletionStorageService _taskCompletionStorage;
   final HabitStorageService _habitStorage;
   final FocusSessionStorageService _focusSessionStorage;
-  final FocusAnalysisStorageService _focusAnalysisStorage;
   final UserProfileStorageService _userProfileStorage;
   final StreakGoalStorageService _streakGoalStorage;
   final SyncMetadataStorageService _syncMetadataStorage;
   final UserCloudStatsStorageService? _userStatsStorage;
-  final UsageRecordStorageService? _usageRecordStorage;
 
   /// Checks whether an account is active or has been marked deactivated.
   Future<AccountStatus> checkAccountStatus(String uid) async {
@@ -189,12 +181,6 @@ class AccountLifecycleService {
     }
 
     try {
-      await _focusAnalysisStorage.clearAll();
-    } catch (e) {
-      debugPrint('Error clearing focus analyses: $e');
-    }
-
-    try {
       await _userProfileStorage.clearProfile();
     } catch (e) {
       debugPrint('Error clearing profile: $e');
@@ -217,14 +203,6 @@ class AccountLifecycleService {
       await _userStatsStorage?.clearAll();
     } catch (e) {
       debugPrint('Error clearing user stats: $e');
-    }
-
-    if (wipeAllUsage && _usageRecordStorage != null) {
-      try {
-        await _usageRecordStorage.clearAll();
-      } catch (e) {
-        debugPrint('Error clearing usage records: $e');
-      }
     }
   }
 }

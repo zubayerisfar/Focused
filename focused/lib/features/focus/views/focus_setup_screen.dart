@@ -180,14 +180,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
                   value: '$_breakMinutes min',
                   onTap: _showBreakDurationPicker,
                 ),
-
-                const Divider(height: 1),
-
-                _SettingRow(
-                  title: 'Distraction alert',
-                  value: '$_guardWarningSeconds sec',
-                  onTap: _showGuardDelayPicker,
-                ),
               ],
             ),
           ),
@@ -426,20 +418,6 @@ class _FocusSetupScreenState extends State<FocusSetupScreen> {
       onSelected: (value) {
         setState(() {
           _breakMinutes = int.parse(value);
-        });
-      },
-    );
-  }
-
-  void _showGuardDelayPicker() {
-    _showOptions(
-      title: 'Distraction alert delay',
-      options: const ['10', '15', '30', '45', '60', '120'],
-      displayText: (value) =>
-          '$value sec${value == '30' ? ' (Recommended)' : ''}',
-      onSelected: (value) {
-        setState(() {
-          _guardWarningSeconds = int.parse(value);
         });
       },
     );

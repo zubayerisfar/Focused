@@ -12,7 +12,7 @@ String _formatDuration(Duration duration) {
   return '${duration.inMinutes}m';
 }
 
-/// Glossy Glass Daily Focus & Progress Card (Without digital wellbeing / app usage)
+/// Glossy Glass Daily Focus & Progress Card
 class DailyOverviewCard extends StatelessWidget {
   final Duration focusedToday;
   final double? focusComparisonPercent;

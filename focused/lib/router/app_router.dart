@@ -23,7 +23,6 @@ import '../features/planner/views/planner_hub_body.dart';
 import '../features/profile/views/badges_screen.dart';
 import '../features/profile/views/profile_screen.dart';
 import '../features/reminders/views/reminder_edit_screen.dart';
-import '../features/settings/views/notification_access_screen.dart';
 import '../features/settings/views/notification_permission_screen.dart';
 import '../features/settings/views/cloud_sync_screen.dart';
 import '../features/settings/views/settings_screen.dart';
@@ -186,10 +185,6 @@ GoRouter createAppRouter({
       GoRoute(
         path: '/settings/notification-permission',
         builder: (context, state) => const NotificationPermissionScreen(),
-      ),
-      GoRoute(
-        path: '/settings/notification-access',
-        builder: (context, state) => const NotificationAccessScreen(),
       ),
       GoRoute(
         path: '/devices',

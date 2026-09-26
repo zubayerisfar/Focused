@@ -719,7 +719,7 @@ class SettingsScreen extends StatelessWidget {
         return AlertDialog(
           title: const Text('Sign out?'),
           content: const Text(
-            'This signs you out of your Focused account. Your existing local productivity data and local Digital Wellbeing history are not deleted.',
+            'This signs you out of your Focused account. Your existing local productivity data is not deleted.',
           ),
           actions: [
             TextButton(

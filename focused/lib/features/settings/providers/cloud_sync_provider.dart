@@ -3,7 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../wellbeing/services/android_installation_info_service.dart';
+import '../../../core/services/device_info_service.dart';
 import '../services/cloud_sync_service.dart';
 export '../services/cloud_sync_service.dart'
     show CloudSyncMode, CloudSyncResult;
@@ -76,7 +76,7 @@ class CloudSyncProvider extends ChangeNotifier {
     _connectivityService.isOnlineNotifier.addListener(_onConnectivityChanged);
     _isOffline = !_connectivityService.isOnlineNotifier.value;
     _deviceId = await _metadataStorage.getOrCreateDeviceId();
-    _deviceName = await AndroidInstallationInfoService().friendlyDeviceName();
+    _deviceName = await DeviceInfoService().friendlyDeviceName();
     _observedUid = _accountProvider.user?.uid;
     _accountProvider.addListener(_handleAccountChanged);
     await _refreshRegistrationState();

@@ -25,7 +25,7 @@ class _DeactivateAccountSheetState extends State<DeactivateAccountSheet> {
     'Taking a temporary break from tracking',
     'Switching to another productivity app',
     'Too many notifications or alerts',
-    'Privacy or digital wellbeing concerns',
+    'Privacy concerns',
     'Other reason',
   ];
 

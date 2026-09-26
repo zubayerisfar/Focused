@@ -34,8 +34,6 @@ class AndroidDeviceIdentity {
     final makerLower = maker.toLowerCase();
     final brandLower = cleanBrand.toLowerCase();
 
-    // Many OEMs already include their name in Build.MODEL, for example
-    // "Infinix X6833B". Avoid producing "Infinix Infinix X6833B".
     if (modelLower.startsWith(makerLower) ||
         (brandLower.isNotEmpty && modelLower.startsWith(brandLower))) {
       return cleanModel;
@@ -52,47 +50,33 @@ class AndroidDeviceIdentity {
   }
 }
 
-class AndroidInstallationInfoService {
+class DeviceInfoService {
   static const MethodChannel _channel = MethodChannel(
     'focused/installation_info',
   );
 
-  Future<DateTime?> firstInstallTime() async {
+  Future<AndroidDeviceIdentity?> getDeviceIdentity() async {
     if (!Platform.isAndroid) return null;
-
     try {
-      final millis = await _channel.invokeMethod<int>('getFirstInstallTimeMillis');
-      if (millis == null || millis <= 0) return null;
-      return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
-    } on PlatformException {
-      return null;
-    } on MissingPluginException {
-      return null;
-    }
-  }
-
-  Future<AndroidDeviceIdentity?> deviceIdentity() async {
-    if (!Platform.isAndroid) return null;
-
-    try {
-      final raw = await _channel.invokeMapMethod<String, dynamic>(
+      final data = await _channel.invokeMapMethod<String, dynamic>(
         'getDeviceIdentity',
       );
-      if (raw == null) return null;
+      if (data == null) return null;
       return AndroidDeviceIdentity(
-        manufacturer: (raw['manufacturer'] as String?) ?? '',
-        brand: (raw['brand'] as String?) ?? '',
-        model: (raw['model'] as String?) ?? '',
+        manufacturer: (data['manufacturer'] as String?) ?? '',
+        brand: (data['brand'] as String?) ?? '',
+        model: (data['model'] as String?) ?? '',
       );
-    } on PlatformException {
-      return null;
-    } on MissingPluginException {
+    } catch (_) {
       return null;
     }
   }
 
-  Future<String?> friendlyDeviceName() async {
-    final identity = await deviceIdentity();
-    return identity?.friendlyName;
+  Future<String> friendlyDeviceName() async {
+    if (!Platform.isAndroid) {
+      return Platform.isIOS ? 'iPhone/iPad' : 'Focused device';
+    }
+    final identity = await getDeviceIdentity();
+    return identity?.friendlyName ?? 'Android device';
   }
 }

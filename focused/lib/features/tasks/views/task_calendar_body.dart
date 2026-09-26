@@ -862,7 +862,6 @@ class _PlannerTimelineTask extends StatelessWidget {
     final execution = const TaskExecutionAnalyzer().summarizeOccurrence(
       occurrence: occurrence,
       sessions: focusProvider.sessionHistory,
-      analysesBySessionId: const {},
       activeTaskId: inFocus ? focusProvider.taskId : null,
       activeOccurrenceDate: inFocus ? focusProvider.taskOccurrenceDate : null,
       activeSessionStartedAt: inFocus ? focusProvider.sessionStartedAt : null,

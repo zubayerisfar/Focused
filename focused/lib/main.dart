@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'firebase_options.dart';
 import 'features/auth/providers/account_provider.dart';
-import 'features/wellbeing/providers/app_limit_provider.dart';
 import 'features/focus/providers/focus_provider.dart';
 import 'features/habits/providers/habit_provider.dart';
 import 'features/onboarding/providers/onboarding_provider.dart';
@@ -21,7 +20,6 @@ import 'features/tasks/providers/task_provider.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/services/notification_action_handler.dart';
 import 'core/services/push_notification_service.dart';
-import 'features/wellbeing/providers/usage_provider.dart';
 import 'features/profile/models/user_profile.dart';
 import 'features/profile/providers/user_profile_provider.dart';
 import 'features/streak/providers/user_stats_provider.dart';
@@ -29,14 +27,7 @@ import 'router/app_router.dart';
 import 'features/auth/services/account_lifecycle_service.dart';
 import 'features/friends/services/friends_service.dart';
 import 'features/friends/services/task_mate_service.dart';
-import 'features/wellbeing/services/android_usage_stats_service.dart';
-import 'features/wellbeing/services/app_category_storage_service.dart';
-import 'features/wellbeing/services/app_limit_storage_service.dart';
-import 'features/wellbeing/services/app_metadata_platform_service.dart';
-import 'features/wellbeing/services/app_metadata_storage_service.dart';
 import 'features/auth/services/auth_service.dart';
-import 'features/focus/services/focus_analysis_storage_service.dart';
-import 'features/focus/services/focus_guard_platform_service.dart';
 import 'features/focus/services/focus_session_storage_service.dart';
 import 'features/habits/services/habit_notification_service.dart';
 import 'features/habits/services/habit_storage_service.dart';
@@ -48,7 +39,6 @@ import 'core/services/ad_service.dart';
 import 'features/tasks/services/task_notification_service.dart';
 import 'features/tasks/services/task_occurrence_completion_storage_service.dart';
 import 'features/tasks/services/task_storage_service.dart';
-import 'features/wellbeing/services/usage_record_storage_service.dart';
 import 'features/profile/services/user_cloud_stats_storage_service.dart';
 import 'features/profile/services/user_profile_storage_service.dart';
 
@@ -66,11 +56,6 @@ Future<void> main() async {
   final taskStorageService = TaskStorageService();
   final occurrenceCompletionStorage = TaskOccurrenceCompletionStorageService();
   final focusSessionStorageService = FocusSessionStorageService();
-  final focusAnalysisStorageService = FocusAnalysisStorageService();
-  final usageRecordStorageService = UsageRecordStorageService();
-  final appCategoryStorageService = AppCategoryStorageService();
-  final appMetadataStorageService = AppMetadataStorageService();
-  final appLimitStorageService = AppLimitStorageService();
   final habitStorageService = HabitStorageService();
   final userProfileStorageService = UserProfileStorageService();
   final onboardingStorageService = OnboardingStorageService();
@@ -81,11 +66,6 @@ Future<void> main() async {
   await taskStorageService.init();
   await occurrenceCompletionStorage.init();
   await focusSessionStorageService.init();
-  await focusAnalysisStorageService.init();
-  await usageRecordStorageService.init();
-  await appCategoryStorageService.init();
-  await appMetadataStorageService.init();
-  await appLimitStorageService.init();
   await habitStorageService.init();
   await userProfileStorageService.init();
   await onboardingStorageService.init();
@@ -95,7 +75,6 @@ Future<void> main() async {
 
   final taskNotificationService = TaskNotificationService();
   final habitNotificationService = HabitNotificationService();
-  final focusGuardService = FocusGuardPlatformService();
 
   final taskProvider = TaskProvider(
     storageService: taskStorageService,
@@ -107,7 +86,6 @@ Future<void> main() async {
 
   final focusProvider = FocusProvider(
     storageService: focusSessionStorageService,
-    focusGuardController: focusGuardService,
     onSessionFinished: (session) async {
       final taskId = session.taskId;
       if (taskId == null) {
@@ -134,38 +112,6 @@ Future<void> main() async {
     },
   );
   await focusProvider.loadStoredSessions();
-
-  final appMetadataPlatformService = AndroidAppMetadataService();
-
-  final usageProvider = UsageProvider(
-    usageStatsService: AndroidUsageStatsService(),
-    storageService: usageRecordStorageService,
-    categoryStorageService: appCategoryStorageService,
-    focusAnalysisStorageService: focusAnalysisStorageService,
-    appMetadataService: appMetadataPlatformService,
-    appMetadataStorageService: appMetadataStorageService,
-    focusGuardController: focusGuardService,
-    // No historyStartedAt clamp: reads full phone Digital Wellbeing history from 12:00 AM
-  );
-
-  final appLimitProvider = AppLimitProvider(
-    storageService: appLimitStorageService,
-  );
-  await appLimitProvider.loadStoredLimits();
-
-  usageProvider.onUsageUpdated = (usageMap) {
-    unawaited(appLimitProvider.checkUsageLimits(usageMap));
-  };
-
-  focusProvider.addSessionFinishedListener((session) {
-    unawaited(usageProvider.analyzeCompletedFocusSession(session));
-  });
-
-  await usageProvider.loadStoredCategories();
-  await usageProvider.syncFocusGuardAllowedPackages();
-  await usageProvider.loadStoredFocusAnalyses();
-  await usageProvider.loadStoredAppMetadata();
-  await usageProvider.loadStoredUsage();
 
   final habitProvider = HabitProvider(
     storageService: habitStorageService,
@@ -200,12 +146,10 @@ Future<void> main() async {
     taskCompletionStorage: occurrenceCompletionStorage,
     habitStorage: habitStorageService,
     focusSessionStorage: focusSessionStorageService,
-    focusAnalysisStorage: focusAnalysisStorageService,
     userProfileStorage: userProfileStorageService,
     streakGoalStorage: streakGoalStorageService,
     syncMetadataStorage: syncMetadataStorageService,
     userStatsStorage: userStatsStorageService,
-    usageRecordStorage: usageRecordStorageService,
   );
 
   late final AccountProvider accountProvider;
@@ -249,7 +193,6 @@ Future<void> main() async {
     userProfileStorage: userProfileStorageService,
     streakGoalStorage: streakGoalStorageService,
     userStatsStorage: userStatsStorageService,
-    usageRecordStorage: usageRecordStorageService,
   );
 
   final cloudSyncProvider = CloudSyncProvider(
@@ -359,9 +302,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: onboardingProvider),
         ChangeNotifierProvider.value(value: streakGoalProvider),
         ChangeNotifierProvider.value(value: cloudSyncProvider),
-        ChangeNotifierProvider.value(value: appLimitProvider),
         ChangeNotifierProvider.value(value: userStatsProvider),
-        ChangeNotifierProvider.value(value: usageProvider),
         ChangeNotifierProvider.value(value: focusProvider),
         ChangeNotifierProvider.value(value: taskProvider),
         ChangeNotifierProvider.value(value: habitProvider),

@@ -207,7 +207,6 @@ class _DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final summary = device.summary;
 
     return Material(
       color: scheme.surface,
@@ -228,115 +227,47 @@ class _DeviceCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: theme.dividerColor),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  _DeviceIcon(platform: device.platform),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          device.deviceName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${_platformLabel(device.platform)}${current ? ' • This device' : ''}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          device.lastSyncAt == null
-                              ? 'Registered ${_relativeTime(device.createdAt)}'
-                              : 'Last synced ${_relativeTime(device.lastSyncAt!)}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
-              ),
-              if (summary != null && summary.activeDaysCount > 0) ...[
-                const SizedBox(height: 14),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Row(
+              _DeviceIcon(platform: device.platform),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _QuickStatPill(
-                      icon: Icons.calendar_today_rounded,
-                      label: '${summary.activeDaysCount}d history',
-                    ),
-                    const SizedBox(width: 8),
-                    _QuickStatPill(
-                      icon: Icons.center_focus_strong_rounded,
-                      label: '${summary.totalFocusMinutes ~/ 60}h focus',
-                    ),
-                    const Spacer(),
                     Text(
-                      'View data →',
+                      device.deviceName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_platformLabel(device.platform)}${current ? ' • This device' : ''}',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.primary,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      device.lastSyncAt == null
+                          ? 'Registered ${_relativeTime(device.createdAt)}'
+                          : 'Last synced ${_relativeTime(device.lastSyncAt!)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
+              const SizedBox(width: 10),
+              const Icon(Icons.chevron_right_rounded),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _QuickStatPill extends StatelessWidget {
-  const _QuickStatPill({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 13,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }

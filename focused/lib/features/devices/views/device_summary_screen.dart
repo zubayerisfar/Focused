@@ -26,10 +26,10 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete device history?'),
+        title: const Text('Remove device?'),
         content: Text(
-          'Are you sure you want to delete all cloud data for "${widget.device.deviceName}"? '
-          'Its stored usage summary will be permanently removed from your account.',
+          'Are you sure you want to remove "${widget.device.deviceName}" from your account? '
+          'This device will need to sync again to be re-linked.',
         ),
         actions: [
           TextButton(
@@ -42,7 +42,7 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -58,7 +58,7 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Deleted device "${widget.device.deviceName}"'),
+              content: Text('Removed device "${widget.device.deviceName}"'),
             ),
           );
         }
@@ -66,7 +66,7 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
         if (mounted) {
           setState(() => _isDeleting = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not delete device: $error')),
+            SnackBar(content: Text('Could not remove device: $error')),
           );
         }
       }
@@ -77,7 +77,6 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final summary = widget.device.summary;
 
     return Scaffold(
       appBar: AppBar(
@@ -88,7 +87,7 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
         actions: [
           if (!widget.isCurrent)
             IconButton(
-              tooltip: 'Delete device',
+              tooltip: 'Remove device',
               icon: const Icon(Icons.delete_outline_rounded),
               onPressed: _isDeleting ? null : () => _confirmDelete(context),
             ),
@@ -100,141 +99,58 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
           _DeviceHeader(device: widget.device, isCurrent: widget.isCurrent),
           const SizedBox(height: 24),
           Text(
-            'Aggregated Usage Summary',
+            'Device Information',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Privacy-preserving high-level summary measured locally on this hardware.',
-            style: TextStyle(
-              fontSize: 13,
-              color: scheme.onSurfaceVariant,
-              height: 1.4,
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.dividerColor),
             ),
-          ),
-          const SizedBox(height: 16),
-          if (summary == null || summary.activeDaysCount == 0) ...[
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: theme.dividerColor),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, color: scheme.primary),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'No aggregated usage history is recorded for this device yet.',
-                      style: TextStyle(color: scheme.onSurfaceVariant),
-                    ),
+            child: Column(
+              children: [
+                _InfoRow(
+                  label: 'Device Name',
+                  value: widget.device.deviceName,
+                ),
+                const Divider(height: 20),
+                _InfoRow(
+                  label: 'Platform',
+                  value: widget.device.platform.toUpperCase(),
+                ),
+                const Divider(height: 20),
+                _InfoRow(
+                  label: 'Status',
+                  value: widget.device.status.toUpperCase(),
+                ),
+                const Divider(height: 20),
+                _InfoRow(
+                  label: 'Device ID',
+                  value: widget.device.deviceId,
+                  mono: true,
+                ),
+                const Divider(height: 20),
+                _InfoRow(
+                  label: 'First Linked',
+                  value: _formatDate(widget.device.createdAt),
+                ),
+                if (widget.device.lastSyncAt != null) ...[
+                  const Divider(height: 20),
+                  _InfoRow(
+                    label: 'Last Synced',
+                    value: _formatDate(widget.device.lastSyncAt!),
                   ),
                 ],
-              ),
-            ),
-          ] else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryMetricCard(
-                    icon: Icons.calendar_today_rounded,
-                    label: 'Recorded History',
-                    value: '${summary.activeDaysCount}',
-                    suffix: summary.activeDaysCount == 1 ? 'day' : 'days',
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _SummaryMetricCard(
-                    icon: Icons.access_time_rounded,
-                    label: 'Daily Screen Time',
-                    value: _formatMinutes(summary.avgDailyScreenTimeMinutes),
-                    suffix: 'avg / day',
-                    color: const Color(0xFFF59E0B),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryMetricCard(
-                    icon: Icons.center_focus_strong_rounded,
-                    label: 'Total Focused',
-                    value: _formatMinutes(summary.totalFocusMinutes),
-                    suffix: '${summary.totalFocusSessions} sessions',
-                    color: const Color(0xFF10B981),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _SummaryMetricCard(
-                    icon: Icons.bolt_rounded,
-                    label: 'Daily Focus Avg',
-                    value: _formatMinutes(summary.avgDailyFocusMinutes),
-                    suffix: 'per active day',
-                    color: const Color(0xFF8B5CF6),
-                  ),
-                ),
-              ],
-            ),
-            if (summary.mostDistractingApp != null) ...[
-              const SizedBox(height: 14),
-              _DetailCard(
-                icon: Icons.warning_amber_rounded,
-                iconColor: const Color(0xFFEF4444),
-                title: 'Most Used App',
-                value: summary.mostDistractingApp!,
-                subtitle: summary.mostDistractingAppAvgDailyMinutes != null
-                    ? 'Average ${_formatMinutes(summary.mostDistractingAppAvgDailyMinutes!)} per day'
-                    : null,
-              ),
-            ],
-            if (summary.usualFocusTime != null) ...[
-              const SizedBox(height: 12),
-              _DetailCard(
-                icon: Icons.wb_sunny_outlined,
-                iconColor: const Color(0xFFF59E0B),
-                title: 'Usual Focus Time',
-                value: summary.usualFocusTime!,
-                subtitle: 'Peak productivity window on this device',
-              ),
-            ],
-          ],
-          const SizedBox(height: 28),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.shield_outlined, size: 20, color: scheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Raw application usage timelines and notification logs remain private on the original hardware. '
-                    'Only aggregated summary metrics sync with your account.',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.45,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
           if (!widget.isCurrent) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: scheme.error,
@@ -253,7 +169,7 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
                     )
                   : const Icon(Icons.delete_outline_rounded),
               label: const Text(
-                'Delete Device History',
+                'Remove This Device',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
@@ -263,13 +179,8 @@ class _DeviceSummaryScreenState extends State<DeviceSummaryScreen> {
     );
   }
 
-  String _formatMinutes(int minutes) {
-    if (minutes <= 0) return '0m';
-    final hours = minutes ~/ 60;
-    final mins = minutes % 60;
-    if (hours == 0) return '${mins}m';
-    if (mins == 0) return '${hours}h';
-    return '${hours}h ${mins}m';
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -352,16 +263,6 @@ class _DeviceHeader extends StatelessWidget {
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  device.lastSyncAt != null
-                      ? 'Last synced ${_formatDate(device.lastSyncAt!)}'
-                      : 'Registered ${_formatDate(device.createdAt)}',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
               ],
             ),
           ),
@@ -382,148 +283,46 @@ class _DeviceHeader extends StatelessWidget {
         return Icons.smartphone_rounded;
     }
   }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
 }
 
-class _SummaryMetricCard extends StatelessWidget {
-  const _SummaryMetricCard({
-    required this.icon,
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
     required this.label,
     required this.value,
-    required this.suffix,
-    required this.color,
+    this.mono = false,
   });
 
-  final IconData icon;
   final String label;
   final String value;
-  final String suffix;
-  final Color color;
+  final bool mono;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 20),
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: scheme.onSurfaceVariant,
           ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
             value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            suffix,
-            style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailCard extends StatelessWidget {
-  const _DetailCard({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.value,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String value;
-  final String? subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              fontFamily: mono ? 'monospace' : null,
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

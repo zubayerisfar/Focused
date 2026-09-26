@@ -478,14 +478,12 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final String label;
   final IconData? icon;
-  final Widget? customIcon;
   final Color? iconColor;
 
   const _MetricCard({
     required this.value,
     required this.label,
     this.icon,
-    this.customIcon,
     this.iconColor,
   });
 
@@ -514,12 +512,11 @@ class _MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          customIcon ??
-              Icon(
-                icon!,
-                color: iconColor ?? Theme.of(context).colorScheme.primary,
-                size: 24,
-              ),
+          Icon(
+            icon ?? Icons.check_circle_outline,
+            color: iconColor ?? Theme.of(context).colorScheme.primary,
+            size: 24,
+          ),
           const SizedBox(height: 12),
           Text(
             value,
@@ -577,25 +574,8 @@ Color _priorityColor(TaskPriority priority) {
   }
 }
 
-String _formatDuration(Duration duration) {
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60);
-  if (hours > 0) {
-    return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
-  }
-  return '${duration.inMinutes}m';
-}
-
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
-
-bool _sameDate(DateTime a, DateTime b) =>
-    a.year == b.year && a.month == b.month && a.day == b.day;
-
-String _dateQuery(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}-'
-    '${value.month.toString().padLeft(2, '0')}-'
-    '${value.day.toString().padLeft(2, '0')}';
 
 void _showTaskCompletionRewardDialog(
   BuildContext context,

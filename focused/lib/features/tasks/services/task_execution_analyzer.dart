@@ -1,4 +1,3 @@
-import '../../focus/models/focus_analysis_result.dart';
 import '../../focus/models/focus_session.dart';
 import '../models/task_execution_period_summary.dart';
 import '../models/task_execution_summary.dart';
@@ -10,7 +9,6 @@ class TaskExecutionAnalyzer {
   TaskExecutionSummary summarizeOccurrence({
     required TaskOccurrence occurrence,
     required List<FocusSession> sessions,
-    required Map<String, FocusAnalysisResult> analysesBySessionId,
     String? activeTaskId,
     DateTime? activeOccurrenceDate,
     DateTime? activeSessionStartedAt,
@@ -69,69 +67,6 @@ class TaskExecutionAnalyzer {
         : unionedFocus.last.endTime;
     final activeDuration = _sumIntervals(unionedFocus);
 
-    final analyzedSessions = <FocusSession>[];
-    final missingAnalysisSessions = <FocusSession>[];
-
-    for (final session in linkedSessions) {
-      if (session.actualFocusDuration.inMicroseconds <= 0) continue;
-      if (analysesBySessionId.containsKey(session.id)) {
-        analyzedSessions.add(session);
-      } else {
-        missingAnalysisSessions.add(session);
-      }
-    }
-
-    // An active session cannot have a final UsageStats interruption analysis
-    // yet, so effective-focus metrics stay unknown until it ends.
-    final analysisComplete = !activeMatches && missingAnalysisSessions.isEmpty;
-
-    Duration? distracted;
-    Duration? effective;
-    int? interruptionCount;
-    String? topInterrupter;
-
-    if (analysisComplete) {
-      final interruptionIntervals = <FocusInterval>[];
-      final byApp = <String, Duration>{};
-      var interruptions = 0;
-
-      for (final session in analyzedSessions) {
-        final analysis = analysesBySessionId[session.id]!;
-        interruptions += analysis.interruptionCount;
-
-        for (final interruption in analysis.interruptions) {
-          interruptionIntervals.add(
-            FocusInterval(
-              startTime: interruption.startTime,
-              endTime: interruption.endTime,
-            ),
-          );
-        }
-
-        for (final entry in analysis.distractionByApp.entries) {
-          byApp.update(
-            entry.key,
-            (existing) => existing + entry.value,
-            ifAbsent: () => entry.value,
-          );
-        }
-      }
-
-      distracted = _sumIntervals(_unionIntervals(interruptionIntervals));
-      final effectiveMicroseconds =
-          activeDuration.inMicroseconds - distracted.inMicroseconds;
-      effective = Duration(
-        microseconds: effectiveMicroseconds < 0 ? 0 : effectiveMicroseconds,
-      );
-      interruptionCount = interruptions;
-
-      if (byApp.isNotEmpty) {
-        final ranked = byApp.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        topInterrupter = ranked.first.key;
-      }
-    }
-
     return TaskExecutionSummary(
       task: task,
       occurrenceDate: occurrenceDate,
@@ -140,15 +75,15 @@ class TaskExecutionAnalyzer {
       actualStart: actualStart,
       actualEnd: actualEnd,
       activeFocusDuration: activeDuration,
-      distractedDuration: distracted,
-      effectiveFocusDuration: effective,
+      distractedDuration: Duration.zero,
+      effectiveFocusDuration: activeDuration,
       sessionCount: linkedSessions.length + (activeMatches ? 1 : 0),
-      interruptionCount: interruptionCount,
-      topInterrupterApp: topInterrupter,
+      interruptionCount: 0,
+      topInterrupterApp: null,
       isCompleted: occurrence.isCompleted,
       completedAt: occurrence.completedAt,
       isActive: activeMatches,
-      focusAnalysisComplete: analysisComplete,
+      focusAnalysisComplete: true,
     );
   }
 
@@ -157,7 +92,6 @@ class TaskExecutionAnalyzer {
     required DateTime endDay,
     required List<TaskOccurrence> occurrences,
     required List<FocusSession> sessions,
-    required Map<String, FocusAnalysisResult> analysesBySessionId,
     String? activeTaskId,
     DateTime? activeOccurrenceDate,
     DateTime? activeSessionStartedAt,
@@ -170,7 +104,6 @@ class TaskExecutionAnalyzer {
       return summarizeOccurrence(
         occurrence: occurrence,
         sessions: sessions,
-        analysesBySessionId: analysesBySessionId,
         activeTaskId: activeTaskId,
         activeOccurrenceDate: activeOccurrenceDate,
         activeSessionStartedAt: activeSessionStartedAt,
