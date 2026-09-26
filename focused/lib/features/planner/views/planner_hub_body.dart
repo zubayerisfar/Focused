@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/widgets/app_banner_ad_widget.dart';
 import '../../habits/providers/habit_provider.dart';
 import '../../tasks/models/task.dart';
 import '../../tasks/providers/task_provider.dart';
@@ -130,7 +131,7 @@ class PlannerHubBody extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
 
         // ── TILE 2: Reminders & Alerts ──
         _ModernPlannerTile(
@@ -171,7 +172,7 @@ class PlannerHubBody extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
 
         // ── TILE 3: Habits & Routines ──
         _ModernPlannerTile(
@@ -210,13 +211,20 @@ class PlannerHubBody extends StatelessWidget {
               ),
           ],
         ),
+
+        const SizedBox(height: 18),
+
+        // ── Centered Banner Ad (Positioned Down Below Tiles) ──
+        const AppBannerAdWidget(
+          margin: EdgeInsets.only(top: 4, bottom: 10),
+        ),
       ],
     );
   }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODERN PLANNER TILE (CLEAN & INFORMATIVE)
+// MODERN EXPANSIVE PLANNER TILE (TALLER & CLEAN)
 // ══════════════════════════════════════════════════════════════════════════════
 class _ModernPlannerTile extends StatelessWidget {
   final String title;
@@ -253,50 +261,52 @@ class _ModernPlannerTile extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(26),
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         onTap: onTap,
         child: Container(
+          constraints: const BoxConstraints(minHeight: 148),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: gradientColors,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(26),
             border: Border.all(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.09)
-                  : accentColor.withValues(alpha: 0.20),
+                  : accentColor.withValues(alpha: 0.22),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
                 color: isDark
-                    ? Colors.black.withValues(alpha: 0.30)
-                    : accentColor.withValues(alpha: 0.08),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
+                    ? Colors.black.withValues(alpha: 0.35)
+                    : accentColor.withValues(alpha: 0.09),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // ── Header: Icon, Title, and Chevron Arrow ──
+              // ── Header: Icon, Title, and Rounded Chevron Button ──
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
                       color: accentColor.withValues(
                         alpha: isDark ? 0.22 : 0.14,
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: accentColor.withValues(alpha: 0.25),
                         width: 1.0,
@@ -306,85 +316,101 @@ class _ModernPlannerTile extends StatelessWidget {
                     child: svgAsset != null
                         ? SvgPicture.asset(
                             svgAsset!,
-                            width: 28,
-                            height: 28,
+                            width: 30,
+                            height: 30,
                             fit: BoxFit.contain,
                             placeholderBuilder: (_) => Icon(
                               fallbackIcon,
                               color: accentColor,
-                              size: 24,
+                              size: 26,
                             ),
                           )
-                        : Icon(fallbackIcon, color: accentColor, size: 24),
+                        : Icon(fallbackIcon, color: accentColor, size: 26),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       title,
                       style: TextStyle(
                         fontFamily: 'Quicksand',
-                        fontSize: 18,
+                        fontSize: 19.5,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.3,
                         color: scheme.onSurface,
                       ),
                     ),
                   ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                    size: 26,
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : accentColor.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      color: accentColor,
+                      size: 24,
+                    ),
                   ),
                 ],
               ),
 
-              if (chips.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                // ── Informative Chips ──
+              const SizedBox(height: 18),
+
+              // ── Informative Chips ──
+              if (chips.isNotEmpty)
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 9,
+                  runSpacing: 9,
                   children: chips,
                 ),
-              ],
 
               // ── Progress Bar (only shown when there are items) ──
               if (totalCount > 0) ...[
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                const SizedBox(height: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '$completedCount of $totalCount completed',
-                      style: TextStyle(
-                        fontFamily: 'Quicksand',
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurfaceVariant,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '$completedCount of $totalCount completed',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          '${(progressRatio * 100).toInt()}%',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      '${(progressRatio * 100).toInt()}%',
-                      style: TextStyle(
-                        fontFamily: 'Quicksand',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: accentColor,
+                    const SizedBox(height: 7),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: progressRatio,
+                        minHeight: 6,
+                        backgroundColor: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : accentColor.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: progressRatio,
-                    minHeight: 5,
-                    backgroundColor: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : accentColor.withValues(alpha: 0.12),
-                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                  ),
                 ),
               ],
             ],
@@ -416,7 +442,7 @@ class _TileChip extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6.5),
       decoration: BoxDecoration(
         color: isHighImpact
             ? color.withValues(alpha: isDark ? 0.25 : 0.15)
@@ -432,13 +458,13 @@ class _TileChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 5),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
               fontFamily: 'Quicksand',
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               color: isDark ? Colors.white : color.withValues(alpha: 0.95),
             ),
