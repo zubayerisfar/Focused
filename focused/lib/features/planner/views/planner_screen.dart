@@ -218,9 +218,7 @@ class PlannerScreenState extends State<PlannerScreen> {
     if (!sync.canSync) return;
 
     try {
-      final result = await sync.syncNow(
-        isManual: true,
-      );
+      final result = await sync.syncNow(isManual: true);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
