@@ -23,9 +23,7 @@ class PlannerHubBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final taskProvider = context.watch<TaskProvider>();
     final habitProvider = context.watch<HabitProvider>();
@@ -81,123 +79,15 @@ class PlannerHubBody extends StatelessWidget {
         ? 0.0
         : (completedHabits / dateHabits.length).clamp(0.0, 1.0);
 
-    final isToday = _isSameDay(selectedDate, DateTime.now());
-    final dateDisplay = isToday
-        ? 'Today, ${DateFormat('d MMMM').format(selectedDate)}'
-        : DateFormat('EEEE, d MMMM').format(selectedDate);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomNavClearance = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14) + 36;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 110),
+      padding: EdgeInsets.fromLTRB(18, 14, 18, bottomNavClearance),
       children: [
-        // ── Top Date Filter Banner ──
-        InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onPickDate,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF1E2433).withValues(alpha: 0.85)
-                  : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFF6366F1).withValues(alpha: 0.15),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.calendar_month_rounded,
-                    color: Color(0xFF6366F1),
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'PLANNING HORIZON',
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                          color: isDark
-                              ? const Color(0xFFA5B4FC)
-                              : const Color(0xFF6366F1),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        dateDisplay,
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: scheme.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Change',
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 16,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 18),
-
-        // ══════════════════════════════════════════════════════════════
-        // TILE 1: Tasks & Schedule
-        // ══════════════════════════════════════════════════════════════
+        // ── TILE 1: Tasks & Schedule ──
         _ModernPlannerTile(
           title: 'Tasks & Schedule',
-          subtitle: 'Daily agenda, time blocks, and timeline',
           svgAsset: 'assets/planner_page_icons/task_icon.svg',
           fallbackIcon: Icons.calendar_today_rounded,
           accentColor: const Color(0xFF6366F1),
@@ -206,7 +96,7 @@ class PlannerHubBody extends StatelessWidget {
               : [const Color(0xFFF3F2FF), const Color(0xFFFAF9FF)],
           totalCount: dateTasks.length,
           completedCount: completedTasks,
-          onTapCard: () => onSelectArea(PlannerArea.tasks),
+          onTap: () => onSelectArea(PlannerArea.tasks),
           chips: [
             _TileChip(
               icon: Icons.checklist_rounded,
@@ -242,12 +132,9 @@ class PlannerHubBody extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // ══════════════════════════════════════════════════════════════
-        // TILE 2: Reminders & Alerts
-        // ══════════════════════════════════════════════════════════════
+        // ── TILE 2: Reminders & Alerts ──
         _ModernPlannerTile(
           title: 'Reminders & Alerts',
-          subtitle: null,
           svgAsset: 'assets/planner_page_icons/reminder_icon.svg',
           fallbackIcon: Icons.notifications_active_rounded,
           accentColor: const Color(0xFFFF9600),
@@ -256,7 +143,7 @@ class PlannerHubBody extends StatelessWidget {
               : [const Color(0xFFFFF7ED), const Color(0xFFFFFDF9)],
           totalCount: dateReminders.length,
           completedCount: completedReminders,
-          onTapCard: () => onSelectArea(PlannerArea.reminders),
+          onTap: () => onSelectArea(PlannerArea.reminders),
           chips: [
             _TileChip(
               icon: Icons.notifications_active_rounded,
@@ -286,12 +173,9 @@ class PlannerHubBody extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // ══════════════════════════════════════════════════════════════
-        // TILE 3: Habits & Routines
-        // ══════════════════════════════════════════════════════════════
+        // ── TILE 3: Habits & Routines ──
         _ModernPlannerTile(
           title: 'Habits & Routines',
-          subtitle: 'Daily streak building, recurring check-ins, and goals',
           svgAsset: 'assets/planner_page_icons/habit_icon.svg',
           fallbackIcon: Icons.repeat_rounded,
           accentColor: const Color(0xFF10B981),
@@ -300,7 +184,7 @@ class PlannerHubBody extends StatelessWidget {
               : [const Color(0xFFECFDF5), const Color(0xFFF9FFFC)],
           totalCount: dateHabits.length,
           completedCount: completedHabits,
-          onTapCard: () => onSelectArea(PlannerArea.habits),
+          onTap: () => onSelectArea(PlannerArea.habits),
           chips: [
             _TileChip(
               icon: Icons.repeat_rounded,
@@ -329,37 +213,31 @@ class PlannerHubBody extends StatelessWidget {
       ],
     );
   }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODERN EXPANSIVE PLANNER TILE
+// MODERN PLANNER TILE (CLEAN & INFORMATIVE)
 // ══════════════════════════════════════════════════════════════════════════════
 class _ModernPlannerTile extends StatelessWidget {
   final String title;
-  final String? subtitle;
   final String? svgAsset;
   final IconData fallbackIcon;
   final Color accentColor;
   final List<Color> gradientColors;
   final int totalCount;
   final int completedCount;
-  final VoidCallback onTapCard;
+  final VoidCallback onTap;
   final List<Widget> chips;
 
   const _ModernPlannerTile({
     required this.title,
-    this.subtitle,
     this.svgAsset,
     this.fallbackIcon = Icons.star_rounded,
     required this.accentColor,
     required this.gradientColors,
     required this.totalCount,
     required this.completedCount,
-    required this.onTapCard,
+    required this.onTap,
     required this.chips,
   });
 
@@ -375,18 +253,18 @@ class _ModernPlannerTile extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(26),
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
-        borderRadius: BorderRadius.circular(26),
-        onTap: onTapCard,
-        child: Ink(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: gradientColors,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.09)
@@ -396,147 +274,120 @@ class _ModernPlannerTile extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: isDark
-                    ? Colors.black.withValues(alpha: 0.35)
+                    ? Colors.black.withValues(alpha: 0.30)
                     : accentColor.withValues(alpha: 0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header Row: Icon, Title, and Chevron Arrow ──
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: accentColor.withValues(
-                          alpha: isDark ? 0.22 : 0.14,
-                        ),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: accentColor.withValues(alpha: 0.25),
-                          width: 1.0,
-                        ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header: Icon, Title, and Chevron Arrow ──
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(
+                        alpha: isDark ? 0.22 : 0.14,
                       ),
-                      alignment: Alignment.center,
-                      child: svgAsset != null
-                          ? SvgPicture.asset(
-                              svgAsset!,
-                              width: 32,
-                              height: 32,
-                              fit: BoxFit.contain,
-                              placeholderBuilder: (_) => Icon(
-                                fallbackIcon,
-                                color: accentColor,
-                                size: 28,
-                              ),
-                            )
-                          : Icon(fallbackIcon, color: accentColor, size: 28),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: 18.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.3,
-                              color: scheme.onSurface,
-                            ),
-                          ),
-                          if (subtitle != null && subtitle!.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              subtitle!,
-                              style: TextStyle(
-                                fontFamily: 'Quicksand',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: accentColor.withValues(alpha: 0.25),
+                        width: 1.0,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    alignment: Alignment.center,
+                    child: svgAsset != null
+                        ? SvgPicture.asset(
+                            svgAsset!,
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.contain,
+                            placeholderBuilder: (_) => Icon(
+                              fallbackIcon,
+                              color: accentColor,
+                              size: 24,
+                            ),
+                          )
+                        : Icon(fallbackIcon, color: accentColor, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    size: 26,
+                  ),
+                ],
+              ),
 
-                    // Forward arrow indicator to visit
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-                      size: 26,
+              if (chips.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                // ── Informative Chips ──
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: chips,
+                ),
+              ],
+
+              // ── Progress Bar (only shown when there are items) ──
+              if (totalCount > 0) ...[
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '$completedCount of $totalCount completed',
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '${(progressRatio * 100).toInt()}%',
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                      ),
                     ),
                   ],
                 ),
-
-                if (chips.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  // ── Interactive Chips Row ──
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: chips,
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progressRatio,
+                    minHeight: 5,
+                    backgroundColor: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : accentColor.withValues(alpha: 0.12),
+                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                   ),
-                ],
-
-                // ── Progress Bar & Ratio (only shown when there are items) ──
-                if (totalCount > 0) ...[
-                  const SizedBox(height: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '$completedCount of $totalCount completed',
-                            style: TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            '${(progressRatio * 100).toInt()}%',
-                            style: TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: accentColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: progressRatio,
-                          minHeight: 5,
-                          backgroundColor: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : accentColor.withValues(alpha: 0.12),
-                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
