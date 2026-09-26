@@ -93,6 +93,7 @@ class SyncMetadataStorageService {
   static const _metadataBoxName = 'focused_sync_metadata_v1';
   static const _installationBoxName = 'focused_installation_v1';
   static const _deviceIdKey = 'device_id';
+  static const _usageTrackingStartedAtKey = 'usage_tracking_started_at';
   static const _boundAccountUidKey = 'bound_account_uid';
 
   Box<dynamic>? _metadataBox;
@@ -117,6 +118,36 @@ class SyncMetadataStorageService {
         '${values.map((value) => value.toRadixString(16).padLeft(8, '0')).join()}';
     await box.put(_deviceIdKey, id);
     return id;
+  }
+
+  Future<DateTime> getOrCreateUsageTrackingStartedAt({
+    DateTime? installationStartedAt,
+  }) async {
+    final box = _requireInstallationBox();
+    final installTime = installationStartedAt?.toUtc();
+    final raw = box.get(_usageTrackingStartedAtKey);
+
+    if (raw is String) {
+      final parsed = DateTime.tryParse(raw)?.toUtc();
+      if (parsed != null) {
+        // Migration repair: an earlier build created this key at upgrade time,
+        // which hid valid UsageStats from the same phone. Android's package
+        // firstInstallTime survives app updates but resets after uninstall, so
+        // it is the correct boundary for "this installation".
+        if (installTime != null && installTime.isBefore(parsed)) {
+          await box.put(
+            _usageTrackingStartedAtKey,
+            installTime.toIso8601String(),
+          );
+          return installTime;
+        }
+        return parsed;
+      }
+    }
+
+    final initial = installTime ?? DateTime.now().toUtc();
+    await box.put(_usageTrackingStartedAtKey, initial.toIso8601String());
+    return initial;
   }
 
   String? loadBoundAccountUid() {

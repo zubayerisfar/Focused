@@ -117,6 +117,7 @@ class AccountLifecycleService {
       'habitCompletions',
       'focusSessions',
       'profile',
+      'devices',
       'settings',
     ];
 
@@ -146,7 +147,7 @@ class AccountLifecycleService {
     }
 
     // 3. Clear local Hive data
-    await clearLocalWorkspaceData();
+    await clearLocalWorkspaceData(wipeAllUsage: true);
 
     // 4. Delete the Firebase Auth User
     await firebaseUser.delete();
@@ -154,7 +155,7 @@ class AccountLifecycleService {
 
   /// Clears all local workspace data (tasks, completions, habits, focus sessions,
   /// profile, streak goals, sync metadata) to prevent data leakage across accounts.
-  Future<void> clearLocalWorkspaceData() async {
+  Future<void> clearLocalWorkspaceData({bool wipeAllUsage = false}) async {
     try {
       await _taskStorage.clearAllTasks();
     } catch (e) {
