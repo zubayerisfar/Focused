@@ -22,9 +22,14 @@ class PlannerHubBody extends StatelessWidget {
     required this.onPickDate,
   });
 
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     final taskProvider = context.watch<TaskProvider>();
     final habitProvider = context.watch<HabitProvider>();
@@ -80,12 +85,94 @@ class PlannerHubBody extends StatelessWidget {
         ? 0.0
         : (completedHabits / dateHabits.length).clamp(0.0, 1.0);
 
+    final isToday = _isSameDay(selectedDate, DateTime.now());
+    final dateDisplay = isToday
+        ? 'Today, ${DateFormat('d MMMM').format(selectedDate)}'
+        : DateFormat('EEEE, d MMMM').format(selectedDate);
+
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final bottomNavClearance = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14) + 24;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(18, 14, 18, bottomNavClearance),
+      padding: EdgeInsets.fromLTRB(18, 10, 18, bottomNavClearance),
       children: [
+        // ── Top Date Filter Banner ──
+        InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onPickDate,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E2433).withValues(alpha: 0.85)
+                  : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFF6366F1).withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: Color(0xFF6366F1),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    dateDisplay,
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.20 : 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Change',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF6366F1),
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF6366F1),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
         // ── TILE 1: Tasks & Schedule ──
         _ModernPlannerTile(
           title: 'Tasks & Schedule',
@@ -131,7 +218,7 @@ class PlannerHubBody extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
 
         // ── TILE 2: Reminders & Alerts ──
         _ModernPlannerTile(
@@ -172,7 +259,7 @@ class PlannerHubBody extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
 
         // ── TILE 3: Habits & Routines ──
         _ModernPlannerTile(
@@ -212,9 +299,9 @@ class PlannerHubBody extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
 
-        // ── Centered Banner Ad: Placed cleanly below all tiles ──
+        // ── Centered Banner Ad: Cleanly positioned below all tiles ──
         const AppBannerAdWidget(
           margin: EdgeInsets.only(top: 4, bottom: 8),
         ),
@@ -266,7 +353,7 @@ class _ModernPlannerTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 155),
+          constraints: const BoxConstraints(minHeight: 162),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: gradientColors,
@@ -276,7 +363,7 @@ class _ModernPlannerTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(26),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.09)
+                  ? Colors.white.withValues(alpha: 0.10)
                   : accentColor.withValues(alpha: 0.22),
               width: 1.2,
             ),
@@ -285,17 +372,17 @@ class _ModernPlannerTile extends StatelessWidget {
                 color: isDark
                     ? Colors.black.withValues(alpha: 0.35)
                     : accentColor.withValues(alpha: 0.09),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+                blurRadius: 16,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // ── Header: Icon, Title, and Rounded Chevron Button ──
+              // ── Header: Icon, Bold Title, and Circular Chevron Button ──
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -304,11 +391,11 @@ class _ModernPlannerTile extends StatelessWidget {
                     height: 52,
                     decoration: BoxDecoration(
                       color: accentColor.withValues(
-                        alpha: isDark ? 0.22 : 0.14,
+                        alpha: isDark ? 0.24 : 0.15,
                       ),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: accentColor.withValues(alpha: 0.25),
+                        color: accentColor.withValues(alpha: 0.28),
                         width: 1.0,
                       ),
                     ),
