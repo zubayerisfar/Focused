@@ -81,7 +81,7 @@ class PlannerHubBody extends StatelessWidget {
         : (completedHabits / dateHabits.length).clamp(0.0, 1.0);
 
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final bottomNavClearance = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14) + 36;
+    final bottomNavClearance = 66.0 + (bottomInset > 0 ? bottomInset + 4 : 14) + 24;
 
     return ListView(
       padding: EdgeInsets.fromLTRB(18, 14, 18, bottomNavClearance),
@@ -214,9 +214,9 @@ class PlannerHubBody extends StatelessWidget {
 
         const SizedBox(height: 18),
 
-        // ── Centered Banner Ad (Positioned Down Below Tiles) ──
+        // ── Centered Banner Ad: Placed cleanly below all tiles ──
         const AppBannerAdWidget(
-          margin: EdgeInsets.only(top: 4, bottom: 10),
+          margin: EdgeInsets.only(top: 4, bottom: 8),
         ),
       ],
     );
@@ -224,7 +224,7 @@ class PlannerHubBody extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODERN EXPANSIVE PLANNER TILE (TALLER & CLEAN)
+// MODERN EXPANSIVE PLANNER TILE (TALLER & FULL SCREEN COVERAGE)
 // ══════════════════════════════════════════════════════════════════════════════
 class _ModernPlannerTile extends StatelessWidget {
   final String title;
@@ -266,7 +266,7 @@ class _ModernPlannerTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 148),
+          constraints: const BoxConstraints(minHeight: 155),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: gradientColors,
@@ -290,7 +290,7 @@ class _ModernPlannerTile extends StatelessWidget {
               ),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+          padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -333,7 +333,7 @@ class _ModernPlannerTile extends StatelessWidget {
                       title,
                       style: TextStyle(
                         fontFamily: 'Quicksand',
-                        fontSize: 19.5,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.3,
                         color: scheme.onSurface,
@@ -341,8 +341,8 @@ class _ModernPlannerTile extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       color: isDark
                           ? Colors.white.withValues(alpha: 0.06)
@@ -371,7 +371,7 @@ class _ModernPlannerTile extends StatelessWidget {
 
               // ── Progress Bar (only shown when there are items) ──
               if (totalCount > 0) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -398,7 +398,7 @@ class _ModernPlannerTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
@@ -442,7 +442,7 @@ class _TileChip extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6.5),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: isHighImpact
             ? color.withValues(alpha: isDark ? 0.25 : 0.15)
