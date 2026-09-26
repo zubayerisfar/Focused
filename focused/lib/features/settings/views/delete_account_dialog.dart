@@ -136,7 +136,6 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
                   _bulletItem(
                     'Focus session history and productivity analytics',
                   ),
-                  _bulletItem('Application usage and screen time history'),
                   _bulletItem('Account profile and login credentials'),
                 ],
               ),

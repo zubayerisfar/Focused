@@ -406,14 +406,6 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 onTap: () => context.push('/settings/cloud-sync'),
               ),
-              _SettingsTile(
-                icon: FontAwesomeIcons.laptop,
-                title: 'My devices',
-                subtitle: cloudSync.devices.isEmpty
-                    ? 'View registered installations'
-                    : '${cloudSync.devices.length} registered',
-                onTap: () => context.push('/devices'),
-              ),
             ],
           ),
           _SettingsSection(

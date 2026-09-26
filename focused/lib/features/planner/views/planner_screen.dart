@@ -219,7 +219,6 @@ class PlannerScreenState extends State<PlannerScreen> {
 
     try {
       final result = await sync.syncNow(
-        mode: CloudSyncMode.uploadOnly,
         isManual: true,
       );
       if (!mounted) return;

@@ -50,40 +50,32 @@ void main() {
         final streak100Badge = badges100.firstWhere(
           (b) => b.id == 'streak_100',
         );
-        final streak1000Badge = badges100.firstWhere(
-          (b) => b.id == 'streak_1000',
+        final streak365Badge100 = badges100.firstWhere(
+          (b) => b.id == 'streak_365',
         );
 
         expect(streak100Badge.achieved, isTrue);
-        expect(streak1000Badge.achieved, isFalse);
+        expect(streak365Badge100.achieved, isFalse);
 
-        // Change from 100 to 1000 days (e.g. from Firebase Cloud Sync)
-        final badges1000 = achievementService.buildBadges(
-          longestStreak: 1000,
+        // Change from 100 to 365 days (e.g. from Firebase Cloud Sync)
+        final badges365 = achievementService.buildBadges(
+          longestStreak: 365,
           longestLinkedTaskSession: Duration.zero,
           totalFocus: const Duration(hours: 100),
         );
 
-        final streak300Badge = badges1000.firstWhere(
+        final streak300Badge = badges365.firstWhere(
           (b) => b.id == 'streak_300',
         );
-        final streak365Badge = badges1000.firstWhere(
+        final streak365Badge = badges365.firstWhere(
           (b) => b.id == 'streak_365',
         );
-        final streak500Badge = badges1000.firstWhere(
-          (b) => b.id == 'streak_500',
-        );
-        final streak1000Unlocked = badges1000.firstWhere(
-          (b) => b.id == 'streak_1000',
-        );
-        final total100hBadge = badges1000.firstWhere(
+        final total100hBadge = badges365.firstWhere(
           (b) => b.id == 'focus_total_100h',
         );
 
         expect(streak300Badge.achieved, isTrue);
         expect(streak365Badge.achieved, isTrue);
-        expect(streak500Badge.achieved, isTrue);
-        expect(streak1000Unlocked.achieved, isTrue);
         expect(total100hBadge.achieved, isTrue);
       },
     );
@@ -99,22 +91,22 @@ void main() {
           longestLinkedTaskSession: Duration.zero,
           totalFocus: Duration.zero,
           unlockedBadgeIds: [
-            'streak_1000',
-            'focus_total_500h',
-            'focus_session_3h',
+            'streak_365',
+            'focus_total_100h',
+            'focus_session_120m',
           ],
         );
 
         expect(
-          badges.firstWhere((b) => b.id == 'streak_1000').achieved,
+          badges.firstWhere((b) => b.id == 'streak_365').achieved,
           isTrue,
         );
         expect(
-          badges.firstWhere((b) => b.id == 'focus_total_500h').achieved,
+          badges.firstWhere((b) => b.id == 'focus_total_100h').achieved,
           isTrue,
         );
         expect(
-          badges.firstWhere((b) => b.id == 'focus_session_3h').achieved,
+          badges.firstWhere((b) => b.id == 'focus_session_120m').achieved,
           isTrue,
         );
       },

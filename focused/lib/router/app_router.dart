@@ -6,7 +6,6 @@ import '../features/auth/providers/account_provider.dart';
 import '../features/onboarding/providers/onboarding_provider.dart';
 import '../features/auth/views/login_screen.dart';
 import '../features/auth/views/verify_email_screen.dart';
-import '../features/devices/views/devices_screen.dart';
 import '../features/focus/views/focus_complete_screen.dart';
 import '../features/focus/views/focus_session_details_screen.dart';
 import '../features/focus/views/focus_session_screen.dart';
@@ -185,10 +184,6 @@ GoRouter createAppRouter({
       GoRoute(
         path: '/settings/notification-permission',
         builder: (context, state) => const NotificationPermissionScreen(),
-      ),
-      GoRoute(
-        path: '/devices',
-        builder: (context, state) => const DevicesScreen(),
       ),
       GoRoute(
         path: '/task/new',

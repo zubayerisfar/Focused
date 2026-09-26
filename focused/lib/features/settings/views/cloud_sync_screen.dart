@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/cloud_sync_provider.dart';
-import '../services/cloud_sync_service.dart';
 
 class CloudSyncScreen extends StatelessWidget {
   const CloudSyncScreen({super.key});
@@ -10,7 +9,8 @@ class CloudSyncScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sync = context.watch<CloudSyncProvider>();
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -23,7 +23,7 @@ class CloudSyncScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 36),
         children: [
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: scheme.surfaceContainer,
               borderRadius: BorderRadius.circular(22),
@@ -34,32 +34,41 @@ class CloudSyncScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.cloud_sync_rounded, color: scheme.primary),
-                    const SizedBox(width: 12),
+                    Icon(Icons.cloud_sync_rounded, color: scheme.primary, size: 28),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(
-                        sync.statusLabel,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            sync.statusLabel,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            sync.lastSyncAt != null
+                                ? 'Last synced: ${_formatDateTime(sync.lastSyncAt!.toLocal())}'
+                                : 'Not synced yet',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (sync.isSyncing)
                       const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.2),
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
                       ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 14),
                 Text(
-                  'Tasks, recurring-task completion history, habits, habit progress, focus history, profile and Focused settings can sync through your Firebase account.',
-                  style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Raw Android screen-time, app-open events, notification events and foreground-app history stay on this device.',
+                  'Your tasks, habits, focus sessions, and profile synchronize seamlessly across all your devices with your Focused account.',
                   style: TextStyle(color: scheme.onSurfaceVariant, height: 1.4),
                 ),
               ],
@@ -72,92 +81,61 @@ class CloudSyncScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Text(
-                  sync.errorMessage!,
-                  style: TextStyle(color: scheme.onErrorContainer),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded, color: scheme.onErrorContainer, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        sync.errorMessage!,
+                        style: TextStyle(color: scheme.onErrorContainer),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ],
-          if (sync.isNewDevice) ...[
-            const SizedBox(height: 14),
-            Material(
-              color: scheme.primaryContainer.withOpacity(0.45),
-              borderRadius: BorderRadius.circular(18),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Text(
-                  'New Android device detected. Sync now to restore tasks, habits, focus history and profile. Screen-time and app-open history are read locally from Android UsageStats; notification history begins after notification access is enabled.',
-                  style: TextStyle(
-                    color: scheme.onPrimaryContainer,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 50,
             child: FilledButton.icon(
-              onPressed: sync.canSync
-                  ? () => _triggerSync(context, CloudSyncMode.bidirectional)
-                  : null,
+              onPressed: sync.canSync ? () => _triggerSync(context) : null,
               icon: const Icon(Icons.sync_rounded),
-              label: Text(sync.isSyncing ? 'Syncing…' : 'Smart Sync (Bidirectional)'),
+              label: Text(
+                sync.isSyncing ? 'Syncing…' : 'Sync Now',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: sync.canSync
-                      ? () => _triggerSync(context, CloudSyncMode.downloadOnly)
-                      : null,
-                  icon: const Icon(Icons.cloud_download_rounded, size: 18),
-                  label: const Text('Download Cloud'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: sync.canSync
-                      ? () => _triggerSync(context, CloudSyncMode.uploadOnly)
-                      : null,
-                  icon: const Icon(Icons.cloud_upload_rounded, size: 18),
-                  label: const Text('Upload Local'),
-                ),
-              ),
-            ],
+          const SizedBox(height: 24),
+          Text(
+            'Sync Details',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 20),
-          _InfoRow(label: 'Device', value: sync.deviceName ?? 'Focused device'),
+          const SizedBox(height: 8),
           _InfoRow(
-            label: 'Installation ID',
-            value: sync.deviceId == null
-                ? 'Preparing…'
-                : _shortDeviceId(sync.deviceId!),
+            label: 'Account Status',
+            value: sync.canSync || sync.lastSyncAt != null ? 'Connected' : 'Sign in required',
           ),
           _InfoRow(
-            label: 'Last sync',
+            label: 'Last Sync',
             value: sync.lastSyncAt == null
-                ? 'Not synced on this run'
+                ? 'Never'
                 : _formatDateTime(sync.lastSyncAt!.toLocal()),
           ),
           if (sync.lastResult != null) ...[
             _InfoRow(
-              label: 'Uploaded',
-              value: '${sync.lastResult!.pushed} records',
+              label: 'Changes Uploaded',
+              value: '${sync.lastResult!.pushed}',
             ),
             _InfoRow(
-              label: 'Downloaded',
-              value: '${sync.lastResult!.pulled} records',
-            ),
-            _InfoRow(
-              label: 'Remote deletions applied',
-              value: '${sync.lastResult!.deleted} records',
+              label: 'Changes Downloaded',
+              value: '${sync.lastResult!.pulled}',
             ),
           ],
         ],
@@ -165,24 +143,18 @@ class CloudSyncScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _triggerSync(BuildContext context, CloudSyncMode mode) async {
+  Future<void> _triggerSync(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final modeName = mode == CloudSyncMode.downloadOnly
-        ? 'Download'
-        : mode == CloudSyncMode.uploadOnly
-        ? 'Upload'
-        : 'Sync';
 
     try {
       final result = await context.read<CloudSyncProvider>().syncNow(
-        mode: mode,
         isManual: true,
       );
       if (!context.mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            '$modeName complete: ${result.pushed} uploaded, ${result.pulled} downloaded.',
+            'Sync complete · ${result.pushed} uploaded, ${result.pulled} downloaded.',
           ),
         ),
       );
@@ -207,7 +179,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
           Expanded(
@@ -232,13 +204,8 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-String _shortDeviceId(String value) {
-  if (value.length <= 22) return value;
-  return '${value.substring(0, 12)}…${value.substring(value.length - 8)}';
-}
-
 String _formatDateTime(DateTime value) {
-  String two(int number) => number.toString().padLeft(2, '0');
-  return '${value.year}-${two(value.month)}-${two(value.day)} '
-      '${two(value.hour)}:${two(value.minute)}';
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')} $hour:$minute';
 }
